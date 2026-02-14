@@ -25,11 +25,13 @@ func setupTestFS(t *testing.T) {
 			return err
 		}
 		rel, _ := filepath.Rel(projRoot, path)
+		// Normalize to forward slashes for fs.FS compatibility on Windows.
+		key := filepath.ToSlash(rel)
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
-		fs[rel] = &fstest.MapFile{Data: data}
+		fs[key] = &fstest.MapFile{Data: data}
 		return nil
 	})
 	if err != nil {
