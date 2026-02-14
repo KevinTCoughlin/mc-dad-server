@@ -1,0 +1,32 @@
+# Parkour Plugin Configuration (A5H73Y)
+# Tuned for family-friendly parkour courses
+# Deployed to plugins/Parkour/config.yml by install.sh
+#
+# Full reference: https://a5h73y.github.io/Parkour/
+
+# --- Scoreboard ---
+Scoreboard:
+  Enabled: true
+
+# --- Sounds ---
+Sounds:
+  Enabled: true
+
+# --- Death & Damage ---
+OnDie:
+  SetXPBarToDeathCount: true
+
+DieInLava: true
+DieInVoid: true
+DisableFallDamage: true
+DisablePlayerDamage: true
+
+# --- Live Display ---
+DisplayLiveTime:
+  Enabled: true
+
+DisplayNewRecords: true
+
+# --- Disconnect Behavior ---
+OnLeaveServer:
+  LeaveCourse: true

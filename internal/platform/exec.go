@@ -1,0 +1,121 @@
+package platform
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"log/slog"
+	"os/exec"
+)
+
+// CommandRunner abstracts shell-out operations for testability.
+type CommandRunner interface {
+	Run(ctx context.Context, name string, args ...string) error
+	RunWithOutput(ctx context.Context, name string, args ...string) ([]byte, error)
+	RunSudo(ctx context.Context, name string, args ...string) error
+	CommandExists(name string) bool
+}
+
+// OSCommandRunner executes real system commands.
+type OSCommandRunner struct{}
+
+// NewOSCommandRunner returns a CommandRunner that executes real system commands.
+func NewOSCommandRunner() *OSCommandRunner {
+	return &OSCommandRunner{}
+}
+
+func (r *OSCommandRunner) Run(ctx context.Context, name string, args ...string) error {
+	slog.Debug("exec", "cmd", name, "args", args)
+	cmd := exec.CommandContext(ctx, name, args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s %v: %w: %s", name, args, err, stderr.String())
+	}
+	return nil
+}
+
+func (r *OSCommandRunner) RunWithOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
+	slog.Debug("exec", "cmd", name, "args", args)
+	cmd := exec.CommandContext(ctx, name, args...)
+	out, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("%s %v: %w: %s", name, args, err, exitErr.Stderr)
+		}
+		return nil, fmt.Errorf("%s %v: %w", name, args, err)
+	}
+	return out, nil
+}
+
+func (r *OSCommandRunner) RunSudo(ctx context.Context, name string, args ...string) error {
+	sudoArgs := append([]string{name}, args...)
+	return r.Run(ctx, "sudo", sudoArgs...)
+}
+
+func (r *OSCommandRunner) CommandExists(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
+// MockRunner records commands for testing without executing them.
+type MockRunner struct {
+	Commands      []MockCommand
+	OutputMap     map[string][]byte
+	ErrorMap      map[string]error
+	ExistsMap     map[string]bool
+}
+
+// MockCommand records a single command invocation.
+type MockCommand struct {
+	Name string
+	Args []string
+	Sudo bool
+}
+
+// NewMockRunner creates a MockRunner with empty state.
+func NewMockRunner() *MockRunner {
+	return &MockRunner{
+		OutputMap: make(map[string][]byte),
+		ErrorMap:  make(map[string]error),
+		ExistsMap: make(map[string]bool),
+	}
+}
+
+func (m *MockRunner) key(name string, args ...string) string {
+	return fmt.Sprintf("%s %v", name, args)
+}
+
+func (m *MockRunner) Run(_ context.Context, name string, args ...string) error {
+	m.Commands = append(m.Commands, MockCommand{Name: name, Args: args})
+	if err, ok := m.ErrorMap[m.key(name, args...)]; ok {
+		return err
+	}
+	return nil
+}
+
+func (m *MockRunner) RunWithOutput(_ context.Context, name string, args ...string) ([]byte, error) {
+	m.Commands = append(m.Commands, MockCommand{Name: name, Args: args})
+	if err, ok := m.ErrorMap[m.key(name, args...)]; ok {
+		return nil, err
+	}
+	if out, ok := m.OutputMap[m.key(name, args...)]; ok {
+		return out, nil
+	}
+	return nil, nil
+}
+
+func (m *MockRunner) RunSudo(_ context.Context, name string, args ...string) error {
+	m.Commands = append(m.Commands, MockCommand{Name: name, Args: args, Sudo: true})
+	if err, ok := m.ErrorMap[m.key(name, args...)]; ok {
+		return err
+	}
+	return nil
+}
+
+func (m *MockRunner) CommandExists(name string) bool {
+	if exists, ok := m.ExistsMap[name]; ok {
+		return exists
+	}
+	return false
+}

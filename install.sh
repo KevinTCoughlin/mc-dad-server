@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
 #
-# MC Dad Server Installer
-# A dead-simple Minecraft server installer for busy dads.
+# MC Dad Server Installer (DEPRECATED)
+#
+# This bash installer is deprecated. Use the Go binary instead:
+#   curl -fsSL https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-$(uname -s | tr A-Z a-z)-$(uname -m) -o mc-dad-server
+#   chmod +x mc-dad-server
+#   ./mc-dad-server install
+#
+# This script will be removed in the next release.
+#
 # MIT License - https://github.com/KevinTCoughlin/mc-dad-server
 #
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/KevinTCoughlin/mc-dad-server/main/install.sh | bash
-#   OR
-#   bash install.sh [--edition bedrock|java] [--dir /path] [--port 25565] [--no-playit]
-#
 set -euo pipefail
+
+echo ""
+echo "WARNING: This bash installer is deprecated."
+echo "Please use the Go binary instead:"
+echo "  https://github.com/KevinTCoughlin/mc-dad-server/releases"
+echo ""
+echo "Continuing with bash installer in 5 seconds..."
+sleep 5
 
 # ─── Configuration Defaults ───────────────────────────────────────────────────
 MC_EDITION="${MC_EDITION:-java}"

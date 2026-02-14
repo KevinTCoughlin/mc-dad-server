@@ -242,11 +242,11 @@
     <p class="tagline">Minecraft server in 60 seconds — for busy dads who just want their kids to play. No Docker. No Kubernetes. No nonsense.</p>
 
     <div class="install-block">
-      <span class="label">Run in your terminal</span>
+      <span class="label">Download &amp; install</span>
       <button class="copy-btn" onclick="copyInstall()" id="copyBtn">Copy</button>
-      <code id="installCmd" role="textbox" aria-label="Installation command">curl -fsSL https://raw.githubusercontent.com/KevinTCoughlin/mc-dad-server/main/install.sh | bash</code>
+      <code id="installCmd" role="textbox" aria-label="Installation command">curl -fsSL https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') -o mc-dad-server &amp;&amp; chmod +x mc-dad-server &amp;&amp; ./mc-dad-server install</code>
     </div>
-    <p class="note">That's it. Your server is running. <a href="https://raw.githubusercontent.com/KevinTCoughlin/mc-dad-server/main/install.sh">Review the script</a> before running.</p>
+    <p class="note">That's it. One binary, zero dependencies. <a href="https://github.com/KevinTCoughlin/mc-dad-server/releases">All releases</a></p>
   </header>
 
   <!-- Features -->

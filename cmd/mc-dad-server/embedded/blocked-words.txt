@@ -1,0 +1,92 @@
+# MC Dad Server — Blocked Words List
+# One word/phrase per line. Lines starting with # are comments.
+# Case-insensitive matching. Customize as needed for your family.
+#
+# This list ships as a sensible default for a kid-safe server.
+# Add or remove entries to fit your household rules.
+
+# ─── Profanity ──────────────────────────────────────────────────────────────
+ass
+asshole
+bastard
+bitch
+bullshit
+crap
+damn
+dammit
+dick
+douchebag
+fuck
+fucking
+fucker
+goddamn
+hell
+jackass
+motherfucker
+piss
+shit
+shitty
+whore
+
+# ─── Slurs & Hate Speech ────────────────────────────────────────────────────
+chink
+coon
+dyke
+fag
+faggot
+kike
+negro
+nigga
+nigger
+retard
+retarded
+spic
+tranny
+wetback
+
+# ─── Sexual Terms ───────────────────────────────────────────────────────────
+blowjob
+boner
+boobs
+cock
+cum
+cunt
+dildo
+handjob
+hentai
+horny
+penis
+porn
+pussy
+sex
+sexy
+tits
+vagina
+
+# ─── Leetspeak & Evasion Variants ───────────────────────────────────────────
+f*ck
+f**k
+fck
+fuk
+phuck
+phuk
+sh*t
+sh1t
+sht
+b1tch
+b!tch
+a$$
+a55
+@ss
+d1ck
+d!ck
+c0ck
+p0rn
+pr0n
+n1gger
+n1gga
+f4g
+f@g
+stfu
+gtfo
+lmfao

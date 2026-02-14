@@ -2,17 +2,29 @@
 
 **Minecraft server in 60 seconds — for busy dads who just want their kids to play.**
 
-No Docker. No Kubernetes. No nonsense. Just one command and you're hosting Minecraft — with Bedrock cross-play, Parkour courses, and tuned configs out of the box.
+No Docker. No Kubernetes. No nonsense. Download one binary and run `mc-dad-server install` — with Bedrock cross-play, Parkour courses, and tuned configs out of the box.
 
 ## Quick Start
 
-> **Security note:** Always [review a script](https://raw.githubusercontent.com/KevinTCoughlin/mc-dad-server/main/install.sh) before piping it to bash. You can also download it first with `curl -fsSL ... -o install.sh` and inspect it.
+```bash
+# Download the binary for your platform
+curl -fsSL https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') -o mc-dad-server
+chmod +x mc-dad-server
+
+# Install everything
+./mc-dad-server install
+```
+
+Or via `go install`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KevinTCoughlin/mc-dad-server/main/install.sh | bash
+go install github.com/KevinTCoughlin/mc-dad-server/cmd/mc-dad-server@latest
+mc-dad-server install
 ```
 
 That's it. Your server is running.
+
+> **Migrating from install.sh?** The Go binary replaces the bash installer. Same flags, same behavior, zero dependencies. The `install.sh` script is deprecated but still available for one release cycle.
 
 ## Batteries Included
 
@@ -24,6 +36,7 @@ Every Paper server install comes loaded with:
 | **Parkour** | Build obstacle courses. Checkpoints, leaderboards, death counters. Kids go nuts for this. |
 | **WorldEdit** | Fast course building. `//set`, `//stack`, `//copy` — build a parkour map in minutes. |
 | **Multiverse-Core** | Separate worlds for parkour, creative, survival. Keep things organized. |
+| **ChatSentry** | Configurable chat filter with blocked words list. Kid-safe by default. |
 
 Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tuned from a real production server.
 
@@ -32,8 +45,8 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 - Installs Adoptium Temurin Java 21 (open-source, no Oracle)
 - Downloads Paper MC (optimized, fast, plugin-ready)
 - Deploys tuned server configs from a battle-tested PaperMC server
-- Downloads and installs plugins (Geyser, Parkour, WorldEdit, Multiverse)
-- Creates start/stop/restart/backup scripts with GC selection (G1GC or ZGC)
+- Downloads and installs plugins (Geyser, Parkour, WorldEdit, Multiverse, ChatSentry)
+- Sets up start script with GC selection (G1GC or ZGC)
 - Sets up auto-start on boot (systemd or launchd)
 - Daily automatic backups with rotation
 - Opens firewall ports for Java (25565) and Bedrock (19132)
@@ -53,7 +66,7 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 ## Options
 
 ```bash
-bash install.sh \
+mc-dad-server install \
   --type paper \
   --memory 4G \
   --port 25565 \
@@ -77,30 +90,27 @@ bash install.sh \
 | `--gc` | `g1gc` | `g1gc` (Aikar's flags) or `zgc` (low latency) |
 | `--motd` | `Dads Minecraft Server` | Message of the day |
 | `--no-playit` | *(enabled)* | Skip playit.gg tunnel |
-| `--license` | *(none)* | Dad Pack license key |
+| `--no-chat-filter` | *(enabled)* | Skip chat filter plugin |
 | `--version` | `latest` | Minecraft version |
 
 ## Daily Commands
 
 ```bash
 # Start the server (runs in background)
-bash ~/minecraft-server/run.sh
+mc-dad-server start
 
 # Check if it's running
-bash ~/minecraft-server/status.sh
-
-# Add your kid to the whitelist
-bash ~/minecraft-server/whitelist-add.sh KidUsername
+mc-dad-server status
 
 # View the server console
 screen -r minecraft
 # (Press Ctrl+A then D to detach)
 
 # Stop the server
-bash ~/minecraft-server/stop.sh
+mc-dad-server stop
 
 # Manual backup
-bash ~/minecraft-server/backup.sh
+mc-dad-server backup
 ```
 
 ## Bedrock Cross-Play (iPad, Switch, Phone)
@@ -117,7 +127,7 @@ Geyser handles the translation. Floodgate means they don't need a Java Minecraft
 After your first server boot, set up the parkour world:
 
 ```bash
-bash ~/minecraft-server/setup-parkour.sh
+mc-dad-server setup-parkour
 ```
 
 Then in-game:
@@ -131,39 +141,23 @@ Then in-game:
 /pa ready MyCourse      # open it up for players
 ```
 
-Your kids play with:
-
-```
-/pa join MyCourse       # join a course
-/pa leave               # leave
-/pa leaderboard MyCourse  # see who's fastest
-```
-
 ### Pre-built Maps
 
-Install 5 curated parkour maps from [Hielke Maps](https://hielkemaps.com) — no building required:
-
-```bash
-bash scripts/setup-parkour-maps.sh
-```
-
-Maps: Parkour Spiral, Spiral 3, Volcano, Pyramid, Paradise. Kids teleport with `/mv tp parkour-volcano`, etc.
+Install 5 curated parkour maps from [Hielke Maps](https://hielkemaps.com) — no building required. Maps: Parkour Spiral, Spiral 3, Volcano, Pyramid, Paradise.
 
 ### Auto Map Rotation
 
-Keep things fresh — rotate the featured parkour map every few hours:
+Keep things fresh — rotate the featured parkour map:
 
 ```bash
 # Manual rotation
-bash ~/minecraft-server/rotate-parkour.sh
+mc-dad-server rotate-parkour
 
 # Automate with cron (every 4 hours)
-0 */4 * * * bash ~/minecraft-server/rotate-parkour.sh >> ~/minecraft-server/logs/rotation.log 2>&1
+0 */4 * * * mc-dad-server rotate-parkour >> ~/minecraft-server/logs/rotation.log 2>&1
 ```
 
 When a map rotates, all players get a broadcast and are teleported to the new featured map. See [docs/parkour.md](docs/parkour.md) for full details.
-
-Parkour config highlights: scoreboard on, sounds on, XP bar shows death count, no fall damage during courses, invincible during courses, auto-leave on disconnect.
 
 ## Dad Pack (Coming Soon)
 
@@ -186,6 +180,17 @@ The installer optionally sets up [playit.gg](https://playit.gg), which creates a
 4. Share the address with friends' parents
 
 No port forwarding. No exposing your home IP. Easy.
+
+## Building from Source
+
+```bash
+git clone https://github.com/KevinTCoughlin/mc-dad-server.git
+cd mc-dad-server
+just build       # build binary
+just test        # run tests
+just check       # fmt + vet + lint + test
+just build-all   # cross-compile all 6 targets
+```
 
 ## FAQ
 
@@ -220,7 +225,7 @@ Adoptium Temurin 21 — open source, production-ready, no Oracle licensing nonse
 
 ```bash
 # Stop the server
-bash ~/minecraft-server/stop.sh
+mc-dad-server stop
 
 # Remove systemd service (Linux)
 sudo systemctl disable minecraft

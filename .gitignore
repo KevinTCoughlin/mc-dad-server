@@ -9,5 +9,9 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Go
+/mc-dad-server
+dist/
+
 # Not for public repo
 STOREFRONT_GUIDE.md
