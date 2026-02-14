@@ -18,13 +18,15 @@ MC_PORT="${MC_PORT:-25565}"
 MC_MEMORY="${MC_MEMORY:-2G}"
 MC_SERVER_TYPE="${MC_SERVER_TYPE:-paper}"       # paper, fabric, vanilla
 MC_MOTD="${MC_MOTD:-Dads Minecraft Server}"
-MC_MAX_PLAYERS="${MC_MAX_PLAYERS:-10}"
-MC_DIFFICULTY="${MC_DIFFICULTY:-easy}"
+MC_MAX_PLAYERS="${MC_MAX_PLAYERS:-20}"
+MC_DIFFICULTY="${MC_DIFFICULTY:-normal}"
 MC_GAMEMODE="${MC_GAMEMODE:-survival}"
 MC_ENABLE_PLAYIT="${MC_ENABLE_PLAYIT:-true}"
 MC_WHITELIST="${MC_WHITELIST:-true}"
 MC_LICENSE_KEY="${MC_LICENSE_KEY:-}"
 MC_VERSION="${MC_VERSION:-latest}"
+MC_GC_TYPE="${MC_GC_TYPE:-g1gc}"               # g1gc or zgc
+MC_CHAT_FILTER="${MC_CHAT_FILTER:-true}"
 
 # ─── Colors & Output ─────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -53,7 +55,9 @@ while [[ $# -gt 0 ]]; do
         --players)    MC_MAX_PLAYERS="$2"; shift 2 ;;
         --difficulty) MC_DIFFICULTY="$2"; shift 2 ;;
         --gamemode)   MC_GAMEMODE="$2"; shift 2 ;;
+        --gc)         MC_GC_TYPE="$2"; shift 2 ;;
         --no-playit)  MC_ENABLE_PLAYIT="false"; shift ;;
+        --no-chat-filter) MC_CHAT_FILTER="false"; shift ;;
         --license)    MC_LICENSE_KEY="$2"; shift 2 ;;
         --version)    MC_VERSION="$2"; shift 2 ;;
         --help|-h)
@@ -68,10 +72,12 @@ while [[ $# -gt 0 ]]; do
             echo "  --memory <size>             RAM allocation (default: 2G)"
             echo "  --type <paper|fabric|vanilla> Server type (default: paper)"
             echo "  --motd <message>            Server message of the day"
-            echo "  --players <count>           Max players (default: 10)"
+            echo "  --players <count>           Max players (default: 20)"
             echo "  --difficulty <peaceful|easy|normal|hard>"
             echo "  --gamemode <survival|creative|adventure>"
+            echo "  --gc <g1gc|zgc>             Garbage collector (default: g1gc)"
             echo "  --no-playit                 Skip playit.gg tunnel setup"
+            echo "  --no-chat-filter            Skip chat filter plugin setup"
             echo "  --license <key>             License key for Dad Pack configs"
             echo "  --version <version>         MC version (default: latest)"
             echo "  --help                      Show this help"
@@ -151,40 +157,70 @@ install_package() {
 }
 
 install_java() {
-    step "Installing Java"
+    step "Installing Java (Adoptium Temurin)"
 
     # Check if Java 21+ is available
     if command -v java &>/dev/null; then
-        JAVA_VER=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1)
-        if ! [[ "$JAVA_VER" =~ ^[0-9]+$ ]]; then
+        local java_ver
+        java_ver=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1)
+        if ! [[ "$java_ver" =~ ^[0-9]+$ ]]; then
             warn "Could not determine Java version, will install Java 21"
-        elif [[ "$JAVA_VER" -ge 21 ]]; then
-            success "Java $JAVA_VER already installed"
+        elif [[ "$java_ver" -ge 21 ]]; then
+            success "Java $java_ver already installed"
             return 0
         else
-            warn "Java $JAVA_VER found, but 21+ required"
+            warn "Java $java_ver found, but 21+ required"
         fi
     fi
 
-    info "Installing Java 21..."
+    info "Installing Adoptium Temurin JDK 21..."
     case "$PKG_MGR" in
         apt)
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq openjdk-21-jre-headless
+            # Adoptium APT repo
+            if ! apt-cache show temurin-21-jdk &>/dev/null 2>&1; then
+                info "Adding Adoptium APT repository..."
+                sudo apt-get update -qq
+                sudo apt-get install -y -qq wget apt-transport-https gpg
+                wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor | sudo tee /etc/apt/keyrings/adoptium.gpg > /dev/null
+                echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | sudo tee /etc/apt/sources.list.d/adoptium.list > /dev/null
+                sudo apt-get update -qq
+            fi
+            if sudo apt-get install -y -qq temurin-21-jdk 2>/dev/null; then
+                success "Adoptium Temurin 21 installed via APT"
+            else
+                warn "Adoptium repo unavailable, falling back to distro OpenJDK"
+                sudo apt-get install -y -qq openjdk-21-jre-headless
+            fi
             ;;
         dnf)
-            sudo dnf install -y -q java-21-openjdk-headless
+            # Adoptium DNF repo
+            if ! dnf list temurin-21-jdk &>/dev/null 2>&1; then
+                info "Adding Adoptium DNF repository..."
+                cat <<-'REPO' | sudo tee /etc/yum.repos.d/adoptium.repo > /dev/null
+[Adoptium]
+name=Adoptium
+baseurl=https://packages.adoptium.net/artifactory/rpm/$(. /etc/os-release && echo "$ID")/$(rpm -E %{rhel})/$(uname -m)
+enabled=1
+gpgcheck=1
+gpgkey=https://packages.adoptium.net/artifactory/api/gpg/key/public
+REPO
+            fi
+            if sudo dnf install -y -q temurin-21-jdk 2>/dev/null; then
+                success "Adoptium Temurin 21 installed via DNF"
+            else
+                warn "Adoptium repo unavailable, falling back to distro OpenJDK"
+                sudo dnf install -y -q java-21-openjdk-headless
+            fi
             ;;
         pacman)
             sudo pacman -S --noconfirm jre-openjdk-headless
             ;;
         brew)
-            brew install openjdk@21
-            sudo ln -sfn "$(brew --prefix openjdk@21)/libexec/openjdk.jdk" /Library/Java/JavaVirtualMachines/openjdk-21.jdk
+            brew install --cask temurin@21
             ;;
         *)
-            # Fallback: use sdkman
-            warn "Using SDKMAN to install Java..."
+            # Fallback: use SDKMAN
+            warn "Using SDKMAN to install Temurin Java..."
             if [[ ! -d "$HOME/.sdkman" ]]; then
                 curl -fsSL "https://get.sdkman.io" | bash
                 # shellcheck source=/dev/null
@@ -203,6 +239,16 @@ install_java() {
     fi
 }
 
+# Detect JAVA_HOME and java binary
+detect_java() {
+    if [[ -n "${JAVA_HOME:-}" && -x "$JAVA_HOME/bin/java" ]]; then
+        JAVA_CMD="$JAVA_HOME/bin/java"
+    else
+        JAVA_CMD="java"
+    fi
+    export JAVA_CMD
+}
+
 install_dependencies() {
     step "Installing Dependencies"
     install_package "curl"
@@ -212,6 +258,8 @@ install_dependencies() {
     if [[ "$MC_EDITION" == "java" ]]; then
         install_java
     fi
+
+    detect_java
 }
 
 # ─── Server Download ──────────────────────────────────────────────────────────
@@ -309,108 +357,349 @@ download_server() {
     fi
 }
 
+# ─── Plugin Installation ─────────────────────────────────────────────────────
+download_plugin() {
+    local name="$1"
+    local url="$2"
+    local filename="$3"
+    local dest="$MC_DIR/plugins/$filename"
+
+    if [[ -f "$dest" ]]; then
+        success "$name already downloaded"
+        return 0
+    fi
+
+    info "Downloading $name..."
+    if curl -fsSL -o "$dest" "$url"; then
+        success "$name downloaded"
+    else
+        warn "Failed to download $name from $url — you can install it manually"
+    fi
+}
+
+install_plugins() {
+    # Plugins only work with Paper
+    if [[ "$MC_SERVER_TYPE" != "paper" ]]; then
+        return 0
+    fi
+
+    step "Installing Plugins"
+    local plugins_dir="$MC_DIR/plugins"
+    mkdir -p "$plugins_dir"
+
+    # Geyser (Bedrock cross-play)
+    download_plugin "Geyser" \
+        "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot" \
+        "Geyser-Spigot.jar"
+
+    # Floodgate (Bedrock auth — no Java account needed)
+    download_plugin "Floodgate" \
+        "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot" \
+        "Floodgate-Spigot.jar"
+
+    # Parkour (A5H73Y) — from GitHub releases
+    local parkour_url
+    parkour_url=$(curl -fsSL "https://api.github.com/repos/A5H73Y/Parkour/releases/latest" | jq -r '.assets[0].browser_download_url // empty') || true
+    if [[ -n "$parkour_url" ]]; then
+        download_plugin "Parkour" "$parkour_url" "Parkour.jar"
+    else
+        warn "Could not find Parkour download URL — install manually from https://github.com/A5H73Y/Parkour/releases"
+    fi
+
+    # Multiverse-Core — from Hangar (PaperMC plugin repo)
+    local mv_url
+    mv_url=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/latestrelease" 2>/dev/null) || true
+    if [[ -n "$mv_url" ]]; then
+        download_plugin "Multiverse-Core" \
+            "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${mv_url}/PAPER/download" \
+            "Multiverse-Core.jar"
+    else
+        warn "Could not resolve Multiverse-Core version — install manually from https://hangar.papermc.io/Multiverse/Multiverse-Core"
+    fi
+
+    # WorldEdit — from Hangar
+    local we_url
+    we_url=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/WorldEdit/latestrelease" 2>/dev/null) || true
+    if [[ -n "$we_url" ]]; then
+        download_plugin "WorldEdit" \
+            "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${we_url}/PAPER/download" \
+            "WorldEdit.jar"
+    else
+        warn "Could not resolve WorldEdit version — install manually from https://hangar.papermc.io/EngineHub/WorldEdit"
+    fi
+
+    success "Plugin installation complete"
+}
+
 # ─── Configuration ─────────────────────────────────────────────────────────────
 accept_eula() {
     echo "eula=true" > "$MC_DIR/eula.txt"
     success "EULA accepted"
 }
 
-generate_server_properties() {
-    step "Configuring Server"
+generate_rcon_password() {
+    # Generate a random RCON password (alphanumeric, 24 chars)
+    MC_RCON_PASSWORD=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24 || true)
+    if [[ -z "$MC_RCON_PASSWORD" ]]; then
+        # Fallback if /dev/urandom isn't available
+        MC_RCON_PASSWORD="rcon-$(date +%s)-$$"
+    fi
+}
 
-    cat > "$MC_DIR/server.properties" << EOF
-# MC Dad Server - Generated $(date +%Y-%m-%d)
-# Safe defaults for family servers
+deploy_configs() {
+    step "Deploying Configs"
 
-# ─── Network ───
-server-port=${MC_PORT}
-server-ip=
-query.port=${MC_PORT}
-enable-query=false
-enable-rcon=false
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || script_dir=""
+    local config_url="https://raw.githubusercontent.com/KevinTCoughlin/mc-dad-server/main/configs"
 
-# ─── World ───
-motd=${MC_MOTD}
-level-name=world
-level-type=minecraft\:normal
-difficulty=${MC_DIFFICULTY}
-gamemode=${MC_GAMEMODE}
-max-players=${MC_MAX_PLAYERS}
-view-distance=10
-simulation-distance=8
+    # Deploy base config files to server root
+    for cfg in server.properties bukkit.yml spigot.yml; do
+        if [[ -n "$script_dir" && -f "$script_dir/configs/$cfg" ]]; then
+            cp "$script_dir/configs/$cfg" "$MC_DIR/$cfg"
+        else
+            curl -fsSL "$config_url/$cfg" -o "$MC_DIR/$cfg"
+        fi
+    done
 
-# ─── Safety (Dad-Approved Defaults) ───
-white-list=${MC_WHITELIST}
-enforce-whitelist=${MC_WHITELIST}
-online-mode=true
-pvp=false
-spawn-protection=16
-max-tick-time=60000
-enable-command-block=false
+    # Paper configs go in config/ subdirectory
+    mkdir -p "$MC_DIR/config"
+    for cfg in paper-global.yml paper-world-defaults.yml; do
+        if [[ -n "$script_dir" && -f "$script_dir/configs/$cfg" ]]; then
+            cp "$script_dir/configs/$cfg" "$MC_DIR/config/$cfg"
+        else
+            curl -fsSL "$config_url/$cfg" -o "$MC_DIR/config/$cfg"
+        fi
+    done
 
-# ─── Performance ───
-network-compression-threshold=256
-prevent-proxy-connections=false
-use-native-transport=true
-rate-limit=0
+    # Parkour plugin config
+    if [[ "$MC_SERVER_TYPE" == "paper" ]]; then
+        mkdir -p "$MC_DIR/plugins/Parkour"
+        if [[ -n "$script_dir" && -f "$script_dir/configs/parkour-config.yml" ]]; then
+            cp "$script_dir/configs/parkour-config.yml" "$MC_DIR/plugins/Parkour/config.yml"
+        else
+            curl -fsSL "$config_url/parkour-config.yml" -o "$MC_DIR/plugins/Parkour/config.yml"
+        fi
+    fi
 
-# ─── Misc ───
-allow-flight=false
-allow-nether=true
-generate-structures=true
-spawn-animals=true
-spawn-monsters=true
-spawn-npcs=true
-force-gamemode=false
-hardcore=false
-enable-status=true
-hide-online-players=false
-EOF
+    # Generate RCON password
+    generate_rcon_password
 
-    success "server.properties generated with kid-safe defaults"
+    # Substitute template variables in server.properties
+    sed -i.bak \
+        -e "s|%%MC_PORT%%|${MC_PORT}|g" \
+        -e "s|%%MC_MOTD%%|${MC_MOTD}|g" \
+        -e "s|%%MC_DIFFICULTY%%|${MC_DIFFICULTY}|g" \
+        -e "s|%%MC_GAMEMODE%%|${MC_GAMEMODE}|g" \
+        -e "s|%%MC_MAX_PLAYERS%%|${MC_MAX_PLAYERS}|g" \
+        -e "s|%%MC_WHITELIST%%|${MC_WHITELIST}|g" \
+        -e "s|%%MC_RCON_PASSWORD%%|${MC_RCON_PASSWORD}|g" \
+        "$MC_DIR/server.properties"
+    rm -f "$MC_DIR/server.properties.bak"
+
+    success "Configs deployed with tuned PaperMC defaults"
+    info "RCON password saved to server.properties (port 25575)"
+}
+
+# ─── Chat Filter (ChatSentry + Blocked Words) ───────────────────────────────
+setup_chat_filter() {
+    if [[ "$MC_CHAT_FILTER" != "true" ]]; then
+        info "Skipping chat filter setup (--no-chat-filter)"
+        return 0
+    fi
+
+    if [[ "$MC_SERVER_TYPE" != "paper" ]]; then
+        info "Chat filter requires Paper server type — skipping for $MC_SERVER_TYPE"
+        return 0
+    fi
+
+    step "Setting Up Chat Filter"
+
+    local plugins_dir="$MC_DIR/plugins"
+    mkdir -p "$plugins_dir"
+
+    # Copy blocked words list
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || script_dir=""
+    local words_dest="$MC_DIR/blocked-words.txt"
+
+    if [[ -n "$script_dir" && -f "$script_dir/blocked-words.txt" ]]; then
+        cp "$script_dir/blocked-words.txt" "$words_dest"
+    else
+        curl -fsSL "https://raw.githubusercontent.com/KevinTCoughlin/mc-dad-server/main/blocked-words.txt" -o "$words_dest"
+    fi
+    success "Blocked words list deployed"
+
+    # Download ChatSentry plugin from Hangar
+    local chatsentry_version
+    chatsentry_version=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/ChatSentry/latestrelease" 2>/dev/null) || true
+    if [[ -n "$chatsentry_version" ]]; then
+        download_plugin "ChatSentry" \
+            "https://hangar.papermc.io/api/v1/projects/ChatSentry/versions/${chatsentry_version}/PAPER/download" \
+            "ChatSentry.jar"
+    else
+        warn "Could not resolve ChatSentry version — chat filter plugin not installed"
+        warn "You can install it manually from https://hangar.papermc.io/HexedHero/ChatSentry"
+        return 0
+    fi
+
+    # Generate minimal ChatSentry config pointing to our blocked words list
+    local sentry_dir="$plugins_dir/ChatSentry"
+    mkdir -p "$sentry_dir"
+
+    cat > "$sentry_dir/config.yml" << 'CHATEOF'
+# ChatSentry config — generated by MC Dad Server installer
+# Docs: https://github.com/HexedHero/ChatSentry
+
+chat-filter:
+  enabled: true
+  blocked-words-file: "../../blocked-words.txt"
+  action: BLOCK
+  warn-message: "&cThat language isn't allowed on this server!"
+
+# Disable features we don't need
+anti-spam:
+  enabled: false
+anti-caps:
+  enabled: false
+anti-unicode:
+  enabled: false
+anti-flood:
+  enabled: false
+CHATEOF
+
+    success "ChatSentry configured with blocked words filter"
+}
+
+# ─── Parkour First-Run Setup Script ──────────────────────────────────────────
+create_parkour_setup_script() {
+    if [[ "$MC_SERVER_TYPE" != "paper" ]]; then
+        return 0
+    fi
+
+    cat > "$MC_DIR/setup-parkour.sh" << 'PARKOUREOF'
+#!/usr/bin/env bash
+set -euo pipefail
+#
+# Parkour World Setup — run this ONCE after first server boot
+# Requires: Multiverse-Core and Parkour plugins loaded
+#
+# Usage: attach to server console (screen -r minecraft) and paste these commands,
+#        OR run this script which sends them via screen.
+#
+
+SESSION_NAME="minecraft"
+
+send_cmd() {
+    screen -S "$SESSION_NAME" -p 0 -X stuff "$1$(printf '\r')"
+    sleep 2
+}
+
+if ! screen -list | grep -q "$SESSION_NAME"; then
+    echo "Server not running! Start it first with: bash run.sh"
+    exit 1
+fi
+
+echo "Setting up parkour world..."
+
+# Create flat parkour world
+send_cmd "mv create parkour normal --world-type flat --no-structures"
+sleep 5
+
+# Configure parkour world
+send_cmd "mv modify parkour set gamemode adventure"
+send_cmd "mv modify parkour set difficulty peaceful"
+send_cmd "mv gamerule set minecraft:spawn_mobs false parkour"
+send_cmd "mv gamerule set minecraft:advance_weather false parkour"
+send_cmd "mv gamerule set minecraft:advance_time false parkour"
+send_cmd "mv gamerule set minecraft:fire_damage false parkour"
+send_cmd "mv gamerule set minecraft:spawn_monsters false parkour"
+send_cmd "mv gamerule set minecraft:spawn_phantoms false parkour"
+send_cmd "mv gamerule set minecraft:mob_griefing false parkour"
+
+echo ""
+echo "Parkour world created! Next steps:"
+echo "  1. Join the server and run: /mv tp parkour"
+echo "  2. Fly to where you want the parkour lobby"
+echo "  3. Run: /pa setlobby"
+echo "  4. Start building courses with: /pa create <name>"
+echo ""
+echo "Course building cheat sheet:"
+echo "  /pa create MyCourse   — start a course at your position"
+echo "  /pa checkpoint        — add checkpoint where you stand"
+echo "  /pa finish            — set finish line"
+echo "  /pa ready MyCourse    — mark course playable"
+echo ""
+PARKOUREOF
+    chmod +x "$MC_DIR/setup-parkour.sh"
+    success "Parkour setup script created: setup-parkour.sh"
 }
 
 # ─── Service Management Scripts ───────────────────────────────────────────────
 create_management_scripts() {
     step "Creating Management Scripts"
 
-    # ─── Start Script ───
-    cat > "$MC_DIR/start.sh" << 'STARTEOF'
+    # ─── Start Script (with GC selection + JAVA_HOME) ───
+    cat > "$MC_DIR/start.sh" << STARTEOF
 #!/usr/bin/env bash
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+cd "\$SCRIPT_DIR"
 
-MEMORY="${MC_MEMORY:-2G}"
+MEMORY="\${MC_MEMORY:-${MC_MEMORY}}"
+GC_TYPE="\${MC_GC_TYPE:-${MC_GC_TYPE}}"
 
-# Optimized JVM flags (Aikar's flags for Paper)
-JAVA_FLAGS=(
-    -Xms"$MEMORY"
-    -Xmx"$MEMORY"
-    -XX:+UseG1GC
-    -XX:+ParallelRefProcEnabled
-    -XX:MaxGCPauseMillis=200
-    -XX:+UnlockExperimentalVMOptions
-    -XX:+DisableExplicitGC
-    -XX:+AlwaysPreTouch
-    -XX:G1NewSizePercent=30
-    -XX:G1MaxNewSizePercent=40
-    -XX:G1HeapRegionSize=8M
-    -XX:G1ReservePercent=20
-    -XX:G1HeapWastePercent=5
-    -XX:G1MixedGCCountTarget=4
-    -XX:InitiatingHeapOccupancyPercent=15
-    -XX:G1MixedGCLiveThresholdPercent=90
-    -XX:G1RSetUpdatingPauseTimePercent=5
-    -XX:SurvivorRatio=32
-    -XX:+PerfDisableSharedMem
-    -XX:MaxTenuringThreshold=1
-    -Dusing.aikars.flags=https://mcflags.emc.gs
-    -Daikars.new.flags=true
+# Detect Java
+if [[ -n "\${JAVA_HOME:-}" && -x "\$JAVA_HOME/bin/java" ]]; then
+    JAVA_CMD="\$JAVA_HOME/bin/java"
+else
+    JAVA_CMD="java"
+fi
+
+# Build JVM flags
+JVM_FLAGS=(
+    -Xms"\$MEMORY"
+    -Xmx"\$MEMORY"
 )
 
-echo "Starting Minecraft server with ${MEMORY} RAM..."
-exec java "${JAVA_FLAGS[@]}" -jar server.jar nogui
+if [[ "\${GC_TYPE,,}" == "zgc" ]]; then
+    # ZGC — low latency collector (requires Java 21+)
+    JVM_FLAGS+=(
+        -XX:+UseZGC
+        -XX:+ZGenerational
+        -XX:+AlwaysPreTouch
+        -XX:+DisableExplicitGC
+        -XX:+PerfDisableSharedMem
+    )
+else
+    # G1GC — Aikar's flags optimized for Minecraft
+    # https://docs.papermc.io/paper/aikars-flags
+    JVM_FLAGS+=(
+        -XX:+UseG1GC
+        -XX:+ParallelRefProcEnabled
+        -XX:MaxGCPauseMillis=200
+        -XX:+UnlockExperimentalVMOptions
+        -XX:+DisableExplicitGC
+        -XX:+AlwaysPreTouch
+        -XX:G1NewSizePercent=30
+        -XX:G1MaxNewSizePercent=40
+        -XX:G1HeapRegionSize=8M
+        -XX:G1ReservePercent=20
+        -XX:G1HeapWastePercent=5
+        -XX:G1MixedGCCountTarget=4
+        -XX:InitiatingHeapOccupancyPercent=15
+        -XX:G1MixedGCLiveThresholdPercent=90
+        -XX:G1RSetUpdatingPauseTimePercent=5
+        -XX:SurvivorRatio=32
+        -XX:+PerfDisableSharedMem
+        -XX:MaxTenuringThreshold=1
+        -Dusing.aikars.flags=https://mcflags.emc.gs
+        -Daikars.new.flags=true
+    )
+fi
+
+echo "Starting Minecraft server with \${MEMORY} RAM (\${GC_TYPE^^} GC)..."
+exec "\$JAVA_CMD" "\${JVM_FLAGS[@]}" -jar server.jar nogui
 STARTEOF
     chmod +x "$MC_DIR/start.sh"
 
@@ -480,10 +769,10 @@ echo "═══ Minecraft Server Status ═══"
 echo ""
 
 if screen -list | grep -q "$SESSION_NAME"; then
-    echo "  Status:  🟢 RUNNING"
+    echo "  Status:  RUNNING"
     echo "  Session: screen -r $SESSION_NAME"
 else
-    echo "  Status:  🔴 STOPPED"
+    echo "  Status:  STOPPED"
 fi
 
 echo ""
@@ -535,9 +824,10 @@ if screen -list | grep -q "$SESSION_NAME"; then
 fi
 
 # Rotate old backups
-BACKUP_COUNT=$(ls -1 "$BACKUP_DIR"/world_*.tar.gz 2>/dev/null | wc -l)
+BACKUP_COUNT=$(find "$BACKUP_DIR" -name 'world_*.tar.gz' | wc -l)
 if [[ "$BACKUP_COUNT" -gt "$MAX_BACKUPS" ]]; then
-    ls -1t "$BACKUP_DIR"/world_*.tar.gz | tail -n +$((MAX_BACKUPS + 1)) | xargs rm -f
+    find "$BACKUP_DIR" -name 'world_*.tar.gz' -printf '%T@ %p\n' 2>/dev/null | sort -n | head -n -"$MAX_BACKUPS" | cut -d' ' -f2- | xargs rm -f 2>/dev/null || \
+    ls -1t "$BACKUP_DIR"/world_*.tar.gz | tail -n +"$((MAX_BACKUPS + 1))" | xargs rm -f
     echo "Rotated old backups (keeping $MAX_BACKUPS)"
 fi
 
@@ -692,13 +982,22 @@ configure_firewall() {
 
     if command -v ufw &>/dev/null; then
         sudo ufw allow "$MC_PORT/tcp" comment "Minecraft Server"
+        if [[ "$MC_SERVER_TYPE" == "paper" ]]; then
+            sudo ufw allow 19132/udp comment "Minecraft Bedrock (Geyser)"
+        fi
         success "UFW: opened port $MC_PORT/tcp"
+        [[ "$MC_SERVER_TYPE" == "paper" ]] && success "UFW: opened port 19132/udp (Geyser/Bedrock)"
     elif command -v firewall-cmd &>/dev/null; then
         sudo firewall-cmd --permanent --add-port="$MC_PORT/tcp"
+        if [[ "$MC_SERVER_TYPE" == "paper" ]]; then
+            sudo firewall-cmd --permanent --add-port=19132/udp
+        fi
         sudo firewall-cmd --reload
         success "Firewalld: opened port $MC_PORT/tcp"
+        [[ "$MC_SERVER_TYPE" == "paper" ]] && success "Firewalld: opened port 19132/udp (Geyser/Bedrock)"
     else
         warn "No known firewall detected. You may need to manually open port $MC_PORT"
+        [[ "$MC_SERVER_TYPE" == "paper" ]] && warn "Also open port 19132/udp for Bedrock cross-play (Geyser)"
     fi
 }
 
@@ -769,17 +1068,34 @@ print_summary() {
 
     echo ""
     echo -e "${GREEN}${BOLD}${divider}${NC}"
-    echo -e "${GREEN}${BOLD}  MC Dad Server - Installation Complete! 🎉${NC}"
+    echo -e "${GREEN}${BOLD}  MC Dad Server - Installation Complete!${NC}"
     echo -e "${GREEN}${BOLD}${divider}${NC}"
     echo ""
     echo -e "  ${BOLD}Server Directory:${NC}  $MC_DIR"
     echo -e "  ${BOLD}Server Type:${NC}       $MC_SERVER_TYPE"
-    echo -e "  ${BOLD}Port:${NC}              $MC_PORT"
+    echo -e "  ${BOLD}Port:${NC}              $MC_PORT (Java)"
+    if [[ "$MC_SERVER_TYPE" == "paper" ]]; then
+        echo -e "  ${BOLD}Bedrock Port:${NC}     19132 (Geyser)"
+    fi
     echo -e "  ${BOLD}Memory:${NC}            $MC_MEMORY"
+    echo -e "  ${BOLD}GC:${NC}                ${MC_GC_TYPE^^}"
     echo -e "  ${BOLD}Whitelist:${NC}         $MC_WHITELIST"
     echo -e "  ${BOLD}Difficulty:${NC}        $MC_DIFFICULTY"
     echo -e "  ${BOLD}Game Mode:${NC}         $MC_GAMEMODE"
     echo ""
+
+    if [[ "$MC_SERVER_TYPE" == "paper" ]]; then
+        echo -e "  ${CYAN}${BOLD}Plugins Installed:${NC}"
+        echo -e "    Geyser + Floodgate  (Bedrock cross-play)"
+        echo -e "    Parkour             (obstacle courses)"
+        echo -e "    WorldEdit           (fast building)"
+        echo -e "    Multiverse-Core     (multiple worlds)"
+        if [[ "$MC_CHAT_FILTER" == "true" ]]; then
+            echo -e "    ChatSentry          (chat filter)"
+        fi
+        echo ""
+    fi
+
     echo -e "  ${CYAN}${BOLD}Quick Start:${NC}"
     echo -e "    Start server:      ${BOLD}bash $MC_DIR/run.sh${NC}"
     echo -e "    Stop server:       ${BOLD}bash $MC_DIR/stop.sh${NC}"
@@ -788,6 +1104,23 @@ print_summary() {
     echo -e "    Add to whitelist:  ${BOLD}bash $MC_DIR/whitelist-add.sh KidName${NC}"
     echo -e "    Backup world:      ${BOLD}bash $MC_DIR/backup.sh${NC}"
     echo ""
+
+    if [[ "$MC_SERVER_TYPE" == "paper" ]]; then
+        echo -e "  ${CYAN}${BOLD}Bedrock Cross-Play (iPad/Switch/Phone):${NC}"
+        echo -e "    Kids on Bedrock connect to your IP on port ${BOLD}19132${NC}"
+        echo -e "    No Minecraft Java account needed (Floodgate)"
+        echo ""
+        echo -e "  ${CYAN}${BOLD}Parkour Setup (first time):${NC}"
+        echo -e "    ${BOLD}bash $MC_DIR/setup-parkour.sh${NC}"
+        echo ""
+    fi
+
+    if [[ "$MC_SERVER_TYPE" == "paper" && "$MC_CHAT_FILTER" == "true" ]]; then
+        echo -e "  ${CYAN}${BOLD}Chat Filter:${NC}"
+        echo -e "    Blocked words list: ${BOLD}$MC_DIR/blocked-words.txt${NC}"
+        echo -e "    Edit the list to customize for your family"
+        echo ""
+    fi
 
     if [[ "$INIT_SYSTEM" == "systemd" ]]; then
         echo -e "  ${CYAN}${BOLD}Systemd:${NC}"
@@ -814,7 +1147,7 @@ main() {
     echo ""
     echo -e "${CYAN}${BOLD}"
     echo "  ╔═══════════════════════════════════════╗"
-    echo "  ║     MC Dad Server Installer v1.0      ║"
+    echo "  ║     MC Dad Server Installer v2.0      ║"
     echo "  ║   Minecraft for Busy Dads, Made Easy  ║"
     echo "  ╚═══════════════════════════════════════╝"
     echo -e "${NC}"
@@ -823,8 +1156,11 @@ main() {
     install_dependencies
     download_server
     accept_eula
-    generate_server_properties
+    deploy_configs
+    setup_chat_filter
+    install_plugins
     create_management_scripts
+    create_parkour_setup_script
     setup_cron_backup
     configure_firewall
 

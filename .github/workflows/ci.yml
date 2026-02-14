@@ -19,8 +19,47 @@ jobs:
       - name: Lint install.sh
         run: shellcheck -x install.sh
 
+  validate-configs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate YAML configs
+        run: |
+          python3 -c "
+          import yaml, sys, glob
+          errors = 0
+          for f in glob.glob('configs/*.yml'):
+              try:
+                  with open(f) as fh:
+                      yaml.safe_load(fh)
+                  print(f'OK: {f}')
+              except yaml.YAMLError as e:
+                  print(f'FAIL: {f}: {e}')
+                  errors += 1
+          sys.exit(errors)
+          "
+
+      - name: Check server.properties syntax
+        run: |
+          # Verify no stray template variables remain in the template
+          # (They should all be %%VAR%% patterns that sed replaces at install)
+          if grep -P '%%[A-Z_]+%%' configs/server.properties | grep -vP '%%MC_(PORT|MOTD|DIFFICULTY|GAMEMODE|MAX_PLAYERS|WHITELIST|RCON_PASSWORD)%%'; then
+            echo "ERROR: Unknown template variables in server.properties"
+            exit 1
+          fi
+          echo "OK: server.properties template variables are valid"
+
   test:
-    needs: lint
+    needs: [lint, validate-configs]
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -35,7 +74,7 @@ jobs:
         run: bash install.sh --help
 
   release:
-    needs: [lint, test]
+    needs: [lint, validate-configs, test]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -49,7 +88,8 @@ jobs:
           tar -czf mc-dad-server-${VERSION}.tar.gz \
             install.sh \
             README.md \
-            LICENSE
+            LICENSE \
+            configs/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
