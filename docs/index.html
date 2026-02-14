@@ -244,7 +244,7 @@
     <div class="install-block">
       <span class="label">Run in your terminal</span>
       <button class="copy-btn" onclick="copyInstall()" id="copyBtn">Copy</button>
-      <code id="installCmd">curl -fsSL https://raw.githubusercontent.com/KevinTCoughlin/mc-dad-server/main/install.sh | bash</code>
+      <code id="installCmd" role="textbox" aria-label="Installation command">curl -fsSL https://raw.githubusercontent.com/KevinTCoughlin/mc-dad-server/main/install.sh | bash</code>
     </div>
     <p class="note">That's it. Your server is running. <a href="https://raw.githubusercontent.com/KevinTCoughlin/mc-dad-server/main/install.sh">Review the script</a> before running.</p>
   </header>
@@ -309,7 +309,7 @@
           <tr><td><code>--difficulty</code></td><td>easy</td><td>peaceful, easy, normal, hard</td></tr>
           <tr><td><code>--gamemode</code></td><td>survival</td><td>survival, creative, adventure</td></tr>
           <tr><td><code>--players</code></td><td>10</td><td>Max player count</td></tr>
-          <tr><td><code>--motd</code></td><td>Dads Minecraft Server</td><td>Message of the day</td></tr>
+          <tr><td><code>--motd</code></td><td>Dad's Minecraft Server</td><td>Message of the day</td></tr>
           <tr><td><code>--no-playit</code></td><td>enabled</td><td>Skip playit.gg tunnel</td></tr>
         </tbody>
       </table>
@@ -352,6 +352,10 @@
       navigator.clipboard.writeText(text).then(function() {
         var btn = document.getElementById('copyBtn');
         btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+      }).catch(function() {
+        var btn = document.getElementById('copyBtn');
+        btn.textContent = 'Failed';
         setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
       });
     }
