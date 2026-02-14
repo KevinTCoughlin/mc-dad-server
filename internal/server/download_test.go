@@ -13,13 +13,13 @@ func TestPaperDownloadURL_Integration(t *testing.T) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/v2/projects/paper", func(w http.ResponseWriter, _ *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"versions": []string{"1.20.4", "1.21.4"},
 		})
 	})
 
 	mux.HandleFunc("/v2/projects/paper/versions/1.21.4/builds", func(w http.ResponseWriter, _ *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"builds": []map[string]any{
 				{
 					"build": 42,

@@ -10,7 +10,7 @@ import (
 )
 
 // InstallPlayit downloads and installs the playit.gg agent binary.
-func InstallPlayit(ctx context.Context, runner platform.CommandRunner, plat platform.Platform, output *ui.UI) error {
+func InstallPlayit(ctx context.Context, runner platform.CommandRunner, plat *platform.Platform, output *ui.UI) error {
 	output.Step("Setting Up playit.gg (No Port Forwarding Needed!)")
 
 	fmt.Println("playit.gg lets your kids' friends connect WITHOUT port forwarding.")
@@ -49,7 +49,7 @@ func InstallPlayit(ctx context.Context, runner platform.CommandRunner, plat plat
 		return nil
 	}
 
-	runner.Run(ctx, "rm", "-f", "/tmp/playit")
+	_ = runner.Run(ctx, "rm", "-f", "/tmp/playit")
 	output.Success("playit.gg installed")
 	return nil
 }

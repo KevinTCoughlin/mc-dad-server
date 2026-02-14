@@ -59,7 +59,7 @@ func FabricDownload(ctx context.Context, version, destDir string, runner platfor
 	}
 
 	// Cleanup installer
-	runner.Run(ctx, "rm", "-f", installerPath)
+	_ = runner.Run(ctx, "rm", "-f", installerPath)
 
 	output.Success("Fabric server downloaded")
 	return nil

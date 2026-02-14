@@ -8,7 +8,7 @@ import (
 )
 
 // InstallPackage installs a system package using the detected package manager.
-func InstallPackage(ctx context.Context, runner CommandRunner, plat Platform, pkg string, output *ui.UI) error {
+func InstallPackage(ctx context.Context, runner CommandRunner, plat *Platform, pkg string, output *ui.UI) error {
 	if runner.CommandExists(pkg) {
 		output.Success("%s already installed", pkg)
 		return nil

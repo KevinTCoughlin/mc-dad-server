@@ -8,7 +8,7 @@ import (
 )
 
 // ConfigureFirewall opens necessary ports for the Minecraft server.
-func ConfigureFirewall(ctx context.Context, runner CommandRunner, plat Platform, port int, serverType string) {
+func ConfigureFirewall(ctx context.Context, runner CommandRunner, plat *Platform, port int, serverType string) {
 	output := ui.Default()
 	output.Step("Configuring Firewall")
 
@@ -19,7 +19,8 @@ func ConfigureFirewall(ctx context.Context, runner CommandRunner, plat Platform,
 
 	portTCP := fmt.Sprintf("%d/tcp", port)
 
-	if runner.CommandExists("ufw") {
+	switch {
+	case runner.CommandExists("ufw"):
 		if err := runner.RunSudo(ctx, "ufw", "allow", portTCP, "comment", "Minecraft Server"); err != nil {
 			output.Warn("Failed to configure UFW: %v", err)
 			return
@@ -30,7 +31,7 @@ func ConfigureFirewall(ctx context.Context, runner CommandRunner, plat Platform,
 				output.Success("UFW: opened port 19132/udp (Geyser/Bedrock)")
 			}
 		}
-	} else if runner.CommandExists("firewall-cmd") {
+	case runner.CommandExists("firewall-cmd"):
 		if err := runner.RunSudo(ctx, "firewall-cmd", "--permanent", "--add-port="+portTCP); err != nil {
 			output.Warn("Failed to configure firewalld: %v", err)
 			return
@@ -40,7 +41,7 @@ func ConfigureFirewall(ctx context.Context, runner CommandRunner, plat Platform,
 		}
 		_ = runner.RunSudo(ctx, "firewall-cmd", "--reload")
 		output.Success("Firewalld: opened port %s", portTCP)
-	} else {
+	default:
 		output.Warn("No known firewall detected. You may need to manually open port %d", port)
 	}
 }

@@ -61,7 +61,7 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 		plat.OS, plat.Distro, plat.PkgMgr, plat.InitSystem)
 
 	// Install dependencies
-	if err := installDependencies(ctx, plat); err != nil {
+	if err := installDependencies(ctx, &plat); err != nil {
 		return err
 	}
 
@@ -110,16 +110,16 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Firewall
-	platform.ConfigureFirewall(ctx, runner, plat, cfg.Port, cfg.ServerType)
+	platform.ConfigureFirewall(ctx, runner, &plat, cfg.Port, cfg.ServerType)
 
 	// Service
-	if err := setupService(ctx, plat); err != nil {
+	if err := setupService(ctx, &plat); err != nil {
 		output.Warn("Service setup failed: %v", err)
 	}
 
 	// Playit
 	if cfg.EnablePlayit {
-		if err := tunnel.InstallPlayit(ctx, runner, plat, output); err != nil {
+		if err := tunnel.InstallPlayit(ctx, runner, &plat, output); err != nil {
 			output.Warn("playit.gg setup failed: %v", err)
 		}
 		output.Info("To set up your tunnel:")
@@ -156,7 +156,7 @@ func printBanner() {
 	fmt.Println()
 }
 
-func installDependencies(ctx context.Context, plat platform.Platform) error {
+func installDependencies(ctx context.Context, plat *platform.Platform) error {
 	output.Step("Installing Dependencies")
 
 	deps := []string{"curl", "jq", "screen"}
@@ -195,8 +195,8 @@ func installPlugins(ctx context.Context) error {
 	return plugins.InstallAll(ctx, cfg.Dir, output)
 }
 
-func setupService(ctx context.Context, plat platform.Platform) error {
-	svc := platform.NewServiceManager(&plat, runner, cfg)
+func setupService(ctx context.Context, plat *platform.Platform) error {
+	svc := platform.NewServiceManager(plat, runner, cfg)
 	if svc == nil {
 		return nil
 	}

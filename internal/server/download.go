@@ -21,7 +21,9 @@ func Download(ctx context.Context, serverType, version, destDir string, runner p
 		output.Warn("server.jar already exists. Backing up to server.jar.bak")
 		data, err := os.ReadFile(jarPath)
 		if err == nil {
-			os.WriteFile(jarPath+".bak", data, 0o644)
+			if writeErr := os.WriteFile(jarPath+".bak", data, 0o644); writeErr != nil {
+				output.Warn("Failed to write backup: %v", writeErr)
+			}
 		}
 	}
 

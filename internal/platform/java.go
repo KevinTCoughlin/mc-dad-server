@@ -10,7 +10,7 @@ import (
 )
 
 // InstallJava ensures Java 21+ is available, installing if necessary.
-func InstallJava(ctx context.Context, runner CommandRunner, plat Platform, output *ui.UI) error {
+func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, output *ui.UI) error {
 	output.Step("Installing Java (Adoptium Temurin)")
 
 	if runner.CommandExists("java") {

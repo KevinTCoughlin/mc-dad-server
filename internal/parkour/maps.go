@@ -102,7 +102,7 @@ func downloadAndExtractMap(ctx context.Context, m MapEntry, serverDir string, sc
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	zipPath := filepath.Join(tmpDir, "map.zip")
 
@@ -127,10 +127,12 @@ func downloadAndExtractMap(ctx context.Context, m MapEntry, serverDir string, sc
 		return err
 	}
 	if _, err := io.Copy(f, resp.Body); err != nil {
-		f.Close()
+		_ = f.Close()
 		return err
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		return err
+	}
 
 	// Extract
 	output.Info("  Extracting...")
@@ -161,7 +163,7 @@ func downloadAndExtractMap(ctx context.Context, m MapEntry, serverDir string, sc
 	// Import into Multiverse if server is running
 	if screen != nil && screen.IsRunning(ctx) {
 		output.Info("  Importing into Multiverse...")
-		screen.SendCommand(ctx, fmt.Sprintf("mv import %s normal", m.Name))
+		_ = screen.SendCommand(ctx, fmt.Sprintf("mv import %s normal", m.Name))
 	} else {
 		output.Info("  Server not running; import with: mv import %s normal", m.Name)
 	}
@@ -185,11 +187,15 @@ func unzip(src, dest string) error {
 		}
 
 		if f.FileInfo().IsDir() {
-			os.MkdirAll(path, 0o755)
+			if err := os.MkdirAll(path, 0o755); err != nil {
+				return err
+			}
 			continue
 		}
 
-		os.MkdirAll(filepath.Dir(path), 0o755)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
 
 		outFile, err := os.Create(path)
 		if err != nil {
@@ -203,8 +209,8 @@ func unzip(src, dest string) error {
 		}
 
 		_, err = io.Copy(outFile, rc)
-		rc.Close()
-		outFile.Close()
+		_ = rc.Close()
+		_ = outFile.Close()
 		if err != nil {
 			return err
 		}

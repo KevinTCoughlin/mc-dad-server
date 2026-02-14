@@ -3,6 +3,7 @@ package platform
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os/exec"
@@ -24,6 +25,7 @@ func NewOSCommandRunner() *OSCommandRunner {
 	return &OSCommandRunner{}
 }
 
+// Run executes a system command and returns any error.
 func (r *OSCommandRunner) Run(ctx context.Context, name string, args ...string) error {
 	slog.Debug("exec", "cmd", name, "args", args)
 	cmd := exec.CommandContext(ctx, name, args...)
@@ -35,12 +37,14 @@ func (r *OSCommandRunner) Run(ctx context.Context, name string, args ...string) 
 	return nil
 }
 
+// RunWithOutput executes a system command and returns its stdout output.
 func (r *OSCommandRunner) RunWithOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
 	slog.Debug("exec", "cmd", name, "args", args)
 	cmd := exec.CommandContext(ctx, name, args...)
 	out, err := cmd.Output()
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			return nil, fmt.Errorf("%s %v: %w: %s", name, args, err, exitErr.Stderr)
 		}
 		return nil, fmt.Errorf("%s %v: %w", name, args, err)
@@ -48,11 +52,13 @@ func (r *OSCommandRunner) RunWithOutput(ctx context.Context, name string, args .
 	return out, nil
 }
 
+// RunSudo executes a system command with sudo privileges.
 func (r *OSCommandRunner) RunSudo(ctx context.Context, name string, args ...string) error {
 	sudoArgs := append([]string{name}, args...)
 	return r.Run(ctx, "sudo", sudoArgs...)
 }
 
+// CommandExists checks whether a command is available on the system PATH.
 func (r *OSCommandRunner) CommandExists(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
@@ -86,6 +92,7 @@ func (m *MockRunner) key(name string, args ...string) string {
 	return fmt.Sprintf("%s %v", name, args)
 }
 
+// Run records the command and returns any preconfigured error.
 func (m *MockRunner) Run(_ context.Context, name string, args ...string) error {
 	m.Commands = append(m.Commands, MockCommand{Name: name, Args: args})
 	if err, ok := m.ErrorMap[m.key(name, args...)]; ok {
@@ -94,6 +101,7 @@ func (m *MockRunner) Run(_ context.Context, name string, args ...string) error {
 	return nil
 }
 
+// RunWithOutput records the command and returns preconfigured output or error.
 func (m *MockRunner) RunWithOutput(_ context.Context, name string, args ...string) ([]byte, error) {
 	m.Commands = append(m.Commands, MockCommand{Name: name, Args: args})
 	if err, ok := m.ErrorMap[m.key(name, args...)]; ok {
@@ -105,6 +113,7 @@ func (m *MockRunner) RunWithOutput(_ context.Context, name string, args ...strin
 	return nil, nil
 }
 
+// RunSudo records the command as a sudo invocation and returns any preconfigured error.
 func (m *MockRunner) RunSudo(_ context.Context, name string, args ...string) error {
 	m.Commands = append(m.Commands, MockCommand{Name: name, Args: args, Sudo: true})
 	if err, ok := m.ErrorMap[m.key(name, args...)]; ok {
@@ -113,6 +122,7 @@ func (m *MockRunner) RunSudo(_ context.Context, name string, args ...string) err
 	return nil
 }
 
+// CommandExists returns the preconfigured existence value for the given command.
 func (m *MockRunner) CommandExists(name string) bool {
 	if exists, ok := m.ExistsMap[name]; ok {
 		return exists

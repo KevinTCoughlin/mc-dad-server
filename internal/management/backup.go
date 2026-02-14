@@ -152,7 +152,7 @@ func rotateBackups(backupDir string, maxBackups int, output *ui.UI) {
 	sort.Strings(backups) // Sorted by timestamp in name
 	toRemove := backups[:len(backups)-maxBackups]
 	for _, f := range toRemove {
-		os.Remove(f)
+		_ = os.Remove(f)
 	}
 	output.Info("Rotated old backups (keeping %d)", maxBackups)
 }
