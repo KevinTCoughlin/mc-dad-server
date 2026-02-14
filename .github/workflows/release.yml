@@ -36,8 +36,10 @@ jobs:
       # Nightly release on main push
       - name: GoReleaser (nightly snapshot)
         if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
-        run: |
-          goreleaser release --snapshot --clean
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --snapshot --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

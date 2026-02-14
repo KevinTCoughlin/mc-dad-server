@@ -89,8 +89,8 @@ mc-dad-server install \
 | `--players` | `20` | Max player count |
 | `--gc` | `g1gc` | `g1gc` (Aikar's flags) or `zgc` (low latency) |
 | `--motd` | `Dads Minecraft Server` | Message of the day |
-| `--no-playit` | *(enabled)* | Skip playit.gg tunnel |
-| `--no-chat-filter` | *(enabled)* | Skip chat filter plugin |
+| `--playit` | `true` | Set up playit.gg tunnel (`--playit=false` to skip) |
+| `--chat-filter` | `true` | Install chat filter plugin (`--chat-filter=false` to skip) |
 | `--version` | `latest` | Minecraft version |
 
 ## Daily Commands
