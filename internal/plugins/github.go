@@ -27,7 +27,7 @@ func githubLatestAssetURL(ctx context.Context, owner, repo string) (string, erro
 	if err != nil {
 		return "", fmt.Errorf("fetching GitHub release for %s/%s: %w", owner, repo, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("HTTP %d from GitHub for %s/%s", resp.StatusCode, owner, repo)

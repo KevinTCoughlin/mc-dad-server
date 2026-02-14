@@ -56,7 +56,7 @@ func RotateParkour(ctx context.Context, serverDir string, screen *ScreenManager,
 		"say [PARKOUR] Featured map: %s! Type /mv tp %s to play!", nextMap, nextMap)); err != nil {
 		return err
 	}
-	Sleep(ctx, 1)
+	_ = Sleep(ctx, 1)
 
 	// Teleport players
 	if err := screen.SendCommand(ctx, fmt.Sprintf("mv tp * %s", nextMap)); err != nil {

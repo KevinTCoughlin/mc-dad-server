@@ -130,7 +130,7 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Summary
-	output.PrintInstallSummary(ui.InstallSummary{
+	output.PrintInstallSummary(&ui.InstallSummary{
 		ServerDir:   cfg.Dir,
 		ServerType:  cfg.ServerType,
 		Port:        cfg.Port,

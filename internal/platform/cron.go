@@ -43,7 +43,7 @@ func SetupCronBackup(ctx context.Context, runner CommandRunner, serverDir string
 	if err := os.WriteFile(tmpFile, []byte(crontab), 0o600); err != nil {
 		return fmt.Errorf("writing temp crontab: %w", err)
 	}
-	defer os.Remove(tmpFile)
+	defer func() { _ = os.Remove(tmpFile) }()
 
 	if err := runner.Run(ctx, "crontab", tmpFile); err != nil {
 		return fmt.Errorf("installing crontab: %w", err)

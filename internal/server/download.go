@@ -72,7 +72,7 @@ func downloadFile(ctx context.Context, url, dest string) error {
 	if err != nil {
 		return fmt.Errorf("downloading %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP %d downloading %s", resp.StatusCode, url)
@@ -82,10 +82,10 @@ func downloadFile(ctx context.Context, url, dest string) error {
 	if err != nil {
 		return fmt.Errorf("creating %s: %w", dest, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := io.Copy(f, resp.Body); err != nil {
-		os.Remove(dest)
+		_ = os.Remove(dest)
 		return fmt.Errorf("writing %s: %w", dest, err)
 	}
 

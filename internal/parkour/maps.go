@@ -116,7 +116,7 @@ func downloadAndExtractMap(ctx context.Context, m MapEntry, serverDir string, sc
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP %d downloading map", resp.StatusCode)
@@ -174,7 +174,7 @@ func unzip(src, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	for _, f := range r.File {
 		path := filepath.Join(dest, f.Name)

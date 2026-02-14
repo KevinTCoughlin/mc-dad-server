@@ -21,7 +21,7 @@ type InstallSummary struct {
 }
 
 // PrintInstallSummary displays the completion summary after install.
-func (u *UI) PrintInstallSummary(s InstallSummary) {
+func (u *UI) PrintInstallSummary(s *InstallSummary) {
 	divider := strings.Repeat("═", 54)
 
 	fmt.Println()

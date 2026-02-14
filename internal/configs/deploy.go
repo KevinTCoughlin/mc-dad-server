@@ -127,7 +127,7 @@ func DeployStartScript(cfg *config.ServerConfig) error {
 	if err != nil {
 		return fmt.Errorf("creating start.sh: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	return tmpl.Execute(f, map[string]string{
 		"Memory": cfg.Memory,

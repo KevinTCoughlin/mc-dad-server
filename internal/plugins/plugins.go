@@ -82,7 +82,7 @@ func downloadFile(ctx context.Context, url, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
@@ -92,7 +92,7 @@ func downloadFile(ctx context.Context, url, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	_, err = io.Copy(f, resp.Body)
 	return err

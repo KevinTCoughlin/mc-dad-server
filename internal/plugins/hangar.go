@@ -21,7 +21,7 @@ func hangarLatestVersion(ctx context.Context, project string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("fetching Hangar version for %s: %w", project, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("HTTP %d from Hangar for %s", resp.StatusCode, project)

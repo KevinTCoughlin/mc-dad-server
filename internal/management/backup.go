@@ -27,11 +27,11 @@ func Backup(ctx context.Context, serverDir string, maxBackups int, screen *Scree
 
 	// Notify server and save
 	if screen.IsRunning(ctx) {
-		screen.SendCommand(ctx, "say Backup starting...")
-		screen.SendCommand(ctx, "save-all")
-		Sleep(ctx, 3)
-		screen.SendCommand(ctx, "save-off")
-		Sleep(ctx, 1)
+		_ = screen.SendCommand(ctx, "say Backup starting...")
+		_ = screen.SendCommand(ctx, "save-all")
+		_ = Sleep(ctx, 3)
+		_ = screen.SendCommand(ctx, "save-off")
+		_ = Sleep(ctx, 1)
 	}
 
 	// Create backup
@@ -48,8 +48,8 @@ func Backup(ctx context.Context, serverDir string, maxBackups int, screen *Scree
 
 	// Re-enable auto-save
 	if screen.IsRunning(ctx) {
-		screen.SendCommand(ctx, "save-on")
-		screen.SendCommand(ctx, "say Backup complete!")
+		_ = screen.SendCommand(ctx, "save-on")
+		_ = screen.SendCommand(ctx, "say Backup complete!")
 	}
 
 	// Rotate old backups
@@ -81,13 +81,13 @@ func createTarGz(dest, baseDir string, dirs []string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	gz := gzip.NewWriter(f)
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 
 	tw := tar.NewWriter(gz)
-	defer tw.Close()
+	defer func() { _ = tw.Close() }()
 
 	for _, dir := range dirs {
 		dirPath := filepath.Join(baseDir, dir)
@@ -119,7 +119,7 @@ func createTarGz(dest, baseDir string, dirs []string) error {
 			if err != nil {
 				return err
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			_, err = io.Copy(tw, file)
 			return err

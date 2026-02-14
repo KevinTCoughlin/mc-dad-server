@@ -85,7 +85,7 @@ WantedBy=multi-user.target
 	if err := os.WriteFile(tmpFile, []byte(unit), 0o644); err != nil {
 		return fmt.Errorf("writing temp service file: %w", err)
 	}
-	defer os.Remove(tmpFile)
+	defer func() { _ = os.Remove(tmpFile) }()
 
 	ctx := context.Background()
 	if err := m.runner.RunSudo(ctx, "cp", tmpFile, unitPath); err != nil {
