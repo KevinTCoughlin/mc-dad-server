@@ -139,6 +139,30 @@ Your kids play with:
 /pa leaderboard MyCourse  # see who's fastest
 ```
 
+### Pre-built Maps
+
+Install 5 curated parkour maps from [Hielke Maps](https://hielkemaps.com) — no building required:
+
+```bash
+bash scripts/setup-parkour-maps.sh
+```
+
+Maps: Parkour Spiral, Spiral 3, Volcano, Pyramid, Paradise. Kids teleport with `/mv tp parkour-volcano`, etc.
+
+### Auto Map Rotation
+
+Keep things fresh — rotate the featured parkour map every few hours:
+
+```bash
+# Manual rotation
+bash ~/minecraft-server/rotate-parkour.sh
+
+# Automate with cron (every 4 hours)
+0 */4 * * * bash ~/minecraft-server/rotate-parkour.sh >> ~/minecraft-server/logs/rotation.log 2>&1
+```
+
+When a map rotates, all players get a broadcast and are teleported to the new featured map. See [docs/parkour.md](docs/parkour.md) for full details.
+
 Parkour config highlights: scoreboard on, sounds on, XP bar shows death count, no fall damage during courses, invincible during courses, auto-leave on disconnect.
 
 ## Dad Pack (Coming Soon)

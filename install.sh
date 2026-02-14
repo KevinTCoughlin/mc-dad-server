@@ -635,6 +635,78 @@ PARKOUREOF
     success "Parkour setup script created: setup-parkour.sh"
 }
 
+# ─── Parkour Map Rotation Script ────────────────────────────────────────────
+create_parkour_rotation_script() {
+    if [[ "$MC_SERVER_TYPE" != "paper" ]]; then
+        return 0
+    fi
+
+    cat > "$MC_DIR/rotate-parkour.sh" << 'ROTATEEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+#
+# Parkour Map Rotation — cycles the featured parkour map
+#
+# Broadcasts the new map and teleports players from the previous one.
+# State is persisted in rotation-state.txt so it survives restarts.
+#
+# Usage: bash rotate-parkour.sh
+# Automate: add to cron (every 4h) or launchd StartInterval
+#
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SESSION_NAME="minecraft"
+STATE_FILE="$SCRIPT_DIR/rotation-state.txt"
+
+# Maps to rotate through (space-separated world folder names)
+PARKOUR_MAPS=(parkour-spiral parkour-spiral-3 parkour-volcano parkour-pyramid parkour-paradise)
+
+send_cmd() {
+    if screen -list 2>/dev/null | grep -q "$SESSION_NAME"; then
+        screen -S "$SESSION_NAME" -p 0 -X stuff "$1$(printf '\r')"
+    fi
+}
+
+# Check server is running
+if ! screen -list 2>/dev/null | grep -q "$SESSION_NAME"; then
+    echo "Server not running, skipping rotation"
+    exit 0
+fi
+
+map_count="${#PARKOUR_MAPS[@]}"
+if ((map_count == 0)); then
+    echo "No parkour maps configured"
+    exit 0
+fi
+
+# Read current index
+current_index=0
+if [[ -f "$STATE_FILE" ]]; then
+    current_index="$(cat "$STATE_FILE")"
+fi
+
+# Advance
+next_index=$(( (current_index + 1) % map_count ))
+echo "$next_index" > "$STATE_FILE"
+
+current_map="${PARKOUR_MAPS[$current_index]}"
+next_map="${PARKOUR_MAPS[$next_index]}"
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Rotating: $current_map -> $next_map"
+
+# Broadcast
+send_cmd "say [PARKOUR] Featured map: $next_map! Type /mv tp $next_map to play!"
+sleep 1
+
+# Teleport players in current map to next map
+# Uses Multiverse's /mv tp command via console
+send_cmd "mv tp * $next_map"
+
+echo "Rotation complete: $next_map"
+ROTATEEOF
+    chmod +x "$MC_DIR/rotate-parkour.sh"
+    success "Parkour rotation script created: rotate-parkour.sh"
+}
+
 # ─── Service Management Scripts ───────────────────────────────────────────────
 create_management_scripts() {
     step "Creating Management Scripts"
@@ -1161,6 +1233,7 @@ main() {
     install_plugins
     create_management_scripts
     create_parkour_setup_script
+    create_parkour_rotation_script
     setup_cron_backup
     configure_firewall
 
