@@ -112,6 +112,49 @@
       margin: 0 auto;
     }
 
+    /* Download buttons */
+    .downloads {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.75rem;
+      max-width: 640px;
+      margin: 1.5rem auto 1rem;
+    }
+
+    .dl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 1.25rem;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .dl-btn:hover {
+      border-color: var(--accent);
+      background: #1a2744;
+      text-decoration: none;
+    }
+
+    .dl-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+      flex-shrink: 0;
+    }
+
+    .dl-btn .arch {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
     /* Sections */
     section {
       padding: 3rem 0;
@@ -231,6 +274,8 @@
       .hero h1 { font-size: 2rem; }
       .hero .tagline { font-size: 1.05rem; }
       .install-block code { font-size: 0.8rem; }
+      .downloads { gap: 0.5rem; }
+      .dl-btn { padding: 0.5rem 1rem; font-size: 0.85rem; }
     }
   </style>
 </head>
@@ -246,7 +291,33 @@
       <button class="copy-btn" onclick="copyInstall()" id="copyBtn">Copy</button>
       <code id="installCmd" role="textbox" aria-label="Installation command">curl -fsSL https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') -o mc-dad-server &amp;&amp; chmod +x mc-dad-server &amp;&amp; ./mc-dad-server install</code>
     </div>
-    <p class="note">That's it. One binary, zero dependencies. <a href="https://github.com/KevinTCoughlin/mc-dad-server/releases">All releases</a></p>
+    <div class="downloads">
+      <a class="dl-btn" href="https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-linux-amd64">
+        <svg viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.311.015-.466.046C8.756.496 6.584 2.89 5.84 5.14c-1.61.07-3.09.74-4.2 1.9C.58 8.15 0 9.52 0 10.97c0 2.83 2.09 5.18 4.81 5.59v-2.05C3.3 14.17 2 12.72 2 10.97c0-1 .38-1.93 1.07-2.63.67-.67 1.55-1.06 2.5-1.1l.5-.02.17-.48C6.94 4.53 8.6 2.62 11.04 2.04c.18-.04.36-.06.54-.06 1.87 0 3.65 1.14 4.41 2.83l.28.64.68-.07c.25-.03.5-.04.73-.04 2.58 0 4.68 2.1 4.68 4.68 0 2.17-1.5 4.02-3.56 4.5v2.06c2.98-.58 5.2-3.22 5.2-6.34 0-3.58-2.91-6.5-6.49-6.5-.34 0-.68.03-1.01.08C15.4 1.54 13.27 0 12.5 0zm-.01 9.47L8.59 13.4l1.41 1.41L11 13.82V22h2v-8.18l.99.99 1.41-1.41z"/></svg>
+        Linux <span class="arch">x64</span>
+      </a>
+      <a class="dl-btn" href="https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-linux-arm64">
+        <svg viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.311.015-.466.046C8.756.496 6.584 2.89 5.84 5.14c-1.61.07-3.09.74-4.2 1.9C.58 8.15 0 9.52 0 10.97c0 2.83 2.09 5.18 4.81 5.59v-2.05C3.3 14.17 2 12.72 2 10.97c0-1 .38-1.93 1.07-2.63.67-.67 1.55-1.06 2.5-1.1l.5-.02.17-.48C6.94 4.53 8.6 2.62 11.04 2.04c.18-.04.36-.06.54-.06 1.87 0 3.65 1.14 4.41 2.83l.28.64.68-.07c.25-.03.5-.04.73-.04 2.58 0 4.68 2.1 4.68 4.68 0 2.17-1.5 4.02-3.56 4.5v2.06c2.98-.58 5.2-3.22 5.2-6.34 0-3.58-2.91-6.5-6.49-6.5-.34 0-.68.03-1.01.08C15.4 1.54 13.27 0 12.5 0zm-.01 9.47L8.59 13.4l1.41 1.41L11 13.82V22h2v-8.18l.99.99 1.41-1.41z"/></svg>
+        Linux <span class="arch">ARM64</span>
+      </a>
+      <a class="dl-btn" href="https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-darwin-arm64">
+        <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        macOS <span class="arch">Apple Silicon</span>
+      </a>
+      <a class="dl-btn" href="https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-darwin-amd64">
+        <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        macOS <span class="arch">Intel</span>
+      </a>
+      <a class="dl-btn" href="https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-windows-amd64.exe">
+        <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+        Windows <span class="arch">x64</span>
+      </a>
+      <a class="dl-btn" href="https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-linux-armv7">
+        <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm-.39 19.54c-1.87 0-3.39-1.51-3.39-3.38s1.52-3.39 3.39-3.39c.98 0 1.87.42 2.49 1.1l-1.01.98a1.94 1.94 0 00-1.48-.68c-1.09 0-1.97.88-1.97 1.97s.88 1.97 1.97 1.97c.84 0 1.55-.52 1.84-1.26h-1.84v-1.4h3.38c.04.23.07.46.07.7 0 2.02-1.52 3.39-3.45 3.39zM19 12h-2v2h-1v-2h-2v-1h2V9h1v2h2z"/></svg>
+        RPi <span class="arch">ARMv7</span>
+      </a>
+    </div>
+    <p class="note">One binary, zero dependencies. <a href="https://github.com/KevinTCoughlin/mc-dad-server/releases">All releases</a></p>
   </header>
 
   <!-- Features -->

@@ -1,0 +1,5 @@
+# Exclude non-essential files from git archive / go module download
+docs/           export-ignore
+install.sh      export-ignore
+STOREFRONT_GUIDE.md export-ignore
+*.md            export-ignore linguist-documentation
