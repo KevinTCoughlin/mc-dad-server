@@ -24,6 +24,8 @@ type ServerConfig struct {
 	Version      string `json:"version"`
 	SessionName  string `json:"session_name"`
 	MaxBackups   int    `json:"max_backups"`
+	VoteDuration int    `json:"vote_duration"`
+	VoteChoices  int    `json:"vote_choices"`
 
 	// Generated at runtime
 	RCONPassword string `json:"-"`
@@ -48,6 +50,8 @@ func DefaultConfig() *ServerConfig {
 		Version:      "latest",
 		SessionName:  "minecraft",
 		MaxBackups:   5,
+		VoteDuration: 30,
+		VoteChoices:  5,
 	}
 }
 

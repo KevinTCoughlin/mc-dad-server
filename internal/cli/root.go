@@ -56,6 +56,7 @@ Parkour courses, and tuned configs out of the box.`,
 		newBackupCmd(),
 		newSetupParkourCmd(),
 		newRotateParkourCmd(),
+		newVoteMapCmd(),
 	)
 
 	return root

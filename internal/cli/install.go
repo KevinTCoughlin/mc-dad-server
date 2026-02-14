@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/configs"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
@@ -14,6 +15,7 @@ import (
 	"github.com/KevinTCoughlin/mc-dad-server/internal/server"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/tunnel"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
+	"github.com/KevinTCoughlin/mc-dad-server/internal/vote"
 	"github.com/spf13/cobra"
 )
 
@@ -378,6 +380,46 @@ func newSetupParkourCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newVoteMapCmd() *cobra.Command {
+	var duration int
+	var maxChoices int
+
+	cmd := &cobra.Command{
+		Use:   "vote-map",
+		Short: "Start a map vote (CS:GO style)",
+		Long: `Broadcast a map vote to all online players. Players type a number
+in chat to vote. After the timer expires, the winning map is loaded
+and all players are teleported.`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ctx := cmd.Context()
+			screen := management.NewScreenManager(runner, cfg.SessionName)
+
+			if !screen.IsRunning(ctx) {
+				return fmt.Errorf("server not running — start it first with: mc-dad-server start")
+			}
+
+			result, err := vote.RunVote(ctx, vote.VoteConfig{
+				Maps:       management.ParkourMaps,
+				Duration:   time.Duration(duration) * time.Second,
+				MaxChoices: maxChoices,
+				ServerDir:  cfg.Dir,
+				Screen:     screen,
+				Output:     output,
+			})
+			if err != nil {
+				return err
+			}
+
+			output.Success("Map vote complete: %s (%d voters)", result.Winner, result.Voters)
+			return nil
+		},
+	}
+
+	cmd.Flags().IntVar(&duration, "duration", cfg.VoteDuration, "Vote duration in seconds")
+	cmd.Flags().IntVar(&maxChoices, "choices", cfg.VoteChoices, "Number of maps to vote on")
+	return cmd
 }
 
 func newRotateParkourCmd() *cobra.Command {

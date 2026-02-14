@@ -66,3 +66,19 @@ func RotateParkour(ctx context.Context, serverDir string, screen *ScreenManager,
 	output.Success("Rotation complete: %s", nextMap)
 	return nil
 }
+
+// RotateToMap broadcasts and teleports all players to the named map.
+func RotateToMap(ctx context.Context, mapName string, screen *ScreenManager, output *ui.UI) error {
+	if err := screen.SendCommand(ctx, fmt.Sprintf(
+		"say [PARKOUR] Loading map: %s!", mapName)); err != nil {
+		return err
+	}
+	_ = Sleep(ctx, 1)
+
+	if err := screen.SendCommand(ctx, fmt.Sprintf("mv tp * %s", mapName)); err != nil {
+		return err
+	}
+
+	output.Success("Teleported all players to %s", mapName)
+	return nil
+}
