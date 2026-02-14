@@ -18,7 +18,7 @@ type githubRelease struct {
 func githubLatestAssetURL(ctx context.Context, owner, repo string) (string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return "", err
 	}

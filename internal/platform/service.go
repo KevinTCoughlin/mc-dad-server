@@ -22,7 +22,7 @@ type ServiceManager interface {
 }
 
 // NewServiceManager returns the appropriate service manager for the platform.
-func NewServiceManager(plat Platform, runner CommandRunner, cfg *config.ServerConfig) ServiceManager {
+func NewServiceManager(plat *Platform, runner CommandRunner, cfg *config.ServerConfig) ServiceManager {
 	switch {
 	case plat.InitSystem == "systemd" && runtime.GOOS == "linux":
 		return &systemdManager{runner: runner, cfg: cfg}

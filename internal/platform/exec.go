@@ -60,10 +60,10 @@ func (r *OSCommandRunner) CommandExists(name string) bool {
 
 // MockRunner records commands for testing without executing them.
 type MockRunner struct {
-	Commands      []MockCommand
-	OutputMap     map[string][]byte
-	ErrorMap      map[string]error
-	ExistsMap     map[string]bool
+	Commands  []MockCommand
+	OutputMap map[string][]byte
+	ErrorMap  map[string]error
+	ExistsMap map[string]bool
 }
 
 // MockCommand records a single command invocation.

@@ -196,7 +196,7 @@ func installPlugins(ctx context.Context) error {
 }
 
 func setupService(ctx context.Context, plat platform.Platform) error {
-	svc := platform.NewServiceManager(plat, runner, cfg)
+	svc := platform.NewServiceManager(&plat, runner, cfg)
 	if svc == nil {
 		return nil
 	}

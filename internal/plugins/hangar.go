@@ -12,7 +12,7 @@ import (
 func hangarLatestVersion(ctx context.Context, project string) (string, error) {
 	url := fmt.Sprintf("https://hangar.papermc.io/api/v1/projects/%s/latestrelease", project)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return "", err
 	}

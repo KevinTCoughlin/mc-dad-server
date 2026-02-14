@@ -7,23 +7,23 @@ import (
 
 // ServerConfig holds all configuration for a Minecraft server install.
 type ServerConfig struct {
-	Edition     string `json:"edition"`
-	Dir         string `json:"dir"`
-	Port        int    `json:"port"`
-	Memory      string `json:"memory"`
-	ServerType  string `json:"server_type"`
-	MOTD        string `json:"motd"`
-	MaxPlayers  int    `json:"max_players"`
-	Difficulty  string `json:"difficulty"`
-	GameMode    string `json:"gamemode"`
-	GCType      string `json:"gc_type"`
-	Whitelist   bool   `json:"whitelist"`
-	ChatFilter  bool   `json:"chat_filter"`
-	EnablePlayit bool  `json:"enable_playit"`
-	LicenseKey  string `json:"license_key"`
-	Version     string `json:"version"`
-	SessionName string `json:"session_name"`
-	MaxBackups  int    `json:"max_backups"`
+	Edition      string `json:"edition"`
+	Dir          string `json:"dir"`
+	Port         int    `json:"port"`
+	Memory       string `json:"memory"`
+	ServerType   string `json:"server_type"`
+	MOTD         string `json:"motd"`
+	MaxPlayers   int    `json:"max_players"`
+	Difficulty   string `json:"difficulty"`
+	GameMode     string `json:"gamemode"`
+	GCType       string `json:"gc_type"`
+	Whitelist    bool   `json:"whitelist"`
+	ChatFilter   bool   `json:"chat_filter"`
+	EnablePlayit bool   `json:"enable_playit"`
+	LicenseKey   string `json:"license_key"`
+	Version      string `json:"version"`
+	SessionName  string `json:"session_name"`
+	MaxBackups   int    `json:"max_backups"`
 
 	// Generated at runtime
 	RCONPassword string `json:"-"`

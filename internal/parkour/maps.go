@@ -108,7 +108,7 @@ func downloadAndExtractMap(ctx context.Context, m MapEntry, serverDir string, sc
 
 	// Download
 	output.Info("  Downloading from %s...", m.URL)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, m.URL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, m.URL, http.NoBody)
 	if err != nil {
 		return err
 	}

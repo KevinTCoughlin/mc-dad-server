@@ -64,7 +64,7 @@ func Download(ctx context.Context, serverType, version, destDir string, runner p
 }
 
 func downloadFile(ctx context.Context, url, dest string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return err
 	}
