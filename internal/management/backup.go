@@ -64,8 +64,11 @@ func Backup(ctx context.Context, serverDir string, maxBackups int, screen *Scree
 	return nil
 }
 
+// worldDirs are the Minecraft world directories to include in backups.
+var worldDirs = []string{"world", "world_nether", "world_the_end"}
+
 func findWorldDirs(serverDir string) []string {
-	candidates := []string{"world", "world_nether", "world_the_end"}
+	candidates := worldDirs
 	var found []string
 	for _, name := range candidates {
 		path := filepath.Join(serverDir, name)

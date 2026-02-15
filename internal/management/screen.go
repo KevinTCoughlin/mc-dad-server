@@ -2,7 +2,6 @@ package management
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -56,7 +55,3 @@ func (s *ScreenManager) Session() string {
 	return s.session
 }
 
-// FormatSendCommand returns the screen command that would be executed.
-func FormatSendCommand(session, cmd string) string {
-	return fmt.Sprintf("screen -S %s -p 0 -X stuff '%s\\r'", session, cmd)
-}

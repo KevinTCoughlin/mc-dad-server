@@ -155,6 +155,7 @@ func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 		ServerDir:    cfg.Dir,
 		ServerType:   cfg.ServerType,
 		Port:         cfg.Port,
+		BedrockPort:  config.BedrockPort,
 		Memory:       cfg.Memory,
 		GCType:       cfg.GCType,
 		Whitelist:    cfg.Whitelist,

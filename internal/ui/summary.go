@@ -10,6 +10,7 @@ type InstallSummary struct {
 	ServerDir    string
 	ServerType   string
 	Port         int
+	BedrockPort  int
 	Memory       string
 	GCType       string
 	Whitelist    bool
@@ -35,7 +36,7 @@ func (u *UI) PrintInstallSummary(s *InstallSummary) {
 	fmt.Printf("  %s       %s\n", u.Bold("Server Type:"), s.ServerType)
 	fmt.Printf("  %s              %d (Java)\n", u.Bold("Port:"), s.Port)
 	if s.ServerType == "paper" {
-		fmt.Printf("  %s     19132 (Geyser)\n", u.Bold("Bedrock Port:"))
+		fmt.Printf("  %s     %d (Geyser)\n", u.Bold("Bedrock Port:"), s.BedrockPort)
 	}
 	fmt.Printf("  %s            %s\n", u.Bold("Memory:"), s.Memory)
 	fmt.Printf("  %s                %s\n", u.Bold("GC:"), strings.ToUpper(s.GCType))
@@ -67,7 +68,7 @@ func (u *UI) PrintInstallSummary(s *InstallSummary) {
 
 	if s.ServerType == "paper" {
 		fmt.Println(u.colorize(colorCyan+colorBold, "  Bedrock Cross-Play (iPad/Switch/Phone):"))
-		fmt.Printf("    Kids on Bedrock connect to your IP on port %s\n", u.Bold("19132"))
+		fmt.Printf("    Kids on Bedrock connect to your IP on port %s\n", u.Bold(fmt.Sprintf("%d", s.BedrockPort)))
 		fmt.Println("    No Minecraft Java account needed (Floodgate)")
 		fmt.Println()
 		fmt.Println(u.colorize(colorCyan+colorBold, "  Parkour Setup (first time):"))

@@ -44,29 +44,29 @@ func (cmd *ValidateLicenseCmd) Run(globals *Globals, _ platform.CommandRunner, o
 
 	if resp.IsValid() {
 		output.Success("License is valid!")
-		fmt.Println()
-		fmt.Printf("  Product:         %s\n", resp.Meta.ProductName)
-		fmt.Printf("  Variant:         %s\n", resp.Meta.VariantName)
-		fmt.Printf("  Status:          %s\n", resp.LicenseKey.Status)
-		fmt.Printf("  Activations:     %d / %d\n", resp.LicenseKey.ActivationUsage, resp.LicenseKey.ActivationLimit)
+		output.Info("")
+		output.Info("  Product:         %s", resp.Meta.ProductName)
+		output.Info("  Variant:         %s", resp.Meta.VariantName)
+		output.Info("  Status:          %s", resp.LicenseKey.Status)
+		output.Info("  Activations:     %d / %d", resp.LicenseKey.ActivationUsage, resp.LicenseKey.ActivationLimit)
 		if resp.LicenseKey.ExpiresAt != nil {
-			fmt.Printf("  Expires:         %s\n", resp.LicenseKey.ExpiresAt.Format("2006-01-02"))
+			output.Info("  Expires:         %s", resp.LicenseKey.ExpiresAt.Format("2006-01-02"))
 		} else {
-			fmt.Println("  Expires:         Never")
+			output.Info("  Expires:         Never")
 		}
 		if resp.Instance.ID != "" {
-			fmt.Printf("  Instance:        %s\n", resp.Instance.Name)
+			output.Info("  Instance:        %s", resp.Instance.Name)
 		}
 	} else {
 		output.Warn("License is not valid")
 		if resp.Error != "" {
-			fmt.Printf("  Error: %s\n", resp.Error)
+			output.Info("  Error: %s", resp.Error)
 		}
-		fmt.Printf("  Status: %s\n", resp.LicenseKey.Status)
+		output.Info("  Status: %s", resp.LicenseKey.Status)
 		if resp.IsExpired() {
-			fmt.Println("  Reason: License has expired")
+			output.Info("  Reason: License has expired")
 		} else if resp.IsActivationLimitReached() {
-			fmt.Println("  Reason: Activation limit reached")
+			output.Info("  Reason: Activation limit reached")
 		}
 		return fmt.Errorf("license validation failed")
 	}
@@ -103,12 +103,12 @@ func (cmd *ActivateLicenseCmd) Run(globals *Globals, _ platform.CommandRunner, o
 	}
 
 	output.Success("License activated successfully!")
-	fmt.Println()
-	fmt.Printf("  Product:      %s\n", resp.Meta.ProductName)
-	fmt.Printf("  Instance:     %s\n", resp.Instance.Name)
-	fmt.Printf("  Instance ID:  %s\n", resp.Instance.ID)
-	fmt.Println()
-	fmt.Println("Nag messages will no longer appear.")
+	output.Info("")
+	output.Info("  Product:      %s", resp.Meta.ProductName)
+	output.Info("  Instance:     %s", resp.Instance.Name)
+	output.Info("  Instance ID:  %s", resp.Instance.ID)
+	output.Info("")
+	output.Info("Nag messages will no longer appear.")
 
 	return nil
 }
@@ -136,8 +136,8 @@ func (cmd *DeactivateLicenseCmd) Run(globals *Globals, _ platform.CommandRunner,
 	}
 
 	output.Success("License deactivated successfully!")
-	fmt.Println()
-	fmt.Println("The license has been freed and can be used on another server.")
+	output.Info("")
+	output.Info("The license has been freed and can be used on another server.")
 
 	return nil
 }

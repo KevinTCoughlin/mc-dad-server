@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
@@ -27,8 +28,9 @@ func ConfigureFirewall(ctx context.Context, runner CommandRunner, plat *Platform
 		}
 		output.Success("UFW: opened port %s", portTCP)
 		if serverType == "paper" {
-			if err := runner.RunSudo(ctx, "ufw", "allow", "19132/udp", "comment", "Minecraft Bedrock (Geyser)"); err == nil {
-				output.Success("UFW: opened port 19132/udp (Geyser/Bedrock)")
+			bedrockPort := fmt.Sprintf("%d/udp", config.BedrockPort)
+			if err := runner.RunSudo(ctx, "ufw", "allow", bedrockPort, "comment", "Minecraft Bedrock (Geyser)"); err == nil {
+				output.Success("UFW: opened port %s (Geyser/Bedrock)", bedrockPort)
 			}
 		}
 	case runner.CommandExists("firewall-cmd"):
@@ -37,7 +39,7 @@ func ConfigureFirewall(ctx context.Context, runner CommandRunner, plat *Platform
 			return
 		}
 		if serverType == "paper" {
-			_ = runner.RunSudo(ctx, "firewall-cmd", "--permanent", "--add-port=19132/udp")
+			_ = runner.RunSudo(ctx, "firewall-cmd", "--permanent", fmt.Sprintf("--add-port=%d/udp", config.BedrockPort))
 		}
 		_ = runner.RunSudo(ctx, "firewall-cmd", "--reload")
 		output.Success("Firewalld: opened port %s", portTCP)

@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// BedrockPort is the default Geyser/Bedrock cross-play port.
+const BedrockPort = 19132
+
 // ServerConfig holds all configuration for a Minecraft server install.
 type ServerConfig struct {
 	Edition      string `json:"edition"`

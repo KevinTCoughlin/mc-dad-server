@@ -32,12 +32,12 @@ func (cmd *StartCmd) Run(globals *Globals, runner platform.CommandRunner, output
 		return fmt.Errorf("starting server: %w", err)
 	}
 	output.Success("Server started!")
-	fmt.Println()
-	fmt.Printf("  Attach to console:  screen -r %s\n", cfg.SessionName)
-	fmt.Println("  Detach from console: Ctrl+A then D")
-	fmt.Println("  Stop server:         mc-dad-server stop")
-	fmt.Println("  Server status:       mc-dad-server status")
-	fmt.Println()
+	output.Info("")
+	output.Info("  Attach to console:  screen -r %s", cfg.SessionName)
+	output.Info("  Detach from console: Ctrl+A then D")
+	output.Info("  Stop server:         mc-dad-server stop")
+	output.Info("  Server status:       mc-dad-server status")
+	output.Info("")
 	nagInfo := nag.Resolve(ctx, cfg.Dir)
 	nag.MaybeNag(output, nagInfo)
 	return nil
@@ -68,7 +68,6 @@ func (cmd *StopCmd) Run(globals *Globals, runner platform.CommandRunner, output 
 		return err
 	}
 	output.Success("Stop command sent. Server shutting down...")
-	fmt.Println()
 	nagInfo := nag.Resolve(ctx, cfg.Dir)
 	nag.MaybeNag(output, nagInfo)
 	return nil
@@ -83,28 +82,27 @@ func (cmd *StatusCmd) Run(globals *Globals, runner platform.CommandRunner, outpu
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	fmt.Println("═══ Minecraft Server Status ═══")
-	fmt.Println()
+	output.Step("Minecraft Server Status")
 
 	if screen.IsRunning(ctx) {
-		fmt.Printf("  Status:  RUNNING\n")
-		fmt.Printf("  Session: screen -r %s\n", cfg.SessionName)
+		output.Info("  Status:  RUNNING")
+		output.Info("  Session: screen -r %s", cfg.SessionName)
 	} else {
-		fmt.Println("  Status:  STOPPED")
+		output.Info("  Status:  STOPPED")
 	}
-	fmt.Println()
+	output.Info("")
 
 	stats, err := management.GetProcessStats(ctx, runner)
 	if err == nil && stats.PID > 0 {
-		fmt.Printf("  PID:     %d\n", stats.PID)
-		fmt.Printf("  Memory:  %s\n", stats.Memory)
-		fmt.Printf("  CPU:     %s\n", stats.CPU)
+		output.Info("  PID:     %d", stats.PID)
+		output.Info("  Memory:  %s", stats.Memory)
+		output.Info("  CPU:     %s", stats.CPU)
 	}
-	fmt.Println()
+	output.Info("")
 
 	nagInfo := nag.Resolve(ctx, cfg.Dir)
-	fmt.Printf("  License: %s\n", nag.StatusLabel(nagInfo))
-	fmt.Println()
+	output.Info("  License: %s", nag.StatusLabel(nagInfo))
+	output.Info("")
 	nag.MaybeNag(output, nagInfo)
 	return nil
 }
@@ -170,12 +168,12 @@ func (cmd *SetupParkourCmd) Run(globals *Globals, runner platform.CommandRunner,
 	}
 
 	output.Success("Parkour world created!")
-	fmt.Println()
-	fmt.Println("Next steps:")
-	fmt.Println("  1. Join the server and run: /mv tp parkour")
-	fmt.Println("  2. Fly to where you want the parkour lobby")
-	fmt.Println("  3. Run: /pa setlobby")
-	fmt.Println("  4. Start building courses with: /pa create <name>")
+	output.Info("")
+	output.Info("Next steps:")
+	output.Info("  1. Join the server and run: /mv tp parkour")
+	output.Info("  2. Fly to where you want the parkour lobby")
+	output.Info("  3. Run: /pa setlobby")
+	output.Info("  4. Start building courses with: /pa create <name>")
 	return nil
 }
 
