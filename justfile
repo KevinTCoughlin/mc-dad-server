@@ -32,6 +32,7 @@ build-all:
     CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags "-X main.version=dev" -o dist/mc-dad-server-darwin-amd64 ./cmd/mc-dad-server/
     CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags "-X main.version=dev" -o dist/mc-dad-server-darwin-arm64 ./cmd/mc-dad-server/
     CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=dev" -o dist/mc-dad-server-windows-amd64.exe ./cmd/mc-dad-server/
+    CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -ldflags "-X main.version=dev" -o dist/mc-dad-server-windows-arm64.exe ./cmd/mc-dad-server/
 
 # Install dev tools (golangci-lint, gofumpt, goreleaser)
 tools:

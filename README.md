@@ -60,6 +60,7 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 | Fedora/RHEL | Fully supported |
 | Arch Linux | Fully supported |
 | macOS | Fully supported |
+| Windows (x64/ARM64) | Fully supported |
 | WSL2 (Windows) | Fully supported |
 | Raspberry Pi | Works (use `--memory 1G`) |
 
