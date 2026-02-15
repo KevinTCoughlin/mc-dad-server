@@ -320,13 +320,44 @@
     <p class="note">One binary, zero dependencies. <a href="https://github.com/KevinTCoughlin/mc-dad-server/releases">All releases</a></p>
   </header>
 
+  <!-- Batteries Included -->
+  <section class="container">
+    <h2>Batteries Included</h2>
+    <ul class="features">
+      <li>
+        <strong>📱 Geyser + Floodgate</strong>
+        <span>Kids on iPad, Switch, and phones connect to your Java server. No second account needed.</span>
+      </li>
+      <li>
+        <strong>🏃 Parkour</strong>
+        <span>Build obstacle courses. Checkpoints, leaderboards, death counters. Kids go nuts for this.</span>
+      </li>
+      <li>
+        <strong>✏️ WorldEdit</strong>
+        <span>Fast course building. //set, //stack, //copy — build a parkour map in minutes.</span>
+      </li>
+      <li>
+        <strong>🌍 Multiverse-Core</strong>
+        <span>Separate worlds for parkour, creative, survival. Keep things organized.</span>
+      </li>
+      <li>
+        <strong>💬 ChatSentry</strong>
+        <span>Configurable chat filter with blocked words list. Kid-safe by default.</span>
+      </li>
+      <li>
+        <strong>🗺️ 5 Pre-built Parkour Maps</strong>
+        <span>Curated maps from Hielke Maps — Parkour Spiral, Spiral 3, Volcano, Pyramid, Paradise.</span>
+      </li>
+    </ul>
+  </section>
+
   <!-- Features -->
   <section class="container">
     <h2>What You Get</h2>
     <ul class="features">
       <li>
-        <strong>☕ Auto Java Install</strong>
-        <span>Detects your OS and installs the right version of Java automatically.</span>
+        <strong>☕ Adoptium Temurin Java 21</strong>
+        <span>Open-source, production-ready Java. No Oracle licensing nonsense.</span>
       </li>
       <li>
         <strong>🚀 Paper MC</strong>
@@ -397,17 +428,43 @@
       <dt>How much RAM do I need?</dt>
       <dd>2 GB is fine for 2–5 players. 4 GB for 5–10. 8 GB if the kids go crazy with mods.</dd>
 
+      <dt>Can my kids on iPad/Switch join?</dt>
+      <dd>Yes! Geyser + Floodgate is installed by default. Bedrock players connect on port 19132. No Java account needed.</dd>
+
       <dt>Can my kids' friends connect from their house?</dt>
-      <dd>Yes! Use playit.gg (included) or forward port 25565 on your router.</dd>
+      <dd>Yes! Use playit.gg (included) or forward port 25565 on your router. For Bedrock friends, also forward 19132/udp.</dd>
 
       <dt>What's Paper MC?</dt>
       <dd>It's Minecraft but faster. Same game, better performance, supports plugins.</dd>
+
+      <dt>G1GC or ZGC?</dt>
+      <dd>G1GC (default) is battle-tested with Aikar's flags. ZGC is newer, lower latency, great for Java 21+ servers with 8GB+ RAM.</dd>
 
       <dt>Is this safe?</dt>
       <dd>Whitelist is on by default — only players you approve can join. Online mode verifies real Minecraft accounts.</dd>
 
       <dt>What if my server crashes?</dt>
       <dd>Systemd auto-restarts it. Backups run daily at 4 AM.</dd>
+    </dl>
+  </section>
+
+  <!-- Dad Pack -->
+  <section class="container faq">
+    <h2>Dad Pack (Coming Soon)</h2>
+    <dl>
+      <dt>What is it?</dt>
+      <dd>The installer works great for free. The Dad Pack will add premium features for serious dad-admins.</dd>
+
+      <dt>What's included?</dt>
+      <dd>
+        <strong>GriefPrevention</strong> — auto-configured so kids' builds are protected<br>
+        <strong>Dynmap</strong> — web-based live map (show kids their world on a tablet)<br>
+        <strong>Web dashboard</strong> — simple status page you can bookmark<br>
+        <strong>Dad's Guide PDF</strong> — non-technical guide to being a Minecraft server admin
+      </dd>
+
+      <dt>How do I get notified?</dt>
+      <dd>Star the <a href="https://github.com/KevinTCoughlin/mc-dad-server">GitHub repo</a> to get notified when the Dad Pack launches.</dd>
     </dl>
   </section>
 
