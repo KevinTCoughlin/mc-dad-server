@@ -71,7 +71,12 @@ func (m *Manager) Validate(ctx context.Context, licenseKey string) (*ValidationR
 		stored.InstanceName = resp.Instance.Name
 	}
 
-	_ = m.Save(stored)
+	// Save the updated license (log error but don't fail validation)
+	if err := m.Save(stored); err != nil {
+		// Validation succeeded, but we couldn't save the cache.
+		// This is a warning, not a failure - the license is still valid.
+		fmt.Fprintf(os.Stderr, "Warning: Failed to save license cache: %v\n", err)
+	}
 
 	return resp, nil
 }
@@ -97,7 +102,11 @@ func (m *Manager) Activate(ctx context.Context, licenseKey, instanceName string)
 		InstanceName:  resp.Instance.Name,
 		LastValidated: time.Now(),
 	}
-	_ = m.Save(stored)
+	if err := m.Save(stored); err != nil {
+		// Activation succeeded, but we couldn't save it locally
+		fmt.Fprintf(os.Stderr, "Warning: Failed to save license: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Your license is activated but not saved locally. Use validate-license to re-sync.\n")
+	}
 
 	return resp, nil
 }
@@ -125,7 +134,11 @@ func (m *Manager) Deactivate(ctx context.Context) error {
 	}
 
 	// Remove the stored license
-	_ = os.Remove(m.licenseFile)
+	if err := os.Remove(m.licenseFile); err != nil && !os.IsNotExist(err) {
+		// Deactivation succeeded but we couldn't remove the local file
+		fmt.Fprintf(os.Stderr, "Warning: Failed to remove license file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Please manually remove: %s\n", m.licenseFile)
+	}
 
 	return nil
 }

@@ -56,10 +56,16 @@ func (u *UI) PrintInstallSummary(s *InstallSummary) {
 		if s.DadPackEnabled {
 			fmt.Println()
 			fmt.Println(u.colorize(colorGreen+colorBold, "  Dad Pack Features:"))
-			fmt.Println("    GriefPrevention     (coming soon)")
-			fmt.Println("    Dynmap              (coming soon)")
-			fmt.Println("    Web Dashboard       (coming soon)")
-			fmt.Println("    Dad's Guide PDF     (coming soon)")
+			// Note: Keep this list in sync with dadpack.GetFeatureList()
+			features := []struct{ name, status string }{
+				{"GriefPrevention", "coming soon"},
+				{"Dynmap", "coming soon"},
+				{"Web Dashboard", "coming soon"},
+				{"Dad's Guide PDF", "coming soon"},
+			}
+			for _, f := range features {
+				fmt.Printf("    %-20s (%s)\n", f.name, f.status)
+			}
 		}
 		fmt.Println()
 	}

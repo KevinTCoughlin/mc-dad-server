@@ -9,6 +9,23 @@ import (
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
+// Feature represents a Dad Pack feature.
+type Feature struct {
+	Name        string
+	Description string
+	Available   bool
+}
+
+// GetFeatureList returns the list of Dad Pack features.
+func GetFeatureList() []Feature {
+	return []Feature{
+		{Name: "GriefPrevention", Description: "Auto-configured build protection", Available: false},
+		{Name: "Dynmap", Description: "Web-based live map", Available: false},
+		{Name: "Web Dashboard", Description: "Simple status page", Available: false},
+		{Name: "Dad's Guide PDF", Description: "Non-technical admin guide", Available: false},
+	}
+}
+
 // Features represents the available Dad Pack features.
 type Features struct {
 	GriefPrevention bool
@@ -64,10 +81,9 @@ func (m *Manager) InstallFeatures(ctx context.Context, serverDir string) error {
 	// For now, we just acknowledge that they would be installed
 
 	m.output.Info("Dad Pack features will be installed in a future update:")
-	fmt.Println("  • GriefPrevention - Auto-configured build protection")
-	fmt.Println("  • Dynmap - Web-based live map")
-	fmt.Println("  • Web Dashboard - Simple status page")
-	fmt.Println("  • Dad's Guide PDF - Non-technical admin guide")
+	for _, feature := range GetFeatureList() {
+		fmt.Printf("  • %s - %s\n", feature.Name, feature.Description)
+	}
 
 	m.output.Success("Dad Pack features prepared (placeholder)")
 
