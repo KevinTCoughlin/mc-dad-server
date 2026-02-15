@@ -184,14 +184,21 @@ No port forwarding. No exposing your home IP. Easy.
 
 ## Building from Source
 
+**Quickest path:** Open in [GitHub Codespaces](https://github.com/codespaces) — the dev container includes Go 1.24, Java 21, Kotlin, and all dev tools pre-configured.
+
+**Local prerequisites:** Go 1.24+, [just](https://github.com/casey/just#installation), and optionally Java 21+ and Kotlin for plugin work. Run `just tools` to install the Go dev tools (golangci-lint, gofumpt, goreleaser).
+
 ```bash
 git clone https://github.com/KevinTCoughlin/mc-dad-server.git
 cd mc-dad-server
+just tools       # install dev tools
 just build       # build binary
 just test        # run tests
 just check       # fmt + vet + lint + test
-just build-all   # cross-compile all 6 targets
+just build-all   # cross-compile all 7 targets
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 
 ## FAQ
 
