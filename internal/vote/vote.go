@@ -14,8 +14,8 @@ import (
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
-// VoteConfig configures a map vote session.
-type VoteConfig struct {
+// Config configures a map vote session.
+type Config struct {
 	Maps       []string      // candidate map pool
 	Duration   time.Duration // vote window
 	MaxChoices int           // maps shown per vote
@@ -24,8 +24,8 @@ type VoteConfig struct {
 	Output     *ui.UI
 }
 
-// VoteResult holds the outcome of a completed vote.
-type VoteResult struct {
+// Result holds the outcome of a completed vote.
+type Result struct {
 	Winner string
 	Votes  map[string]int
 	Voters int
@@ -33,7 +33,7 @@ type VoteResult struct {
 
 // RunVote runs a complete map vote: broadcast options, collect votes from the
 // server log, tally results, and announce the winner.
-func RunVote(ctx context.Context, cfg VoteConfig) (*VoteResult, error) {
+func RunVote(ctx context.Context, cfg Config) (*Result, error) {
 	candidates := pickCandidates(cfg.Maps, cfg.MaxChoices)
 	if len(candidates) == 0 {
 		return nil, fmt.Errorf("no maps available for voting")
@@ -89,7 +89,7 @@ func RunVote(ctx context.Context, cfg VoteConfig) (*VoteResult, error) {
 	mu.Unlock()
 
 	winner := pickWinner(candidates, tally)
-	result := &VoteResult{
+	result := &Result{
 		Winner: winner,
 		Votes:  tally,
 		Voters: len(playerVotes),
@@ -111,16 +111,16 @@ func RunVote(ctx context.Context, cfg VoteConfig) (*VoteResult, error) {
 	return result, nil
 }
 
-// pickCandidates selects up to max maps from the pool via random sampling.
-func pickCandidates(pool []string, max int) []string {
-	if len(pool) <= max {
+// pickCandidates selects up to maxChoices maps from the pool via random sampling.
+func pickCandidates(pool []string, maxChoices int) []string {
+	if len(pool) <= maxChoices {
 		out := make([]string, len(pool))
 		copy(out, pool)
 		return out
 	}
 	perm := rand.Perm(len(pool))
-	out := make([]string, max)
-	for i := range max {
+	out := make([]string, maxChoices)
+	for i := range maxChoices {
 		out[i] = pool[perm[i]]
 	}
 	return out
@@ -159,7 +159,7 @@ func broadcastVoteStart(ctx context.Context, screen *management.ScreenManager, c
 	}
 	for i, m := range candidates {
 		lines = append(lines, fmt.Sprintf(
-			`["",{"text":"  [%d] ","color":"green","bold":true},{"text":"%s","color":"white"}]`,
+			`["",{"text":"  [%d] ","color":"green","bold":true},{"text":%q,"color":"white"}]`,
 			i+1, m))
 	}
 	lines = append(lines,
@@ -196,7 +196,7 @@ func sendReminders(ctx context.Context, screen *management.ScreenManager, candid
 		case <-ctx.Done():
 			return
 		case <-time.After(remaining):
-			msg := fmt.Sprintf(`["",{"text":"5 seconds left to vote!","color":"red","bold":true}]`)
+			msg := `["",{"text":"5 seconds left to vote!","color":"red","bold":true}]`
 			_ = screen.SendCommand(ctx, "tellraw @a "+msg)
 		}
 	}
@@ -220,7 +220,7 @@ func broadcastResults(ctx context.Context, screen *management.ScreenManager, can
 			marker = " ***"
 		}
 		lines = append(lines, fmt.Sprintf(
-			`["",{"text":"  %s: %d %s%s","color":"%s"}]`,
+			`["",{"text":"  %s: %d %s%s","color":%q}]`,
 			c, count, label, marker, mapResultColor(c, winner)))
 	}
 	lines = append(lines,
