@@ -20,7 +20,6 @@ type ServerConfig struct {
 	Whitelist    bool   `json:"whitelist"`
 	ChatFilter   bool   `json:"chat_filter"`
 	EnablePlayit bool   `json:"enable_playit"`
-	LicenseKey   string `json:"license_key"`
 	Version      string `json:"version"`
 	SessionName  string `json:"session_name"`
 	MaxBackups   int    `json:"max_backups"`

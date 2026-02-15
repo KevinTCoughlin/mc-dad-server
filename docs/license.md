@@ -1,27 +1,31 @@
-# Dad Pack License Integration
+# License Management
 
-This document describes the Dad Pack license integration with LemonSqueezy.
+This document describes the MC Dad Server license integration with LemonSqueezy.
 
 ## Overview
 
-MC Dad Server integrates with [LemonSqueezy](https://lemonsqueezy.com) for one-time license validation to unlock Dad Pack premium features.
+MC Dad Server is **free and fully functional** — all features work without a license.
 
-## Dad Pack Features
+A license is an optional way to support the project. Licensed users get:
 
-When you have a valid Dad Pack license, you get access to:
+- **Clean output** — no nag messages after the 7-day grace period
+- **"Licensed to [name]" badge** — shown in status and install summary
 
-- **GriefPrevention** — Auto-configured so kids' builds are protected
-- **Dynmap** — Web-based live map (show kids their world on a tablet)
-- **Web Dashboard** — Simple status page you can bookmark
-- **Dad's Guide PDF** — Non-technical guide to being a Minecraft server admin
+The license system integrates with [LemonSqueezy](https://lemonsqueezy.com) for one-time license validation.
 
-> **Note**: Dad Pack features are currently in development and will be available in a future update.
+## How It Works
+
+1. **First 7 days** — no nag messages (grace period)
+2. **After 7 days** — a short nag appears at the end of `install`, `start`, `stop`, and `status` output
+3. **With a license** — nag disappears, "Licensed to [name]" badge appears
+
+Everything works the same in all three states. No features are locked.
 
 ## License Commands
 
 ### Activate a License
 
-Activate your Dad Pack license for this server:
+Activate your license for this server:
 
 ```bash
 mc-dad-server activate-license --key YOUR-LICENSE-KEY
@@ -66,19 +70,6 @@ This will:
 - Remove the stored license file
 - Free up one activation slot
 
-## Using License During Install
-
-You can provide a license key during installation:
-
-```bash
-mc-dad-server install --license YOUR-LICENSE-KEY
-```
-
-The installer will:
-1. Validate the license with LemonSqueezy
-2. If valid, enable Dad Pack features
-3. Store the license for future use
-
 ## License Storage
 
 Licenses are stored locally in your server directory:
@@ -94,6 +85,8 @@ This file contains:
 - Cached validation response (for offline use)
 
 **Security**: The license file is created with `0600` permissions (owner read/write only).
+
+The install timestamp is tracked separately in `.mc-dad-installed` for grace period calculation.
 
 ## Offline Validation
 
@@ -147,6 +140,9 @@ internal/license/
 ├── client.go      # LemonSqueezy API client
 ├── manager.go     # License validation and storage
 └── types_test.go  # Unit tests
+
+internal/nag/
+└── nag.go         # Grace period, status resolution, nag display
 ```
 
 ### Testing
@@ -156,16 +152,3 @@ Run license tests:
 ```bash
 go test ./internal/license/...
 ```
-
-### Adding New Features
-
-To add a new Dad Pack feature:
-
-1. Update `internal/dadpack/dadpack.go`:
-   - Add feature to `Features` struct
-   - Implement installation in `InstallFeatures`
-   - Update `GetAvailableFeatures`
-
-2. Update the UI summary in `internal/ui/summary.go`
-
-3. Test the feature with a valid license

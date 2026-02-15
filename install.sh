@@ -33,7 +33,6 @@ MC_DIFFICULTY="${MC_DIFFICULTY:-normal}"
 MC_GAMEMODE="${MC_GAMEMODE:-survival}"
 MC_ENABLE_PLAYIT="${MC_ENABLE_PLAYIT:-true}"
 MC_WHITELIST="${MC_WHITELIST:-true}"
-MC_LICENSE_KEY="${MC_LICENSE_KEY:-}"
 MC_VERSION="${MC_VERSION:-latest}"
 MC_GC_TYPE="${MC_GC_TYPE:-g1gc}"               # g1gc or zgc
 MC_CHAT_FILTER="${MC_CHAT_FILTER:-true}"
@@ -68,7 +67,6 @@ while [[ $# -gt 0 ]]; do
         --gc)         MC_GC_TYPE="$2"; shift 2 ;;
         --no-playit)  MC_ENABLE_PLAYIT="false"; shift ;;
         --no-chat-filter) MC_CHAT_FILTER="false"; shift ;;
-        --license)    MC_LICENSE_KEY="$2"; shift 2 ;;
         --version)    MC_VERSION="$2"; shift 2 ;;
         --help|-h)
             echo "MC Dad Server Installer"
@@ -88,7 +86,6 @@ while [[ $# -gt 0 ]]; do
             echo "  --gc <g1gc|zgc>             Garbage collector (default: g1gc)"
             echo "  --no-playit                 Skip playit.gg tunnel setup"
             echo "  --no-chat-filter            Skip chat filter plugin setup"
-            echo "  --license <key>             License key for Dad Pack configs"
             echo "  --version <version>         MC version (default: latest)"
             echo "  --help                      Show this help"
             exit 0
@@ -1131,19 +1128,6 @@ setup_playit() {
     echo ""
 }
 
-# ─── Dad Pack (Premium Configs) ───────────────────────────────────────────────
-install_dad_pack() {
-    if [[ -z "$MC_LICENSE_KEY" ]]; then
-        return 0
-    fi
-
-    step "Dad Pack"
-
-    info "Dad Pack support is coming soon!"
-    info "Follow progress at: https://github.com/KevinTCoughlin/mc-dad-server"
-    warn "License key provided but Dad Pack is not yet available. Using default configs."
-}
-
 # ─── Summary ──────────────────────────────────────────────────────────────────
 print_summary() {
     local divider="══════════════════════════════════════════════════════"
@@ -1254,7 +1238,6 @@ main() {
     fi
 
     setup_playit
-    install_dad_pack
     print_summary
 }
 

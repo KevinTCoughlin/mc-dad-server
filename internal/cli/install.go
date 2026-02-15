@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/configs"
-	"github.com/KevinTCoughlin/mc-dad-server/internal/dadpack"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
+	"github.com/KevinTCoughlin/mc-dad-server/internal/nag"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/plugins"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/server"
@@ -42,7 +42,6 @@ deploys configs, installs plugins, sets up services and backups.`,
 	f.BoolVar(&cfg.Whitelist, "whitelist", cfg.Whitelist, "Enable whitelist")
 	f.BoolVar(&cfg.ChatFilter, "chat-filter", cfg.ChatFilter, "Install chat filter plugin")
 	f.BoolVar(&cfg.EnablePlayit, "playit", cfg.EnablePlayit, "Set up playit.gg tunnel")
-	f.StringVar(&cfg.LicenseKey, "license", cfg.LicenseKey, "License key for Dad Pack")
 	f.StringVar(&cfg.Version, "version", cfg.Version, "Minecraft version (default: latest)")
 
 	return cmd
@@ -101,11 +100,8 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Dad Pack Features (if licensed)
-	dadPackEnabled := false
-	if cfg.ServerType == "paper" && cfg.LicenseKey != "" {
-		dadPackEnabled = installDadPackFeatures(ctx)
-	}
+	// Record install timestamp for grace period tracking
+	nag.RecordInstall(cfg.Dir)
 
 	// Create start script
 	if err := configs.DeployStartScript(cfg); err != nil {
@@ -138,21 +134,26 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 		fmt.Println("  4. Share the playit.gg address with your kids!")
 	}
 
+	// Resolve license state
+	nagInfo := nag.Resolve(ctx, cfg.Dir)
+
 	// Summary
 	output.PrintInstallSummary(&ui.InstallSummary{
-		ServerDir:      cfg.Dir,
-		ServerType:     cfg.ServerType,
-		Port:           cfg.Port,
-		Memory:         cfg.Memory,
-		GCType:         cfg.GCType,
-		Whitelist:      cfg.Whitelist,
-		Difficulty:     cfg.Difficulty,
-		GameMode:       cfg.GameMode,
-		ChatFilter:     cfg.ChatFilter,
-		PlayitSetup:    cfg.EnablePlayit,
-		DadPackEnabled: dadPackEnabled,
-		InitSystem:     plat.InitSystem,
+		ServerDir:    cfg.Dir,
+		ServerType:   cfg.ServerType,
+		Port:         cfg.Port,
+		Memory:       cfg.Memory,
+		GCType:       cfg.GCType,
+		Whitelist:    cfg.Whitelist,
+		Difficulty:   cfg.Difficulty,
+		GameMode:     cfg.GameMode,
+		ChatFilter:   cfg.ChatFilter,
+		PlayitSetup:  cfg.EnablePlayit,
+		LicenseLabel: nag.StatusLabel(nagInfo),
+		InitSystem:   plat.InitSystem,
 	})
+
+	nag.MaybeNag(output, nagInfo)
 
 	return nil
 }
@@ -216,28 +217,6 @@ func setupService(ctx context.Context, plat *platform.Platform) error {
 	return svc.Enable()
 }
 
-func installDadPackFeatures(ctx context.Context) bool {
-	dpMgr := dadpack.NewManager(cfg.Dir, output)
-
-	hasLicense, err := dpMgr.CheckLicense(ctx, cfg)
-	if err != nil {
-		output.Warn("Dad Pack license check failed: %v", err)
-		return false
-	}
-
-	if !hasLicense {
-		output.Info("No valid Dad Pack license found (use --license to enable Dad Pack features)")
-		return false
-	}
-
-	if err := dpMgr.InstallFeatures(ctx, cfg.Dir); err != nil {
-		output.Warn("Dad Pack feature installation failed: %v", err)
-		return false
-	}
-
-	return true
-}
-
 func generateRCONPassword() string {
 	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, 24)
@@ -275,6 +254,9 @@ func newStartCmd() *cobra.Command {
 			fmt.Println("  Detach from console: Ctrl+A then D")
 			fmt.Println("  Stop server:         mc-dad-server stop")
 			fmt.Println("  Server status:       mc-dad-server status")
+			fmt.Println()
+			nagInfo := nag.Resolve(ctx, cfg.Dir)
+			nag.MaybeNag(output, nagInfo)
 			return nil
 		},
 	}
@@ -304,6 +286,9 @@ func newStopCmd() *cobra.Command {
 				return err
 			}
 			output.Success("Stop command sent. Server shutting down...")
+			fmt.Println()
+			nagInfo := nag.Resolve(ctx, cfg.Dir)
+			nag.MaybeNag(output, nagInfo)
 			return nil
 		},
 	}
@@ -335,6 +320,11 @@ func newStatusCmd() *cobra.Command {
 				fmt.Printf("  CPU:     %s\n", stats.CPU)
 			}
 			fmt.Println()
+
+			nagInfo := nag.Resolve(ctx, cfg.Dir)
+			fmt.Printf("  License: %s\n", nag.StatusLabel(nagInfo))
+			fmt.Println()
+			nag.MaybeNag(output, nagInfo)
 			return nil
 		},
 	}

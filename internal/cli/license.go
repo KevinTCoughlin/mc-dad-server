@@ -13,7 +13,7 @@ func newValidateLicenseCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "validate-license",
-		Short: "Validate a Dad Pack license key",
+		Short: "Validate your license key",
 		Long: `Validate a license key with LemonSqueezy to check if it's active.
 If a license key is already stored, it will be validated. Otherwise,
 provide a license key with --key flag.`,
@@ -84,7 +84,7 @@ func newActivateLicenseCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "activate-license",
-		Short: "Activate a Dad Pack license key for this server",
+		Short: "Activate a license key for this server",
 		Long: `Activate a license key with LemonSqueezy for this server instance.
 This will consume one activation from your license.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -117,7 +117,7 @@ This will consume one activation from your license.`,
 			fmt.Printf("  Instance:     %s\n", resp.Instance.Name)
 			fmt.Printf("  Instance ID:  %s\n", resp.Instance.ID)
 			fmt.Println()
-			fmt.Println("Your license has been saved and will be used for Dad Pack features.")
+			fmt.Println("Nag messages will no longer appear.")
 
 			return nil
 		},
@@ -133,7 +133,7 @@ This will consume one activation from your license.`,
 func newDeactivateLicenseCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "deactivate-license",
-		Short: "Deactivate the Dad Pack license for this server",
+		Short: "Deactivate the license for this server",
 		Long: `Deactivate the license for this server instance.
 This will free up one activation so you can use it on another server.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {

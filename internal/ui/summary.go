@@ -15,10 +15,10 @@ type InstallSummary struct {
 	Whitelist      bool
 	Difficulty     string
 	GameMode       string
-	ChatFilter     bool
-	PlayitSetup    bool
-	DadPackEnabled bool
-	InitSystem     string
+	ChatFilter   bool
+	PlayitSetup  bool
+	LicenseLabel string
+	InitSystem   string
 }
 
 // PrintInstallSummary displays the completion summary after install.
@@ -42,6 +42,7 @@ func (u *UI) PrintInstallSummary(s *InstallSummary) {
 	fmt.Printf("  %s         %v\n", u.Bold("Whitelist:"), s.Whitelist)
 	fmt.Printf("  %s        %s\n", u.Bold("Difficulty:"), s.Difficulty)
 	fmt.Printf("  %s         %s\n", u.Bold("Game Mode:"), s.GameMode)
+	fmt.Printf("  %s          %s\n", u.Bold("License:"), s.LicenseLabel)
 	fmt.Println()
 
 	if s.ServerType == "paper" {
@@ -52,20 +53,6 @@ func (u *UI) PrintInstallSummary(s *InstallSummary) {
 		fmt.Println("    Multiverse-Core     (multiple worlds)")
 		if s.ChatFilter {
 			fmt.Println("    ChatSentry          (chat filter)")
-		}
-		if s.DadPackEnabled {
-			fmt.Println()
-			fmt.Println(u.colorize(colorGreen+colorBold, "  Dad Pack Features:"))
-			// Note: Keep this list in sync with dadpack.GetFeatureList()
-			features := []struct{ name, status string }{
-				{"GriefPrevention", "coming soon"},
-				{"Dynmap", "coming soon"},
-				{"Web Dashboard", "coming soon"},
-				{"Dad's Guide PDF", "coming soon"},
-			}
-			for _, f := range features {
-				fmt.Printf("    %-20s (%s)\n", f.name, f.status)
-			}
 		}
 		fmt.Println()
 	}
