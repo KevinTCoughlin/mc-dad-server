@@ -15,11 +15,11 @@ const (
 
 // ValidationResponse represents the response from LemonSqueezy license validation.
 type ValidationResponse struct {
-	Valid      bool       `json:"valid"`
-	Error      string     `json:"error,omitempty"`
-	LicenseKey Key `json:"license_key"`
-	Instance   Instance   `json:"instance,omitempty"`
-	Meta       Meta       `json:"meta"`
+	Valid      bool     `json:"valid"`
+	Error      string   `json:"error,omitempty"`
+	LicenseKey Key      `json:"license_key"`
+	Instance   Instance `json:"instance,omitempty"`
+	Meta       Meta     `json:"meta"`
 }
 
 // Key contains details about the license.
