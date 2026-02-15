@@ -17,8 +17,12 @@ func TestFindWorldDirs(t *testing.T) {
 	}
 
 	// Create some world dirs
-	os.Mkdir(filepath.Join(dir, "world"), 0o755)
-	os.Mkdir(filepath.Join(dir, "world_nether"), 0o755)
+	if err := os.Mkdir(filepath.Join(dir, "world"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "world_nether"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 
 	dirs := findWorldDirs(dir)
 	if len(dirs) != 2 {
@@ -32,7 +36,9 @@ func TestFindWorldDirs(t *testing.T) {
 func TestFindWorldDirs_IgnoresFiles(t *testing.T) {
 	dir := t.TempDir()
 	// Create "world" as a file, not a directory
-	os.WriteFile(filepath.Join(dir, "world"), []byte("not a dir"), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "world"), []byte("not a dir"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	if dirs := findWorldDirs(dir); len(dirs) != 0 {
 		t.Errorf("expected no dirs (file should be ignored), got %v", dirs)
@@ -72,7 +78,9 @@ func TestRotateBackups(t *testing.T) {
 		"world_20250104_000000.tar.gz",
 		"world_20250105_000000.tar.gz",
 	} {
-		os.WriteFile(filepath.Join(dir, name), []byte("data"), 0o644)
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("data"), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// Keep 3 — should remove oldest 2

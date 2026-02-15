@@ -54,4 +54,3 @@ func Sleep(ctx context.Context, seconds int) error {
 func (s *ScreenManager) Session() string {
 	return s.session
 }
-

@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -118,7 +119,7 @@ func TestSleep_Completes(t *testing.T) {
 func TestSleep_CancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if err := Sleep(ctx, 60); err != context.Canceled {
+	if err := Sleep(ctx, 60); !errors.Is(err, context.Canceled) {
 		t.Errorf("Sleep() error = %v, want context.Canceled", err)
 	}
 }
