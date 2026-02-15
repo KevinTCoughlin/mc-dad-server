@@ -1,0 +1,33 @@
+{
+  "name": "MC Dad Server",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "21",
+      "installGradle": "true",
+      "installMaven": "true"
+    },
+    "ghcr.io/devcontainers-extra/features/kotlin:1": {},
+    "ghcr.io/guiyomh/features/just:0": {}
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "go.lintTool": "golangci-lint",
+        "go.lintFlags": ["--fast"],
+        "go.formatTool": "gofumpt",
+        "editor.formatOnSave": true,
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        }
+      },
+      "extensions": [
+        "golang.go",
+        "redhat.java",
+        "fwcd.kotlin",
+        "foxundermoon.shell-format"
+      ]
+    }
+  },
+  "postCreateCommand": "go mod download && just tools"
+}
