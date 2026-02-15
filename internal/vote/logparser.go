@@ -32,13 +32,13 @@ func TailLog(ctx context.Context, path string) (<-chan string, error) {
 
 	// Seek to end so we only read new lines.
 	if _, err := f.Seek(0, io.SeekEnd); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 
 	ch := make(chan string, 64)
 	go func() {
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		defer close(ch)
 
 		scanner := bufio.NewScanner(f)

@@ -400,7 +400,7 @@ and all players are teleported.`,
 				return fmt.Errorf("server not running — start it first with: mc-dad-server start")
 			}
 
-			result, err := vote.RunVote(ctx, vote.VoteConfig{
+			result, err := vote.RunVote(ctx, vote.Config{
 				Maps:       management.ParkourMaps,
 				Duration:   time.Duration(duration) * time.Second,
 				MaxChoices: maxChoices,
