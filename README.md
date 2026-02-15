@@ -90,9 +90,9 @@ mc-dad-server install \
 | `--players` | `20` | Max player count |
 | `--gc` | `g1gc` | `g1gc` (Aikar's flags) or `zgc` (low latency) |
 | `--motd` | `Dads Minecraft Server` | Message of the day |
-| `--playit` | `true` | Set up playit.gg tunnel (`--playit=false` to skip) |
-| `--chat-filter` | `true` | Install chat filter plugin (`--chat-filter=false` to skip) |
-| `--version` | `latest` | Minecraft version |
+| `--playit` | `true` | Set up playit.gg tunnel (`--no-playit` to skip) |
+| `--chat-filter` | `true` | Install chat filter plugin (`--no-chat-filter` to skip) |
+| `--mc-version` | `latest` | Minecraft version |
 
 ## Daily Commands
 
@@ -160,16 +160,18 @@ mc-dad-server rotate-parkour
 
 When a map rotates, all players get a broadcast and are teleported to the new featured map. See [docs/parkour.md](docs/parkour.md) for full details.
 
-## Dad Pack (Coming Soon)
+## Support
 
-The installer works great for free. The **Dad Pack** will add:
+MC Dad Server is **free and fully functional** — no features are locked behind a paywall.
 
-- **GriefPrevention** — auto-configured so kids' builds are protected
-- **Dynmap** — web-based live map (show kids their world on a tablet)
-- **Web dashboard** — simple status page you can bookmark
-- **Dad's Guide PDF** — non-technical guide to being a Minecraft server admin
+If you find it useful, you can support development by purchasing a license. Licensed users get clean output without nag messages and a "Licensed to [name]" badge.
 
-Star this repo to get notified when the Dad Pack launches.
+```bash
+mc-dad-server activate-license --key YOUR-LICENSE-KEY
+```
+
+See [docs/license.md](docs/license.md) for license management documentation.
+
 
 ## Multiplayer Without Port Forwarding
 

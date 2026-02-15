@@ -7,17 +7,18 @@ import (
 
 // InstallSummary holds data for the install completion summary.
 type InstallSummary struct {
-	ServerDir   string
-	ServerType  string
-	Port        int
-	Memory      string
-	GCType      string
-	Whitelist   bool
-	Difficulty  string
-	GameMode    string
-	ChatFilter  bool
-	PlayitSetup bool
-	InitSystem  string
+	ServerDir    string
+	ServerType   string
+	Port         int
+	Memory       string
+	GCType       string
+	Whitelist    bool
+	Difficulty   string
+	GameMode     string
+	ChatFilter   bool
+	PlayitSetup  bool
+	LicenseLabel string
+	InitSystem   string
 }
 
 // PrintInstallSummary displays the completion summary after install.
@@ -41,6 +42,7 @@ func (u *UI) PrintInstallSummary(s *InstallSummary) {
 	fmt.Printf("  %s         %v\n", u.Bold("Whitelist:"), s.Whitelist)
 	fmt.Printf("  %s        %s\n", u.Bold("Difficulty:"), s.Difficulty)
 	fmt.Printf("  %s         %s\n", u.Bold("Game Mode:"), s.GameMode)
+	fmt.Printf("  %s          %s\n", u.Bold("License:"), s.LicenseLabel)
 	fmt.Println()
 
 	if s.ServerType == "paper" {

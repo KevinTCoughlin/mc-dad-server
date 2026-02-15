@@ -11,6 +11,7 @@ Thumbs.db
 
 # Go
 /mc-dad-server
+/mc-dad-server.exe
 dist/
 
 # Not for public repo

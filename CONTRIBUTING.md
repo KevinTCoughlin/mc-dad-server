@@ -45,10 +45,12 @@ just clean   # remove build artifacts
 ```
 cmd/mc-dad-server/     Entry point — CLI binary
 internal/
-  cli/                 Cobra command definitions
-  config/              Server configuration parsing
+  cli/                 Kong CLI structs and command handlers
+  config/              Server configuration and validation
   configs/             Embedded Minecraft config files
+  license/             LemonSqueezy license client and manager
   management/          Process, backup, and screen management
+  nag/                 Shareware nag/grace-period logic
   parkour/             Parkour world and map features
   platform/            OS-specific helpers (Java install, cron, firewall)
   plugins/             Plugin managers (Geyser, Hangar, ChatSentry)
