@@ -16,6 +16,7 @@ import (
 // StartCmd starts the Minecraft server in a screen session.
 type StartCmd struct{}
 
+// Run starts the server.
 func (cmd *StartCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
@@ -45,6 +46,7 @@ func (cmd *StartCmd) Run(globals *Globals, runner platform.CommandRunner, output
 // StopCmd gracefully stops the Minecraft server.
 type StopCmd struct{}
 
+// Run stops the server.
 func (cmd *StopCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
@@ -75,6 +77,7 @@ func (cmd *StopCmd) Run(globals *Globals, runner platform.CommandRunner, output 
 // StatusCmd shows server status and resource usage.
 type StatusCmd struct{}
 
+// Run shows server status.
 func (cmd *StatusCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
@@ -109,6 +112,7 @@ func (cmd *StatusCmd) Run(globals *Globals, runner platform.CommandRunner, outpu
 // BackupCmd backs up world data with rotation.
 type BackupCmd struct{}
 
+// Run performs a backup.
 func (cmd *BackupCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
@@ -119,6 +123,7 @@ func (cmd *BackupCmd) Run(globals *Globals, runner platform.CommandRunner, outpu
 // SetupParkourCmd sets up the parkour world (first-time setup).
 type SetupParkourCmd struct{}
 
+// Run sets up the parkour world.
 func (cmd *SetupParkourCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
@@ -177,6 +182,7 @@ func (cmd *SetupParkourCmd) Run(globals *Globals, runner platform.CommandRunner,
 // RotateParkourCmd rotates the featured parkour map.
 type RotateParkourCmd struct{}
 
+// Run rotates the featured parkour map.
 func (cmd *RotateParkourCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
@@ -196,6 +202,7 @@ type VoteMapCmd struct {
 	Choices  int `help:"Number of maps to vote on" default:"5" name:"choices"`
 }
 
+// Run starts a map vote.
 func (cmd *VoteMapCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)

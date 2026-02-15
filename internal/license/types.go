@@ -5,6 +5,7 @@ import "time"
 // Status represents the state of a license.
 type Status string
 
+// License statuses returned by LemonSqueezy.
 const (
 	StatusActive   Status = "active"
 	StatusInactive Status = "inactive"
@@ -16,13 +17,13 @@ const (
 type ValidationResponse struct {
 	Valid      bool       `json:"valid"`
 	Error      string     `json:"error,omitempty"`
-	LicenseKey LicenseKey `json:"license_key"`
+	LicenseKey Key `json:"license_key"`
 	Instance   Instance   `json:"instance,omitempty"`
 	Meta       Meta       `json:"meta"`
 }
 
-// LicenseKey contains details about the license.
-type LicenseKey struct {
+// Key contains details about the license.
+type Key struct {
 	ID              int        `json:"id"`
 	Status          Status     `json:"status"`
 	Key             string     `json:"key"`

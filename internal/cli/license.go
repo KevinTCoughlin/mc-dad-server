@@ -15,6 +15,7 @@ type ValidateLicenseCmd struct {
 	Key string `help:"License key to validate" default:""`
 }
 
+// Run validates a license key.
 func (cmd *ValidateLicenseCmd) Run(globals *Globals, _ platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	mgr := license.NewManager(globals.Dir)
@@ -79,6 +80,7 @@ type ActivateLicenseCmd struct {
 	Name string `help:"Instance name (default: hostname)" default:""`
 }
 
+// Run activates a license key.
 func (cmd *ActivateLicenseCmd) Run(globals *Globals, _ platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 
@@ -114,6 +116,7 @@ func (cmd *ActivateLicenseCmd) Run(globals *Globals, _ platform.CommandRunner, o
 // DeactivateLicenseCmd deactivates the license for this server.
 type DeactivateLicenseCmd struct{}
 
+// Run deactivates the license.
 func (cmd *DeactivateLicenseCmd) Run(globals *Globals, _ platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 

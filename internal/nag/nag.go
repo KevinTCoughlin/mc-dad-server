@@ -16,6 +16,7 @@ import (
 // Status represents the license/nag state.
 type Status int
 
+// Nag statuses.
 const (
 	StatusLicensed    Status = iota
 	StatusGracePeriod Status = iota

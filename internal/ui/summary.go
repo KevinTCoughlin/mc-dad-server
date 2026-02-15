@@ -7,14 +7,14 @@ import (
 
 // InstallSummary holds data for the install completion summary.
 type InstallSummary struct {
-	ServerDir      string
-	ServerType     string
-	Port           int
-	Memory         string
-	GCType         string
-	Whitelist      bool
-	Difficulty     string
-	GameMode       string
+	ServerDir    string
+	ServerType   string
+	Port         int
+	Memory       string
+	GCType       string
+	Whitelist    bool
+	Difficulty   string
+	GameMode     string
 	ChatFilter   bool
 	PlayitSetup  bool
 	LicenseLabel string

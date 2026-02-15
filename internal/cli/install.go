@@ -58,6 +58,7 @@ func (cmd *InstallCmd) toConfig(globals *Globals) *config.ServerConfig {
 	}
 }
 
+// Run installs and configures a Minecraft server.
 func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := cmd.toConfig(globals)

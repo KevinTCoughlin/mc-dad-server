@@ -15,7 +15,7 @@ func TestValidationResponse_IsValid(t *testing.T) {
 			name: "valid active license",
 			response: &ValidationResponse{
 				Valid: true,
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					Status: StatusActive,
 				},
 			},
@@ -25,7 +25,7 @@ func TestValidationResponse_IsValid(t *testing.T) {
 			name: "inactive license",
 			response: &ValidationResponse{
 				Valid: true,
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					Status: StatusInactive,
 				},
 			},
@@ -35,7 +35,7 @@ func TestValidationResponse_IsValid(t *testing.T) {
 			name: "expired license",
 			response: &ValidationResponse{
 				Valid: true,
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					Status: StatusExpired,
 				},
 			},
@@ -45,7 +45,7 @@ func TestValidationResponse_IsValid(t *testing.T) {
 			name: "disabled license",
 			response: &ValidationResponse{
 				Valid: true,
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					Status: StatusDisabled,
 				},
 			},
@@ -55,7 +55,7 @@ func TestValidationResponse_IsValid(t *testing.T) {
 			name: "invalid response",
 			response: &ValidationResponse{
 				Valid: false,
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					Status: StatusActive,
 				},
 			},
@@ -81,7 +81,7 @@ func TestValidationResponse_IsActivationLimitReached(t *testing.T) {
 		{
 			name: "unlimited activations",
 			response: &ValidationResponse{
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					ActivationLimit: 0,
 					ActivationUsage: 10,
 				},
@@ -91,7 +91,7 @@ func TestValidationResponse_IsActivationLimitReached(t *testing.T) {
 		{
 			name: "below limit",
 			response: &ValidationResponse{
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					ActivationLimit: 5,
 					ActivationUsage: 3,
 				},
@@ -101,7 +101,7 @@ func TestValidationResponse_IsActivationLimitReached(t *testing.T) {
 		{
 			name: "at limit",
 			response: &ValidationResponse{
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					ActivationLimit: 5,
 					ActivationUsage: 5,
 				},
@@ -111,7 +111,7 @@ func TestValidationResponse_IsActivationLimitReached(t *testing.T) {
 		{
 			name: "over limit",
 			response: &ValidationResponse{
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					ActivationLimit: 5,
 					ActivationUsage: 7,
 				},
@@ -142,7 +142,7 @@ func TestValidationResponse_IsExpired(t *testing.T) {
 		{
 			name: "no expiration",
 			response: &ValidationResponse{
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					ExpiresAt: nil,
 				},
 			},
@@ -151,7 +151,7 @@ func TestValidationResponse_IsExpired(t *testing.T) {
 		{
 			name: "expired",
 			response: &ValidationResponse{
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					ExpiresAt: &past,
 				},
 			},
@@ -160,7 +160,7 @@ func TestValidationResponse_IsExpired(t *testing.T) {
 		{
 			name: "not expired",
 			response: &ValidationResponse{
-				LicenseKey: LicenseKey{
+				LicenseKey: Key{
 					ExpiresAt: &future,
 				},
 			},
