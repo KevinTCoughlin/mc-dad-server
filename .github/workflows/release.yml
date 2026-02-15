@@ -6,6 +6,13 @@ on:
       - "v*"
     branches:
       - main
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.goreleaser.yml'
+      - '.github/workflows/release.yml'
+      - 'internal/configs/embedded/**'
 
 permissions:
   contents: write

@@ -1,5 +1,10 @@
 # MC Dad Server
 
+[![CI](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/ci.yml/badge.svg)](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/ci.yml)
+[![Release](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/release.yml/badge.svg)](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/release.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/KevinTCoughlin/mc-dad-server)](https://goreportcard.com/report/github.com/KevinTCoughlin/mc-dad-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 **Minecraft server in 60 seconds — for busy dads who just want their kids to play.**
 
 No Docker. No Kubernetes. No nonsense. Download one binary and run `mc-dad-server install` — with Bedrock cross-play, Parkour courses, and tuned configs out of the box.
@@ -23,8 +28,6 @@ mc-dad-server install
 ```
 
 That's it. Your server is running.
-
-> **Migrating from install.sh?** The Go binary replaces the bash installer. Same flags, same behavior, zero dependencies. The `install.sh` script is deprecated but still available for one release cycle.
 
 ## Batteries Included
 
