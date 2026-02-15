@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/ci.yml/badge.svg)](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/ci.yml)
 [![Release](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/release.yml/badge.svg)](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/release.yml)
+[![Nightly](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/nightly.yml/badge.svg)](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/nightly.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/KevinTCoughlin/mc-dad-server)](https://goreportcard.com/report/github.com/KevinTCoughlin/mc-dad-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 

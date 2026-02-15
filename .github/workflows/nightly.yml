@@ -1,0 +1,66 @@
+name: Nightly
+
+on:
+  schedule:
+    # Every day at midnight UTC
+    - cron: "0 0 * * *"
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  nightly:
+    name: Nightly Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for new commits since last nightly
+        id: check
+        run: |
+          # Get the commit SHA of the current nightly tag (if it exists)
+          LAST_NIGHTLY=$(git rev-parse nightly 2>/dev/null || echo "")
+          HEAD=$(git rev-parse HEAD)
+
+          if [ "$LAST_NIGHTLY" = "$HEAD" ]; then
+            echo "No new commits since last nightly build"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New commits found: $LAST_NIGHTLY -> $HEAD"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-go@v5
+        if: steps.check.outputs.changed == 'true'
+        with:
+          go-version-file: go.mod
+
+      - name: GoReleaser (snapshot)
+        if: steps.check.outputs.changed == 'true'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --snapshot --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update nightly release
+        if: steps.check.outputs.changed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Nightly Build
+          prerelease: true
+          make_latest: false
+          files: dist/mc-dad-server-*
+          body: |
+            Automated nightly build from `main` branch.
+            Commit: ${{ github.sha }}
+            Date: ${{ github.event.repository.updated_at }}
+
+            **Warning:** This is an unstable pre-release build.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

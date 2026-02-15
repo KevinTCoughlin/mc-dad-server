@@ -4,15 +4,6 @@ on:
   push:
     tags:
       - "v*"
-    branches:
-      - main
-    paths:
-      - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.goreleaser.yml'
-      - '.github/workflows/release.yml'
-      - 'internal/configs/embedded/**'
 
 permissions:
   contents: write
@@ -30,38 +21,10 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Stable release on v* tags
-      - name: GoReleaser (stable)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
           args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Nightly release on main push
-      - name: GoReleaser (nightly snapshot)
-        if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: latest
-          args: release --snapshot --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update nightly release
-        if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: nightly
-          name: Nightly Build
-          prerelease: true
-          files: dist/mc-dad-server-*
-          body: |
-            Automated nightly build from `main` branch.
-            Commit: ${{ github.sha }}
-
-            **Warning:** This is an unstable pre-release build.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
