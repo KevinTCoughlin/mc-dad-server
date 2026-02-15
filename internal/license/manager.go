@@ -42,17 +42,26 @@ type StoredLicense struct {
 }
 
 // signCache computes an HMAC-SHA256 over the cached response JSON.
-func signCache(resp *ValidationResponse) string {
+func signCache(resp *ValidationResponse) []byte {
 	if resp == nil {
-		return ""
+		return nil
 	}
 	data, err := json.Marshal(resp)
 	if err != nil {
-		return ""
+		return nil
 	}
 	mac := hmac.New(sha256.New, cacheKey)
 	mac.Write(data)
-	return hex.EncodeToString(mac.Sum(nil))
+	return mac.Sum(nil)
+}
+
+// signCacheHex returns the hex-encoded HMAC for storage.
+func signCacheHex(resp *ValidationResponse) string {
+	sig := signCache(resp)
+	if sig == nil {
+		return ""
+	}
+	return hex.EncodeToString(sig)
 }
 
 // verifyCacheHMAC returns true if the stored HMAC matches the cached response.
@@ -60,7 +69,11 @@ func verifyCacheHMAC(stored *StoredLicense) bool {
 	if stored == nil || stored.CachedResponse == nil || stored.CacheHMAC == "" {
 		return false
 	}
-	return stored.CacheHMAC == signCache(stored.CachedResponse)
+	storedMAC, err := hex.DecodeString(stored.CacheHMAC)
+	if err != nil {
+		return false
+	}
+	return hmac.Equal(storedMAC, signCache(stored.CachedResponse))
 }
 
 // Validate validates a license key, using cache if available and recent.
@@ -97,7 +110,7 @@ func (m *Manager) Validate(ctx context.Context, licenseKey string) (*ValidationR
 	stored.LicenseKey = licenseKey
 	stored.LastValidated = time.Now()
 	stored.CachedResponse = resp
-	stored.CacheHMAC = signCache(resp)
+	stored.CacheHMAC = signCacheHex(resp)
 	if resp.Instance.ID != "" {
 		stored.InstanceID = resp.Instance.ID
 		stored.InstanceName = resp.Instance.Name
