@@ -2,12 +2,20 @@ package license
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 )
+
+// cacheKey is used to HMAC the cached validation response.
+// Not a true secret — anyone can read the source — but it prevents
+// casual edits to the .license JSON from being accepted.
+var cacheKey = []byte("mc-dad-server-v2-cache-signing-key")
 
 // Manager handles license validation and storage.
 type Manager struct {
@@ -30,6 +38,29 @@ type StoredLicense struct {
 	InstanceName   string              `json:"instance_name"`
 	LastValidated  time.Time           `json:"last_validated"`
 	CachedResponse *ValidationResponse `json:"cached_response,omitempty"`
+	CacheHMAC      string              `json:"cache_hmac,omitempty"`
+}
+
+// signCache computes an HMAC-SHA256 over the cached response JSON.
+func signCache(resp *ValidationResponse) string {
+	if resp == nil {
+		return ""
+	}
+	data, err := json.Marshal(resp)
+	if err != nil {
+		return ""
+	}
+	mac := hmac.New(sha256.New, cacheKey)
+	mac.Write(data)
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// verifyCacheHMAC returns true if the stored HMAC matches the cached response.
+func verifyCacheHMAC(stored *StoredLicense) bool {
+	if stored == nil || stored.CachedResponse == nil || stored.CacheHMAC == "" {
+		return false
+	}
+	return stored.CacheHMAC == signCache(stored.CachedResponse)
 }
 
 // Validate validates a license key, using cache if available and recent.
@@ -41,9 +72,9 @@ func (m *Manager) Validate(ctx context.Context, licenseKey string) (*ValidationR
 	if stored != nil && stored.LicenseKey == licenseKey {
 		instanceID = stored.InstanceID
 
-		// Use cached response if it's recent (within 24 hours)
+		// Use cached response if it's recent (within 24 hours) and HMAC is valid
 		if stored.CachedResponse != nil && time.Since(stored.LastValidated) < 24*time.Hour {
-			if stored.CachedResponse.IsValid() {
+			if verifyCacheHMAC(stored) && stored.CachedResponse.IsValid() {
 				return stored.CachedResponse, nil
 			}
 		}
@@ -52,8 +83,8 @@ func (m *Manager) Validate(ctx context.Context, licenseKey string) (*ValidationR
 	// Validate with LemonSqueezy API
 	resp, err := m.client.Validate(ctx, licenseKey, instanceID)
 	if err != nil {
-		// If offline and we have a cached response, use it
-		if stored != nil && stored.CachedResponse != nil && stored.LicenseKey == licenseKey {
+		// If offline and we have a valid cached response, use it
+		if stored != nil && stored.CachedResponse != nil && stored.LicenseKey == licenseKey && verifyCacheHMAC(stored) {
 			return stored.CachedResponse, nil
 		}
 		return nil, fmt.Errorf("validating license: %w", err)
@@ -66,6 +97,7 @@ func (m *Manager) Validate(ctx context.Context, licenseKey string) (*ValidationR
 	stored.LicenseKey = licenseKey
 	stored.LastValidated = time.Now()
 	stored.CachedResponse = resp
+	stored.CacheHMAC = signCache(resp)
 	if resp.Instance.ID != "" {
 		stored.InstanceID = resp.Instance.ID
 		stored.InstanceName = resp.Instance.Name
