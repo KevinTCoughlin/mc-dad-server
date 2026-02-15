@@ -2,6 +2,9 @@ package nag
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -25,6 +28,8 @@ const (
 
 const graceDays = 7
 
+var installKey = []byte("mc-dad-server-v2-install-record-key")
+
 // Info holds resolved license state.
 type Info struct {
 	Status       Status
@@ -34,6 +39,14 @@ type Info struct {
 
 type installRecord struct {
 	InstalledAt time.Time `json:"installed_at"`
+	HMAC        string    `json:"hmac,omitempty"`
+}
+
+// signInstallRecord computes an HMAC-SHA256 over the install timestamp.
+func signInstallRecord(t time.Time) []byte {
+	mac := hmac.New(sha256.New, installKey)
+	mac.Write([]byte(t.Format(time.RFC3339Nano)))
+	return mac.Sum(nil)
 }
 
 // RecordInstall writes a .mc-dad-installed file on first install. Idempotent.
@@ -42,12 +55,28 @@ func RecordInstall(serverDir string) {
 	if _, err := os.Stat(path); err == nil {
 		return // already exists
 	}
-	rec := installRecord{InstalledAt: time.Now()}
+	now := time.Now()
+	rec := installRecord{
+		InstalledAt: now,
+		HMAC:        hex.EncodeToString(signInstallRecord(now)),
+	}
 	data, err := json.MarshalIndent(rec, "", "  ")
 	if err != nil {
 		return
 	}
 	_ = os.WriteFile(path, data, 0o644)
+}
+
+// verifyInstallRecord returns true if the record's HMAC matches its timestamp.
+func verifyInstallRecord(rec *installRecord) bool {
+	if rec.HMAC == "" {
+		return false
+	}
+	storedMAC, err := hex.DecodeString(rec.HMAC)
+	if err != nil {
+		return false
+	}
+	return hmac.Equal(storedMAC, signInstallRecord(rec.InstalledAt))
 }
 
 // Resolve determines the license state for a server directory.
@@ -69,7 +98,7 @@ func Resolve(ctx context.Context, serverDir string) Info {
 	data, err := os.ReadFile(path)
 	if err == nil {
 		var rec installRecord
-		if json.Unmarshal(data, &rec) == nil {
+		if json.Unmarshal(data, &rec) == nil && verifyInstallRecord(&rec) {
 			elapsed := time.Since(rec.InstalledAt)
 			daysLeft := graceDays - int(math.Ceil(elapsed.Hours()/24))
 			if daysLeft > 0 {
