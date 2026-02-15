@@ -7,17 +7,18 @@ import (
 
 // InstallSummary holds data for the install completion summary.
 type InstallSummary struct {
-	ServerDir   string
-	ServerType  string
-	Port        int
-	Memory      string
-	GCType      string
-	Whitelist   bool
-	Difficulty  string
-	GameMode    string
-	ChatFilter  bool
-	PlayitSetup bool
-	InitSystem  string
+	ServerDir      string
+	ServerType     string
+	Port           int
+	Memory         string
+	GCType         string
+	Whitelist      bool
+	Difficulty     string
+	GameMode       string
+	ChatFilter     bool
+	PlayitSetup    bool
+	DadPackEnabled bool
+	InitSystem     string
 }
 
 // PrintInstallSummary displays the completion summary after install.
@@ -51,6 +52,14 @@ func (u *UI) PrintInstallSummary(s *InstallSummary) {
 		fmt.Println("    Multiverse-Core     (multiple worlds)")
 		if s.ChatFilter {
 			fmt.Println("    ChatSentry          (chat filter)")
+		}
+		if s.DadPackEnabled {
+			fmt.Println()
+			fmt.Println(u.colorize(colorGreen+colorBold, "  Dad Pack Features:"))
+			fmt.Println("    GriefPrevention     (coming soon)")
+			fmt.Println("    Dynmap              (coming soon)")
+			fmt.Println("    Web Dashboard       (coming soon)")
+			fmt.Println("    Dad's Guide PDF     (coming soon)")
 		}
 		fmt.Println()
 	}

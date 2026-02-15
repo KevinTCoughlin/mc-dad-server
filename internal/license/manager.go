@@ -25,10 +25,10 @@ func NewManager(serverDir string) *Manager {
 
 // StoredLicense represents a license stored on disk.
 type StoredLicense struct {
-	LicenseKey   string    `json:"license_key"`
-	InstanceID   string    `json:"instance_id"`
-	InstanceName string    `json:"instance_name"`
-	LastValidated time.Time `json:"last_validated"`
+	LicenseKey     string              `json:"license_key"`
+	InstanceID     string              `json:"instance_id"`
+	InstanceName   string              `json:"instance_name"`
+	LastValidated  time.Time           `json:"last_validated"`
 	CachedResponse *ValidationResponse `json:"cached_response,omitempty"`
 }
 
@@ -36,11 +36,11 @@ type StoredLicense struct {
 func (m *Manager) Validate(ctx context.Context, licenseKey string) (*ValidationResponse, error) {
 	// Try to load stored license
 	stored, _ := m.Load()
-	
+
 	var instanceID string
 	if stored != nil && stored.LicenseKey == licenseKey {
 		instanceID = stored.InstanceID
-		
+
 		// Use cached response if it's recent (within 24 hours)
 		if stored.CachedResponse != nil && time.Since(stored.LastValidated) < 24*time.Hour {
 			if stored.CachedResponse.IsValid() {
@@ -92,9 +92,9 @@ func (m *Manager) Activate(ctx context.Context, licenseKey, instanceName string)
 
 	// Store the activated license
 	stored := &StoredLicense{
-		LicenseKey:   licenseKey,
-		InstanceID:   resp.Instance.ID,
-		InstanceName: resp.Instance.Name,
+		LicenseKey:    licenseKey,
+		InstanceID:    resp.Instance.ID,
+		InstanceName:  resp.Instance.Name,
 		LastValidated: time.Now(),
 	}
 	_ = m.Save(stored)

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultAPIURL = "https://api.lemonsqueezy.com/v1/licenses"
+	defaultAPIURL  = "https://api.lemonsqueezy.com/v1/licenses"
 	defaultTimeout = 10 * time.Second
 )
 

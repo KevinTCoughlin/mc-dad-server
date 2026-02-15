@@ -160,16 +160,33 @@ mc-dad-server rotate-parkour
 
 When a map rotates, all players get a broadcast and are teleported to the new featured map. See [docs/parkour.md](docs/parkour.md) for full details.
 
-## Dad Pack (Coming Soon)
+## Dad Pack
 
-The installer works great for free. The **Dad Pack** will add:
+The installer works great for free. The **Dad Pack** adds premium features:
 
 - **GriefPrevention** — auto-configured so kids' builds are protected
 - **Dynmap** — web-based live map (show kids their world on a tablet)
 - **Web dashboard** — simple status page you can bookmark
 - **Dad's Guide PDF** — non-technical guide to being a Minecraft server admin
 
-Star this repo to get notified when the Dad Pack launches.
+### License Management
+
+Activate your Dad Pack license during install:
+
+```bash
+mc-dad-server install --license YOUR-LICENSE-KEY
+```
+
+Or activate it later:
+
+```bash
+mc-dad-server activate-license --key YOUR-LICENSE-KEY
+```
+
+See [docs/license.md](docs/license.md) for full license management documentation.
+
+> **Note**: Dad Pack features are currently in development. License integration is ready for when features launch.
+
 
 ## Multiplayer Without Port Forwarding
 

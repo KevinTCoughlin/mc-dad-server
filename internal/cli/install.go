@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/configs"
+	"github.com/KevinTCoughlin/mc-dad-server/internal/dadpack"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/plugins"
@@ -100,6 +101,12 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// Dad Pack Features (if licensed)
+	dadPackEnabled := false
+	if cfg.ServerType == "paper" && cfg.LicenseKey != "" {
+		dadPackEnabled = installDadPackFeatures(ctx)
+	}
+
 	// Create start script
 	if err := configs.DeployStartScript(cfg); err != nil {
 		return fmt.Errorf("creating start script: %w", err)
@@ -133,17 +140,18 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 
 	// Summary
 	output.PrintInstallSummary(&ui.InstallSummary{
-		ServerDir:   cfg.Dir,
-		ServerType:  cfg.ServerType,
-		Port:        cfg.Port,
-		Memory:      cfg.Memory,
-		GCType:      cfg.GCType,
-		Whitelist:   cfg.Whitelist,
-		Difficulty:  cfg.Difficulty,
-		GameMode:    cfg.GameMode,
-		ChatFilter:  cfg.ChatFilter,
-		PlayitSetup: cfg.EnablePlayit,
-		InitSystem:  plat.InitSystem,
+		ServerDir:      cfg.Dir,
+		ServerType:     cfg.ServerType,
+		Port:           cfg.Port,
+		Memory:         cfg.Memory,
+		GCType:         cfg.GCType,
+		Whitelist:      cfg.Whitelist,
+		Difficulty:     cfg.Difficulty,
+		GameMode:       cfg.GameMode,
+		ChatFilter:     cfg.ChatFilter,
+		PlayitSetup:    cfg.EnablePlayit,
+		DadPackEnabled: dadPackEnabled,
+		InitSystem:     plat.InitSystem,
 	})
 
 	return nil
@@ -206,6 +214,28 @@ func setupService(ctx context.Context, plat *platform.Platform) error {
 		return err
 	}
 	return svc.Enable()
+}
+
+func installDadPackFeatures(ctx context.Context) bool {
+	dpMgr := dadpack.NewManager(cfg.Dir, output)
+
+	hasLicense, err := dpMgr.CheckLicense(ctx, cfg)
+	if err != nil {
+		output.Warn("Dad Pack license check failed: %v", err)
+		return false
+	}
+
+	if !hasLicense {
+		output.Info("No valid Dad Pack license found (use --license to enable Dad Pack features)")
+		return false
+	}
+
+	if err := dpMgr.InstallFeatures(ctx, cfg.Dir); err != nil {
+		output.Warn("Dad Pack feature installation failed: %v", err)
+		return false
+	}
+
+	return true
 }
 
 func generateRCONPassword() string {
