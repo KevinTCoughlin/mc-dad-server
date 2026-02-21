@@ -8,7 +8,7 @@ import { Scheduler } from "./scheduler";
 import { WebhookServer } from "./webhooks";
 import { CommandFilter } from "./command-filter";
 import { RateLimiter } from "./rate-limiter";
-import type { McEventMap, McEventName, WebhookRoute } from "./types";
+import type { McEventMap, McEventName } from "./types";
 
 export class McServer {
   readonly events = new EventBus();

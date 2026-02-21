@@ -11,6 +11,7 @@ import (
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
+	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
 // mockKey mirrors MockRunner.key() which is unexported.
@@ -38,6 +39,46 @@ func TestBunVersion_NotInstalled(t *testing.T) {
 	_, err := bunVersion(context.Background(), runner)
 	if err == nil {
 		t.Fatal("expected error for missing bun")
+	}
+}
+
+func TestInstallBun_AlreadyInstalled(t *testing.T) {
+	runner := platform.NewMockRunner()
+	runner.ExistsMap["bun"] = true
+	runner.OutputMap[mockKey("bun", "--version")] = []byte("1.3.0\n")
+
+	err := InstallBun(context.Background(), runner, nil, ui.New(false))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should not have run the installer
+	for _, cmd := range runner.Commands {
+		if cmd.Name == "bash" {
+			t.Fatal("expected installer to be skipped when bun already exists")
+		}
+	}
+}
+
+func TestInstallBun_NotInstalled(t *testing.T) {
+	runner := platform.NewMockRunner()
+	runner.ExistsMap["bun"] = false
+	// After install, bun --version should succeed
+	runner.OutputMap[mockKey("bun", "--version")] = []byte("1.3.0\n")
+
+	err := InstallBun(context.Background(), runner, nil, ui.New(false))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should have run the bash installer
+	found := false
+	for _, cmd := range runner.Commands {
+		if cmd.Name == "bash" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("expected installer to run when bun is not installed")
 	}
 }
 

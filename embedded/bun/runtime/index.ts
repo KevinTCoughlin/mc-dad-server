@@ -46,7 +46,6 @@ async function loadScripts() {
       console.warn(`[mc-scripts] Skipping script with suspicious filename: ${file}`);
       continue;
     }
-    const resolved = resolve(scriptsDir, file);
     if (!isPathWithin(file, scriptsDir)) {
       console.warn(`[mc-scripts] Skipping script outside scripts directory: ${file}`);
       continue;

@@ -14,5 +14,10 @@ Thumbs.db
 /mc-dad-server.exe
 dist/
 
+# Bun scripting sidecar
+node_modules/
+bun.lockb
+.manifest.json
+
 # Not for public repo
 STOREFRONT_GUIDE.md
