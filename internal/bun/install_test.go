@@ -101,7 +101,8 @@ func TestDeployScripts(t *testing.T) {
 	runtimeFiles := []string{
 		"runtime/types.ts", "runtime/events.ts", "runtime/rcon.ts",
 		"runtime/log-parser.ts", "runtime/players.ts", "runtime/scheduler.ts",
-		"runtime/webhooks.ts", "runtime/server.ts", "runtime/index.ts",
+		"runtime/webhooks.ts", "runtime/server.ts", "runtime/command-filter.ts",
+		"runtime/rate-limiter.ts", "runtime/integrity.ts", "runtime/index.ts",
 	}
 	for _, f := range runtimeFiles {
 		path := filepath.Join(tmpDir, "bun-scripts", f)
@@ -116,13 +117,17 @@ func TestDeployScripts(t *testing.T) {
 		t.Error("expected example.ts to exist")
 	}
 
-	// Verify .env has RCON password
+	// Verify .env does NOT contain RCON password (passed at runtime instead)
 	envData, err := os.ReadFile(filepath.Join(tmpDir, "bun-scripts", ".env"))
 	if err != nil {
 		t.Fatalf("reading .env: %v", err)
 	}
-	if got := string(envData); !strings.Contains(got, "testpass123") {
-		t.Errorf("expected .env to contain RCON password, got: %s", got)
+	envStr := string(envData)
+	if strings.Contains(envStr, "testpass123") {
+		t.Errorf("expected .env to NOT contain RCON password, got: %s", envStr)
+	}
+	if !strings.Contains(envStr, "RCON_PORT=") {
+		t.Errorf("expected .env to contain RCON_PORT, got: %s", envStr)
 	}
 
 	// Verify package.json exists

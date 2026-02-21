@@ -35,6 +35,9 @@ func DeployScripts(cfg *config.ServerConfig) error {
 		"runtime/scheduler.ts",
 		"runtime/webhooks.ts",
 		"runtime/server.ts",
+		"runtime/command-filter.ts",
+		"runtime/rate-limiter.ts",
+		"runtime/integrity.ts",
 		"runtime/index.ts",
 	}
 
@@ -109,9 +112,8 @@ func deployTemplate(cfg *config.ServerConfig, tmplPath, dest string) error {
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, map[string]string{
-		"RCONPassword": cfg.RCONPassword,
-		"RCONPort":     "25575",
-		"ServerDir":    cfg.Dir,
+		"RCONPort":  "25575",
+		"ServerDir": cfg.Dir,
 	}); err != nil {
 		return fmt.Errorf("executing template %s: %w", tmplPath, err)
 	}
