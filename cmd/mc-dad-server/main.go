@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	bunpkg "github.com/KevinTCoughlin/mc-dad-server/internal/bun"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/cli"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/configs"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
@@ -22,6 +23,7 @@ var (
 
 func main() {
 	configs.SetEmbeddedFS(embeddedFS)
+	bunpkg.SetEmbeddedFS(embeddedFS)
 
 	var app cli.CLI
 	var runner platform.CommandRunner = platform.NewOSCommandRunner()
