@@ -30,6 +30,8 @@ gofumpt -w .                           # format
 - `internal/tunnel/` — playit.gg tunnel setup
 - `internal/ui/` — colored terminal output
 - `internal/vote/` — in-game map vote system
+- `internal/bun/` — Bun scripting sidecar (install, deploy, embed)
+- `embedded/bun/` — Bun runtime framework (TypeScript) and templates
 
 ## Architecture & Conventions
 

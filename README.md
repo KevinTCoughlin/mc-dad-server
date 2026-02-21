@@ -55,6 +55,7 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 - Daily automatic backups with rotation
 - Opens firewall ports for Java (25565) and Bedrock (19132)
 - Optional playit.gg tunnel — **no port forwarding needed**
+- Optional [TypeScript/JS scripting sidecar](docs/scripting.md) for custom automation (`--experimental-bun`)
 
 ## Works On
 
@@ -97,6 +98,7 @@ mc-dad-server install \
 | `--playit` | `true` | Set up playit.gg tunnel (`--no-playit` to skip) |
 | `--chat-filter` | `true` | Install chat filter plugin (`--no-chat-filter` to skip) |
 | `--mc-version` | `latest` | Minecraft version |
+| `--experimental-bun` | `false` | Enable [TypeScript/JS scripting sidecar](docs/scripting.md) |
 
 ## Daily Commands
 
