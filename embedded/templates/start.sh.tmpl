@@ -55,5 +55,21 @@ else
     )
 fi
 
+{{if .EnableBun}}
+# Bun scripting sidecar
+BUN_DIR="$SCRIPT_DIR/bun-scripts"
+if [[ -d "$BUN_DIR" ]] && command -v bun &>/dev/null; then
+    echo "Starting Bun scripting sidecar..."
+    (cd "$BUN_DIR" && bun run runtime/index.ts) &
+    BUN_PID=$!
+    cleanup() { kill "$BUN_PID" 2>/dev/null; wait "$BUN_PID" 2>/dev/null; }
+    trap cleanup EXIT INT TERM
+fi
+{{end}}
+
 echo "Starting Minecraft server with ${MEMORY} RAM (${GC_TYPE^^} GC)..."
+{{if .EnableBun}}
+"$JAVA_CMD" "${JVM_FLAGS[@]}" -jar server.jar nogui
+{{else}}
 exec "$JAVA_CMD" "${JVM_FLAGS[@]}" -jar server.jar nogui
+{{end}}

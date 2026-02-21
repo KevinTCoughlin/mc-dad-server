@@ -18,6 +18,7 @@ type InstallSummary struct {
 	GameMode     string
 	ChatFilter   bool
 	PlayitSetup  bool
+	BunEnabled   bool
 	LicenseLabel string
 	InitSystem   string
 }
@@ -93,6 +94,14 @@ func (u *UI) PrintInstallSummary(s *InstallSummary) {
 	if s.PlayitSetup {
 		fmt.Println(u.colorize(colorCyan+colorBold, "  Multiplayer (No Port Forwarding):"))
 		fmt.Printf("    Run %s and follow the setup link\n", u.Bold("playit"))
+		fmt.Println()
+	}
+
+	if s.BunEnabled {
+		fmt.Println(u.colorize(colorCyan+colorBold, "  Bun Scripting (Experimental):"))
+		fmt.Printf("    Scripts directory:  %s\n", u.Bold(s.ServerDir+"/bun-scripts/scripts/"))
+		fmt.Printf("    Example script:    %s\n", u.Bold(s.ServerDir+"/bun-scripts/scripts/example.ts"))
+		fmt.Println("    Edit scripts and restart server to apply changes")
 		fmt.Println()
 	}
 

@@ -129,8 +129,9 @@ func DeployStartScript(cfg *config.ServerConfig) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	return tmpl.Execute(f, map[string]string{
-		"Memory": cfg.Memory,
-		"GCType": cfg.GCType,
+	return tmpl.Execute(f, map[string]any{
+		"Memory":    cfg.Memory,
+		"GCType":    cfg.GCType,
+		"EnableBun": cfg.EnableBun,
 	})
 }

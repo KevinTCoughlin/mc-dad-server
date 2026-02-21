@@ -23,6 +23,7 @@ type ServerConfig struct {
 	Whitelist    bool   `json:"whitelist"`
 	ChatFilter   bool   `json:"chat_filter"`
 	EnablePlayit bool   `json:"enable_playit"`
+	EnableBun    bool   `json:"enable_bun"`
 	Version      string `json:"version"`
 	SessionName  string `json:"session_name"`
 	MaxBackups   int    `json:"max_backups"`
@@ -49,6 +50,7 @@ func DefaultConfig() *ServerConfig {
 		Whitelist:    true,
 		ChatFilter:   true,
 		EnablePlayit: true,
+		EnableBun:    false,
 		Version:      "latest",
 		SessionName:  "minecraft",
 		MaxBackups:   5,

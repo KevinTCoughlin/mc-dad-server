@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	bunpkg "github.com/KevinTCoughlin/mc-dad-server/internal/bun"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/configs"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/nag"
@@ -32,6 +33,7 @@ type InstallCmd struct {
 	Whitelist  bool   `help:"Enable whitelist" default:"true" negatable:""`
 	ChatFilter bool   `help:"Install chat filter plugin" default:"true" name:"chat-filter" negatable:""`
 	Playit     bool   `help:"Set up playit.gg tunnel" default:"true" negatable:""`
+	Bun        bool   `help:"[Experimental] Enable Bun scripting sidecar" default:"false" name:"experimental-bun"`
 	MCVersion  string `help:"Minecraft version" default:"latest" name:"mc-version"`
 }
 
@@ -50,6 +52,7 @@ func (cmd *InstallCmd) toConfig(globals *Globals) *config.ServerConfig {
 		Whitelist:    cmd.Whitelist,
 		ChatFilter:   cmd.ChatFilter,
 		EnablePlayit: cmd.Playit,
+		EnableBun:    cmd.Bun,
 		Version:      cmd.MCVersion,
 		SessionName:  globals.Session,
 		MaxBackups:   5,
@@ -113,6 +116,17 @@ func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 		}
 	}
 
+	// Bun scripting sidecar
+	if cfg.EnableBun {
+		if err := bunpkg.DeployScripts(cfg); err != nil {
+			return fmt.Errorf("deploying bun scripts: %w", err)
+		}
+		if err := bunpkg.InstallDependencies(ctx, runner, cfg.Dir); err != nil {
+			output.Warn("Bun dependency install failed: %v", err)
+		}
+		output.Success("Bun scripting sidecar deployed to bun-scripts/")
+	}
+
 	// Record install timestamp for grace period tracking
 	nag.RecordInstall(cfg.Dir)
 
@@ -163,6 +177,7 @@ func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 		GameMode:     cfg.GameMode,
 		ChatFilter:   cfg.ChatFilter,
 		PlayitSetup:  cfg.EnablePlayit,
+		BunEnabled:   cfg.EnableBun,
 		LicenseLabel: nag.StatusLabel(nagInfo),
 		InitSystem:   plat.InitSystem,
 	})
@@ -194,6 +209,12 @@ func installDependencies(ctx context.Context, plat *platform.Platform, cfg *conf
 	if cfg.Edition == "java" {
 		if err := platform.InstallJava(ctx, runner, plat, output); err != nil {
 			return fmt.Errorf("installing Java: %w", err)
+		}
+	}
+
+	if cfg.EnableBun {
+		if err := bunpkg.InstallBun(ctx, runner, plat, output); err != nil {
+			return fmt.Errorf("installing Bun: %w", err)
 		}
 	}
 
