@@ -31,6 +31,8 @@ func TestGetProcessStats_Success(t *testing.T) {
 func TestGetProcessStats_NotRunning(t *testing.T) {
 	mock := platform.NewMockRunner()
 	mock.ErrorMap["pgrep [-f server.jar]"] = context.DeadlineExceeded
+	mock.ErrorMap["pgrep [-f paper.jar]"] = context.DeadlineExceeded
+	mock.ErrorMap["pgrep [-f fabric-server-launch.jar]"] = context.DeadlineExceeded
 
 	_, err := GetProcessStats(context.Background(), mock)
 	if err == nil {

@@ -43,6 +43,10 @@ type cmdDoneMsg struct {
 	quit   bool
 }
 
+// maxConsoleLines is the maximum number of lines retained in the viewport to
+// prevent unbounded memory growth in long-running sessions.
+const maxConsoleLines = 5000
+
 type model struct {
 	viewport viewport.Model
 	input    textinput.Model
@@ -117,6 +121,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocritic
 	case logReadMsg:
 		m.logOffset = msg.offset
 		m.lines = append(m.lines, msg.line)
+		if len(m.lines) > maxConsoleLines {
+			m.lines = m.lines[len(m.lines)-maxConsoleLines:]
+		}
 		if m.ready {
 			m.viewport.SetContent(strings.Join(m.lines, "\n"))
 			m.viewport.GotoBottom()
@@ -140,6 +147,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocritic
 			m.lines = append(m.lines, promptStyle.Render("> ")+msg.input)
 			if msg.output != "" {
 				m.lines = append(m.lines, strings.Split(msg.output, "\n")...)
+			}
+			if len(m.lines) > maxConsoleLines {
+				m.lines = m.lines[len(m.lines)-maxConsoleLines:]
 			}
 			if m.ready {
 				m.viewport.SetContent(strings.Join(m.lines, "\n"))
@@ -236,8 +246,10 @@ func (m model) runCommand(input string) tea.Cmd { //nolint:gocritic
 
 // Run starts the interactive console TUI.
 func Run(opts *Options, runner platform.CommandRunner) error {
+	m := newModel(opts, runner)
+	defer m.cancel()
 	p := tea.NewProgram(
-		newModel(opts, runner),
+		m,
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 	)

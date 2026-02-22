@@ -39,56 +39,17 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 
 	switch cmd {
 	case "start":
-		if running {
-			output.Warn("Server is already running!")
-		} else {
-			output.Info("Starting Minecraft server in screen session '%s'...", cfg.SessionName)
-			if err := screen.Start(ctx, "bash", cfg.Dir+"/start.sh"); err != nil {
-				output.Warn("Starting server: %s", err)
-			} else {
-				output.Success("Server started!")
-			}
+		if _, err := management.StartServer(ctx, screen, runner, cfg.Port, cfg.Dir, cfg.SessionName, output); err != nil {
+			output.Warn("Starting server: %s", err)
 		}
 
 	case "stop":
-		if !running {
-			output.Info("No running Minecraft server found.")
-		} else {
-			output.Info("Sending shutdown command...")
-			if err := screen.SendCommand(ctx, "say Server shutting down in 10 seconds..."); err != nil {
-				output.Warn("%s", err)
-				break
-			}
-			if err := management.Sleep(ctx, 10); err != nil {
-				output.Warn("%s", err)
-				break
-			}
-			if err := screen.SendCommand(ctx, "stop"); err != nil {
-				output.Warn("%s", err)
-				break
-			}
-			output.Success("Stop command sent. Server shutting down...")
+		if err := management.StopServer(ctx, screen, runner, cfg.Port, output); err != nil {
+			output.Warn("%s", err)
 		}
 
 	case "status":
-		output.Step("Minecraft Server Status")
-		stats, err := management.GetProcessStats(ctx, runner)
-		if screen.IsRunning(ctx) {
-			output.Info("  Status:  RUNNING")
-			output.Info("  Session: screen -r %s", cfg.SessionName)
-		} else if err == nil && stats.PID > 0 {
-			output.Info("  Status:  RUNNING (pid %d)", stats.PID)
-		} else if management.IsPortListening(cfg.Port) {
-			output.Info("  Status:  RUNNING (port %d)", cfg.Port)
-		} else {
-			output.Info("  Status:  STOPPED")
-		}
-		output.Info("")
-		if err == nil && stats.PID > 0 {
-			output.Info("  PID:     %d", stats.PID)
-			output.Info("  Memory:  %s", stats.Memory)
-			output.Info("  CPU:     %s", stats.CPU)
-		}
+		management.PrintStatus(ctx, screen, runner, cfg.Port, cfg.SessionName, output)
 
 	case "backup":
 		if err := management.Backup(ctx, cfg.Dir, cfg.MaxBackups, screen, output); err != nil {
