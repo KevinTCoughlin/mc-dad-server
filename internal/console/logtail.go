@@ -16,6 +16,13 @@ type logReadMsg struct {
 	offset int64
 }
 
+// scanBufInitial is the initial size of the bufio.Scanner buffer for log lines.
+const scanBufInitial = 64 * 1024
+
+// scanBufMax is the maximum token size accepted from a log line. Lines longer
+// than this are split across multiple reads.
+const scanBufMax = 1024 * 1024
+
 // tailLog returns a tea.Cmd that waits for the log file to appear, then reads
 // the first new line from the end. Subsequent lines are read via nextLogLine.
 func tailLog(ctx context.Context, path string) tea.Cmd {
@@ -83,11 +90,23 @@ func readFromOffset(ctx context.Context, path string, offset int64) tea.Msg {
 		}
 
 		scanner := bufio.NewScanner(f)
+		scanner.Buffer(make([]byte, 0, scanBufInitial), scanBufMax)
 		if scanner.Scan() {
 			line := scanner.Text()
-			newOffset := offset + int64(len(scanner.Bytes())) + 1
+			newOffset, err := f.Seek(0, io.SeekCurrent)
+			if err != nil {
+				_ = f.Close()
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
 			_ = f.Close()
 			return logReadMsg{line: line, offset: newOffset}
+		}
+
+		if err := scanner.Err(); err != nil {
+			_ = f.Close()
+			time.Sleep(100 * time.Millisecond)
+			continue
 		}
 
 		_ = f.Close()
