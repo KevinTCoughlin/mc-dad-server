@@ -22,22 +22,18 @@ func (cmd *StartCmd) Run(globals *Globals, runner platform.CommandRunner, output
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	if screen.IsRunning(ctx) {
-		output.Warn("Server is already running! Use: screen -r %s", cfg.SessionName)
-		return nil
+	alreadyRunning, err := management.StartServer(ctx, screen, runner, cfg.Port, cfg.Dir, cfg.SessionName, output)
+	if err != nil {
+		return err
 	}
-
-	output.Info("Starting Minecraft server in screen session '%s'...", cfg.SessionName)
-	if err := screen.Start(ctx, "bash", cfg.Dir+"/start.sh"); err != nil {
-		return fmt.Errorf("starting server: %w", err)
+	if !alreadyRunning {
+		output.Info("")
+		output.Info("  Attach to console:  screen -r %s", cfg.SessionName)
+		output.Info("  Detach from console: Ctrl+A then D")
+		output.Info("  Stop server:         mc-dad-server stop")
+		output.Info("  Server status:       mc-dad-server status")
+		output.Info("")
 	}
-	output.Success("Server started!")
-	output.Info("")
-	output.Info("  Attach to console:  screen -r %s", cfg.SessionName)
-	output.Info("  Detach from console: Ctrl+A then D")
-	output.Info("  Stop server:         mc-dad-server stop")
-	output.Info("  Server status:       mc-dad-server status")
-	output.Info("")
 	nagInfo := nag.Resolve(ctx, cfg.Dir)
 	nag.MaybeNag(output, nagInfo)
 	return nil
@@ -52,22 +48,9 @@ func (cmd *StopCmd) Run(globals *Globals, runner platform.CommandRunner, output 
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	if !screen.IsRunning(ctx) {
-		output.Info("No running Minecraft server found.")
-		return nil
-	}
-
-	output.Info("Sending shutdown command...")
-	if err := screen.SendCommand(ctx, "say Server shutting down in 10 seconds..."); err != nil {
+	if err := management.StopServer(ctx, screen, runner, cfg.Port, output); err != nil {
 		return err
 	}
-	if err := management.Sleep(ctx, 10); err != nil {
-		return err
-	}
-	if err := screen.SendCommand(ctx, "stop"); err != nil {
-		return err
-	}
-	output.Success("Stop command sent. Server shutting down...")
 	nagInfo := nag.Resolve(ctx, cfg.Dir)
 	nag.MaybeNag(output, nagInfo)
 	return nil
@@ -82,22 +65,7 @@ func (cmd *StatusCmd) Run(globals *Globals, runner platform.CommandRunner, outpu
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	output.Step("Minecraft Server Status")
-
-	if screen.IsRunning(ctx) {
-		output.Info("  Status:  RUNNING")
-		output.Info("  Session: screen -r %s", cfg.SessionName)
-	} else {
-		output.Info("  Status:  STOPPED")
-	}
-	output.Info("")
-
-	stats, err := management.GetProcessStats(ctx, runner)
-	if err == nil && stats.PID > 0 {
-		output.Info("  PID:     %d", stats.PID)
-		output.Info("  Memory:  %s", stats.Memory)
-		output.Info("  CPU:     %s", stats.CPU)
-	}
+	management.PrintStatus(ctx, screen, runner, cfg.Port, cfg.SessionName, output)
 	output.Info("")
 
 	nagInfo := nag.Resolve(ctx, cfg.Dir)
@@ -127,7 +95,7 @@ func (cmd *SetupParkourCmd) Run(globals *Globals, runner platform.CommandRunner,
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	if !screen.IsRunning(ctx) {
+	if !management.IsServerRunning(ctx, screen, runner, cfg.Port) {
 		return fmt.Errorf("server not running — start it first with: mc-dad-server start")
 	}
 
@@ -186,7 +154,7 @@ func (cmd *RotateParkourCmd) Run(globals *Globals, runner platform.CommandRunner
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	if !screen.IsRunning(ctx) {
+	if !management.IsServerRunning(ctx, screen, runner, cfg.Port) {
 		output.Info("Server not running, skipping rotation")
 		return nil
 	}
@@ -206,7 +174,7 @@ func (cmd *VoteMapCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	if !screen.IsRunning(ctx) {
+	if !management.IsServerRunning(ctx, screen, runner, cfg.Port) {
 		return fmt.Errorf("server not running — start it first with: mc-dad-server start")
 	}
 

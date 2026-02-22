@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -45,5 +47,33 @@ func TestBold_Disabled(t *testing.T) {
 	u := New(false)
 	if got := u.Bold("text"); got != "text" {
 		t.Errorf("Bold() with color disabled = %q, want %q", got, "text")
+	}
+}
+
+func TestNewWriter(t *testing.T) {
+	var buf bytes.Buffer
+	u := NewWriter(&buf, false)
+
+	u.Info("hello %s", "world")
+	if !strings.Contains(buf.String(), "hello world") {
+		t.Errorf("Info() output = %q, expected to contain %q", buf.String(), "hello world")
+	}
+
+	buf.Reset()
+	u.Success("done")
+	if !strings.Contains(buf.String(), "done") {
+		t.Errorf("Success() output = %q, expected to contain %q", buf.String(), "done")
+	}
+
+	buf.Reset()
+	u.Warn("oops")
+	if !strings.Contains(buf.String(), "oops") {
+		t.Errorf("Warn() output = %q, expected to contain %q", buf.String(), "oops")
+	}
+
+	buf.Reset()
+	u.Step("section")
+	if !strings.Contains(buf.String(), "section") {
+		t.Errorf("Step() output = %q, expected to contain %q", buf.String(), "section")
 	}
 }

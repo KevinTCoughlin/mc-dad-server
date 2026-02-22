@@ -3,8 +3,10 @@ package management
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
@@ -16,9 +18,19 @@ type ProcessStats struct {
 	CPU    string
 }
 
-// GetProcessStats finds the server.jar process and returns its stats.
+// serverJarPatterns are the jar names used by supported Minecraft server types.
+var serverJarPatterns = []string{"server.jar", "paper.jar", "fabric-server-launch.jar"}
+
+// GetProcessStats finds the Minecraft server process and returns its stats.
 func GetProcessStats(ctx context.Context, runner platform.CommandRunner) (ProcessStats, error) {
-	out, err := runner.RunWithOutput(ctx, "pgrep", "-f", "server.jar")
+	var out []byte
+	var err error
+	for _, pattern := range serverJarPatterns {
+		out, err = runner.RunWithOutput(ctx, "pgrep", "-f", pattern)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return ProcessStats{}, fmt.Errorf("server not running")
 	}
@@ -47,4 +59,26 @@ func GetProcessStats(ctx context.Context, runner platform.CommandRunner) (Proces
 	}
 
 	return stats, nil
+}
+
+// IsServerRunning checks whether a Minecraft server is running using screen
+// session detection, process detection, and port probing.
+func IsServerRunning(ctx context.Context, screen *ScreenManager, runner platform.CommandRunner, port int) bool {
+	if screen.IsRunning(ctx) {
+		return true
+	}
+	if stats, err := GetProcessStats(ctx, runner); err == nil && stats.PID > 0 {
+		return true
+	}
+	return IsPortListening(port)
+}
+
+// IsPortListening checks if something is listening on the given TCP port.
+func IsPortListening(port int) bool {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 1*time.Second)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
 }
