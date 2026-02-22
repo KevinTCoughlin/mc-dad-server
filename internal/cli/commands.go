@@ -87,6 +87,8 @@ func (cmd *StatusCmd) Run(globals *Globals, runner platform.CommandRunner, outpu
 	if screen.IsRunning(ctx) {
 		output.Info("  Status:  RUNNING")
 		output.Info("  Session: screen -r %s", cfg.SessionName)
+	} else if management.IsPortListening(cfg.Port) {
+		output.Info("  Status:  RUNNING (port %d)", cfg.Port)
 	} else {
 		output.Info("  Status:  STOPPED")
 	}

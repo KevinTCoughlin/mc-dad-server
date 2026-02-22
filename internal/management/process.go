@@ -3,8 +3,10 @@ package management
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
@@ -47,4 +49,14 @@ func GetProcessStats(ctx context.Context, runner platform.CommandRunner) (Proces
 	}
 
 	return stats, nil
+}
+
+// IsPortListening checks if something is listening on the given TCP port.
+func IsPortListening(port int) bool {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 1*time.Second)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
 }
