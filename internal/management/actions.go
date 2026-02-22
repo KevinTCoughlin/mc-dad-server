@@ -3,6 +3,7 @@ package management
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
@@ -19,7 +20,7 @@ func StartServer(ctx context.Context, screen *ScreenManager, runner platform.Com
 	}
 
 	output.Info("Starting Minecraft server in screen session '%s'...", sessionName)
-	if err := screen.Start(ctx, "bash", dir+"/start.sh"); err != nil {
+	if err := screen.Start(ctx, "bash", filepath.Join(dir, "start.sh")); err != nil {
 		return false, fmt.Errorf("starting server: %w", err)
 	}
 	output.Success("Server started!")
@@ -54,14 +55,15 @@ func PrintStatus(ctx context.Context, screen *ScreenManager, runner platform.Com
 
 	stats, err := GetProcessStats(ctx, runner)
 
-	if screen.IsRunning(ctx) {
+	switch {
+	case screen.IsRunning(ctx):
 		output.Info("  Status:  RUNNING")
 		output.Info("  Session: screen -r %s", sessionName)
-	} else if err == nil && stats.PID > 0 {
+	case err == nil && stats.PID > 0:
 		output.Info("  Status:  RUNNING (pid %d)", stats.PID)
-	} else if IsPortListening(port) {
+	case IsPortListening(port):
 		output.Info("  Status:  RUNNING (port %d)", port)
-	} else {
+	default:
 		output.Info("  Status:  STOPPED")
 	}
 	output.Info("")
