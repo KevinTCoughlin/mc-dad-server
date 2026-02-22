@@ -63,7 +63,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(15, 15, 26, 0.85);
+      background: rgba(15, 15, 26, 0.95);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
@@ -71,6 +71,10 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+    }
+
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+      nav { background: rgba(15, 15, 26, 0.85); }
     }
 
     nav .brand {
@@ -96,6 +100,12 @@
     }
 
     nav .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    nav .nav-links a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+      border-radius: 3px;
+    }
 
     /* Hero */
     .hero {
@@ -225,6 +235,11 @@
       background: var(--accent-glow);
       transform: translateY(-1px);
       text-decoration: none;
+    }
+
+    .dl-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
     }
 
     .dl-btn svg {
