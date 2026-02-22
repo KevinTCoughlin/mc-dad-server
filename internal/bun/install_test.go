@@ -11,6 +11,7 @@ import (
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
+	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
 // mockKey mirrors MockRunner.key() which is unexported.
@@ -38,6 +39,46 @@ func TestBunVersion_NotInstalled(t *testing.T) {
 	_, err := bunVersion(context.Background(), runner)
 	if err == nil {
 		t.Fatal("expected error for missing bun")
+	}
+}
+
+func TestInstallBun_AlreadyInstalled(t *testing.T) {
+	runner := platform.NewMockRunner()
+	runner.ExistsMap["bun"] = true
+	runner.OutputMap[mockKey("bun", "--version")] = []byte("1.3.0\n")
+
+	err := InstallBun(context.Background(), runner, nil, ui.New(false))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should not have run the installer
+	for _, cmd := range runner.Commands {
+		if cmd.Name == "bash" {
+			t.Fatal("expected installer to be skipped when bun already exists")
+		}
+	}
+}
+
+func TestInstallBun_NotInstalled(t *testing.T) {
+	runner := platform.NewMockRunner()
+	runner.ExistsMap["bun"] = false
+	// After install, bun --version should succeed
+	runner.OutputMap[mockKey("bun", "--version")] = []byte("1.3.0\n")
+
+	err := InstallBun(context.Background(), runner, nil, ui.New(false))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should have run the bash installer
+	found := false
+	for _, cmd := range runner.Commands {
+		if cmd.Name == "bash" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("expected installer to run when bun is not installed")
 	}
 }
 
@@ -101,7 +142,8 @@ func TestDeployScripts(t *testing.T) {
 	runtimeFiles := []string{
 		"runtime/types.ts", "runtime/events.ts", "runtime/rcon.ts",
 		"runtime/log-parser.ts", "runtime/players.ts", "runtime/scheduler.ts",
-		"runtime/webhooks.ts", "runtime/server.ts", "runtime/index.ts",
+		"runtime/webhooks.ts", "runtime/server.ts", "runtime/command-filter.ts",
+		"runtime/rate-limiter.ts", "runtime/integrity.ts", "runtime/index.ts",
 	}
 	for _, f := range runtimeFiles {
 		path := filepath.Join(tmpDir, "bun-scripts", f)
@@ -116,13 +158,17 @@ func TestDeployScripts(t *testing.T) {
 		t.Error("expected example.ts to exist")
 	}
 
-	// Verify .env has RCON password
+	// Verify .env does NOT contain RCON password (passed at runtime instead)
 	envData, err := os.ReadFile(filepath.Join(tmpDir, "bun-scripts", ".env"))
 	if err != nil {
 		t.Fatalf("reading .env: %v", err)
 	}
-	if got := string(envData); !strings.Contains(got, "testpass123") {
-		t.Errorf("expected .env to contain RCON password, got: %s", got)
+	envStr := string(envData)
+	if strings.Contains(envStr, "testpass123") {
+		t.Errorf("expected .env to NOT contain RCON password, got: %s", envStr)
+	}
+	if !strings.Contains(envStr, "RCON_PORT=") {
+		t.Errorf("expected .env to contain RCON_PORT, got: %s", envStr)
 	}
 
 	// Verify package.json exists

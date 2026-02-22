@@ -1,28 +1,11 @@
-// Sidecar boot: loads .env, creates the global `mc` object, loads user scripts,
+// Sidecar boot: creates the global `mc` object, loads user scripts,
 // tails the server log for events, and connects RCON.
+// Note: Bun automatically loads .env from cwd (env vars take precedence).
 
 import { McServer } from "./server";
+import { IntegrityChecker } from "./integrity";
 import { readdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
-import { watch } from "node:fs";
-
-// Load .env
-const envPath = join(import.meta.dir, "..", ".env");
-const envFile = Bun.file(envPath);
-if (await envFile.exists()) {
-  const text = await envFile.text();
-  for (const line of text.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq < 0) continue;
-    const key = trimmed.slice(0, eq).trim();
-    const value = trimmed.slice(eq + 1).trim();
-    if (!process.env[key]) {
-      process.env[key] = value;
-    }
-  }
-}
+import { join, resolve, relative } from "node:path";
 
 const RCON_PASSWORD = process.env.RCON_PASSWORD ?? "";
 const RCON_PORT = parseInt(process.env.RCON_PORT ?? "25575", 10);
@@ -35,8 +18,17 @@ const mc = new McServer(RCON_HOST, RCON_PORT, RCON_PASSWORD);
 // Expose as global
 (globalThis as any).mc = mc;
 
+// --- Path validation utility ---
+function isPathWithin(filePath: string, baseDir: string): boolean {
+  const resolved = resolve(baseDir, filePath);
+  const rel = relative(baseDir, resolved);
+  return !rel.startsWith("..") && !rel.includes("/..");
+}
+
 // --- Load user scripts ---
 const scriptsDir = join(import.meta.dir, "..", "scripts");
+const integrity = new IntegrityChecker();
+
 async function loadScripts() {
   let files: string[];
   try {
@@ -47,7 +39,33 @@ async function loadScripts() {
     return;
   }
 
+  // Validate script paths
+  const safeFiles: string[] = [];
   for (const file of files) {
+    if (file.includes("..") || file.includes("/") || file.includes("\\")) {
+      console.warn(`[mc-scripts] Skipping script with suspicious filename: ${file}`);
+      continue;
+    }
+    if (!isPathWithin(file, scriptsDir)) {
+      console.warn(`[mc-scripts] Skipping script outside scripts directory: ${file}`);
+      continue;
+    }
+    safeFiles.push(file);
+  }
+
+  // Handle --rehash flag
+  if (process.argv.includes("--rehash")) {
+    await integrity.regenerate(scriptsDir, safeFiles);
+    process.exit(0);
+  }
+
+  // Integrity check
+  const mismatched = await integrity.verify(scriptsDir, safeFiles);
+  for (const file of mismatched) {
+    console.warn(`[mc-scripts] WARNING: Script modified since last manifest: ${file}`);
+  }
+
+  for (const file of safeFiles) {
     const path = join(scriptsDir, file);
     try {
       await import(path);

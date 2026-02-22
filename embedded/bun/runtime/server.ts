@@ -6,7 +6,9 @@ import { LogParser } from "./log-parser";
 import { PlayerTracker } from "./players";
 import { Scheduler } from "./scheduler";
 import { WebhookServer } from "./webhooks";
-import type { McEventMap, McEventName, WebhookRoute } from "./types";
+import { CommandFilter } from "./command-filter";
+import { RateLimiter } from "./rate-limiter";
+import type { McEventMap, McEventName } from "./types";
 
 export class McServer {
   readonly events = new EventBus();
@@ -14,11 +16,13 @@ export class McServer {
   readonly scheduler = new Scheduler();
   readonly webhooks = new WebhookServer();
   readonly logParser: LogParser;
+  readonly commandFilter = new CommandFilter();
 
   private rcon: RconClient;
   private rconHost: string;
   private rconPort: number;
   private rconPassword: string;
+  private rateLimiter: RateLimiter;
 
   constructor(rconHost: string, rconPort: number, rconPassword: string) {
     this.rconHost = rconHost;
@@ -27,6 +31,12 @@ export class McServer {
     this.rcon = new RconClient(rconHost, rconPort, rconPassword);
     this.players = new PlayerTracker(this.events);
     this.logParser = new LogParser(this.events);
+
+    const rateLimit = parseInt(process.env.RCON_RATE_LIMIT ?? "20", 10);
+    const rateBurst = parseInt(process.env.RCON_RATE_BURST ?? "40", 10);
+    this.rateLimiter = new RateLimiter(rateLimit, rateBurst);
+
+    console.log(`[mc-scripts] Command filter active, blocking: ${this.commandFilter.blockedCommands.join(", ") || "(none)"}`);
   }
 
   // --- Event API ---
@@ -60,6 +70,13 @@ export class McServer {
   async command(cmd: string): Promise<string> {
     if (!this.rcon.isConnected) {
       console.warn(`[mc-scripts] RCON not connected, cannot run: ${cmd}`);
+      return "";
+    }
+    if (!this.commandFilter.isAllowed(cmd)) {
+      return "";
+    }
+    if (!this.rateLimiter.tryAcquire()) {
+      console.warn(`[mc-scripts] Rate limited, dropping command: ${cmd}`);
       return "";
     }
     return this.rcon.command(cmd);

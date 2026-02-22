@@ -58,6 +58,8 @@ internal/
   tunnel/              Networking (playit.gg)
   ui/                  Terminal output and summaries
   vote/                Voting system
+  bun/                 Bun scripting sidecar (install, deploy, embed)
+embedded/bun/          Bun runtime framework (TypeScript) and templates
 configs/               Minecraft server config templates
 docs/                  Documentation and GitHub Pages
 scripts/               Utility scripts

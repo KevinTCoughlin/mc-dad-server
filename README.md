@@ -55,6 +55,7 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 - Daily automatic backups with rotation
 - Opens firewall ports for Java (25565) and Bedrock (19132)
 - Optional playit.gg tunnel — **no port forwarding needed**
+- Optional [TypeScript/JS scripting sidecar](docs/scripting.md) for custom automation (`--experimental-bun`)
 
 ## Works On
 
@@ -97,6 +98,7 @@ mc-dad-server install \
 | `--playit` | `true` | Set up playit.gg tunnel (`--no-playit` to skip) |
 | `--chat-filter` | `true` | Install chat filter plugin (`--no-chat-filter` to skip) |
 | `--mc-version` | `latest` | Minecraft version |
+| `--experimental-bun` | `false` | Enable [TypeScript/JS scripting sidecar](docs/scripting.md) |
 
 ## Daily Commands
 
@@ -168,7 +170,12 @@ When a map rotates, all players get a broadcast and are teleported to the new fe
 
 MC Dad Server is **free and fully functional** — no features are locked behind a paywall.
 
-If you find it useful, you can support development by purchasing a license. Licensed users get clean output without nag messages and a "Licensed to [name]" badge.
+If you find it useful, you can support development:
+
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?logo=github)](https://github.com/sponsors/KevinTCoughlin)
+[![Support on Ko-fi](https://img.shields.io/badge/Support-Ko--fi-FF5E5B?logo=ko-fi)](https://ko-fi.com/kevintcoughlin)
+
+You can also purchase a license — licensed users get clean output without nag messages and a "Licensed to [name]" badge.
 
 ```bash
 mc-dad-server activate-license --key YOUR-LICENSE-KEY

@@ -38,6 +38,10 @@ internal/
   tunnel/                   playit.gg tunnel setup
   ui/                       Colored terminal output
   vote/                     In-game map vote system
+  bun/                      Bun scripting sidecar (install, deploy, embed)
+embedded/bun/               Bun runtime framework (TypeScript) and templates
+  runtime/                  Framework files (server, events, rcon, webhooks, security)
+  scripts/                  Example user scripts
 ```
 
 ## Architecture

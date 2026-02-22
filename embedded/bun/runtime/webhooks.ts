@@ -10,14 +10,29 @@ export class WebhookServer {
     this.routes.push(route);
   }
 
-  start(port: number): void {
+  start(port?: number): void {
     if (this.server) {
       console.warn("[mc-scripts] Webhook server already running");
       return;
     }
 
+    // Env vars override script-provided values (admin authority)
+    const envPort = process.env.WEBHOOK_PORT;
+    const resolvedPort = envPort ? parseInt(envPort, 10) : (port ?? 9090);
+    const hostname = process.env.WEBHOOK_HOST ?? "127.0.0.1";
+
+    if (resolvedPort < 1024 || resolvedPort > 65535) {
+      console.error(`[mc-scripts] Invalid webhook port ${resolvedPort} (must be 1024-65535)`);
+      return;
+    }
+
+    if (hostname !== "127.0.0.1" && hostname !== "localhost" && hostname !== "::1") {
+      console.warn(`[mc-scripts] WARNING: Webhook binding to non-localhost address: ${hostname}`);
+    }
+
     this.server = Bun.serve({
-      port,
+      port: resolvedPort,
+      hostname,
       fetch: async (req) => {
         const url = new URL(req.url);
         const method = req.method.toUpperCase();
@@ -37,7 +52,7 @@ export class WebhookServer {
       },
     });
 
-    console.log(`[mc-scripts] Webhook server listening on port ${port}`);
+    console.log(`[mc-scripts] Webhook server listening on ${hostname}:${resolvedPort}`);
   }
 
   stop(): void {
