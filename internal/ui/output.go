@@ -66,19 +66,19 @@ func (u *UI) colorize(color, s string) string {
 // Info prints an informational message.
 func (u *UI) Info(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Fprintln(u.writer, u.colorize(colorBlue, "[INFO]")+" "+msg)
+	_, _ = fmt.Fprintln(u.writer, u.colorize(colorBlue, "[INFO]")+" "+msg)
 }
 
 // Success prints a success message.
 func (u *UI) Success(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Fprintln(u.writer, u.colorize(colorGreen, "[OK]")+" "+msg)
+	_, _ = fmt.Fprintln(u.writer, u.colorize(colorGreen, "[OK]")+" "+msg)
 }
 
 // Warn prints a warning message.
 func (u *UI) Warn(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Fprintln(u.writer, u.colorize(colorYellow, "[WARN]")+" "+msg)
+	_, _ = fmt.Fprintln(u.writer, u.colorize(colorYellow, "[WARN]")+" "+msg)
 }
 
 // Error prints an error message to stderr.
@@ -91,7 +91,7 @@ func (u *UI) Error(format string, args ...any) {
 func (u *UI) Step(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
 	header := fmt.Sprintf("\n━━━ %s ━━━\n", msg)
-	fmt.Fprintln(u.writer, u.colorize(colorCyan+colorBold, header))
+	_, _ = fmt.Fprintln(u.writer, u.colorize(colorCyan+colorBold, header))
 }
 
 // Bold returns text wrapped in bold codes (if color enabled).

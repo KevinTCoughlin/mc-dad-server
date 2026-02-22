@@ -83,14 +83,14 @@ func newModel(opts *Options, runner platform.CommandRunner) model {
 	}
 }
 
-func (m model) Init() tea.Cmd {
+func (m model) Init() tea.Cmd { //nolint:gocritic
 	return tea.Batch(
 		textinput.Blink,
 		tailLog(m.ctx, m.logPath),
 	)
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocritic
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
@@ -139,9 +139,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Show the command that was run.
 			m.lines = append(m.lines, promptStyle.Render("> ")+msg.input)
 			if msg.output != "" {
-				for _, line := range strings.Split(msg.output, "\n") {
-					m.lines = append(m.lines, line)
-				}
+				m.lines = append(m.lines, strings.Split(msg.output, "\n")...)
 			}
 			if m.ready {
 				m.viewport.SetContent(strings.Join(m.lines, "\n"))
@@ -193,6 +191,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var vpCmd tea.Cmd
 			m.viewport, vpCmd = m.viewport.Update(msg)
 			cmds = append(cmds, vpCmd)
+
+		default:
 		}
 	}
 
@@ -204,7 +204,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m model) View() string {
+func (m model) View() string { //nolint:gocritic
 	if !m.ready {
 		return "Initializing..."
 	}
@@ -224,7 +224,7 @@ func (m model) View() string {
 	)
 }
 
-func (m model) runCommand(input string) tea.Cmd {
+func (m model) runCommand(input string) tea.Cmd { //nolint:gocritic
 	ctx := m.ctx
 	opts := m.opts
 	runner := m.runner
