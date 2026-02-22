@@ -18,9 +18,19 @@ type ProcessStats struct {
 	CPU    string
 }
 
-// GetProcessStats finds the server.jar process and returns its stats.
+// serverJarPatterns are the jar names used by supported Minecraft server types.
+var serverJarPatterns = []string{"server.jar", "paper.jar", "fabric-server-launch.jar"}
+
+// GetProcessStats finds the Minecraft server process and returns its stats.
 func GetProcessStats(ctx context.Context, runner platform.CommandRunner) (ProcessStats, error) {
-	out, err := runner.RunWithOutput(ctx, "pgrep", "-f", "server.jar")
+	var out []byte
+	var err error
+	for _, pattern := range serverJarPatterns {
+		out, err = runner.RunWithOutput(ctx, "pgrep", "-f", pattern)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return ProcessStats{}, fmt.Errorf("server not running")
 	}

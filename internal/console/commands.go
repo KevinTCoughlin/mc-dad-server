@@ -70,16 +70,18 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 
 	case "status":
 		output.Step("Minecraft Server Status")
+		stats, err := management.GetProcessStats(ctx, runner)
 		if screen.IsRunning(ctx) {
 			output.Info("  Status:  RUNNING")
 			output.Info("  Session: screen -r %s", cfg.SessionName)
+		} else if err == nil && stats.PID > 0 {
+			output.Info("  Status:  RUNNING (pid %d)", stats.PID)
 		} else if management.IsPortListening(cfg.Port) {
 			output.Info("  Status:  RUNNING (port %d)", cfg.Port)
 		} else {
 			output.Info("  Status:  STOPPED")
 		}
 		output.Info("")
-		stats, err := management.GetProcessStats(ctx, runner)
 		if err == nil && stats.PID > 0 {
 			output.Info("  PID:     %d", stats.PID)
 			output.Info("  Memory:  %s", stats.Memory)

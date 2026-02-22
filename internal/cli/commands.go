@@ -84,9 +84,13 @@ func (cmd *StatusCmd) Run(globals *Globals, runner platform.CommandRunner, outpu
 
 	output.Step("Minecraft Server Status")
 
+	stats, err := management.GetProcessStats(ctx, runner)
+
 	if screen.IsRunning(ctx) {
 		output.Info("  Status:  RUNNING")
 		output.Info("  Session: screen -r %s", cfg.SessionName)
+	} else if err == nil && stats.PID > 0 {
+		output.Info("  Status:  RUNNING (pid %d)", stats.PID)
 	} else if management.IsPortListening(cfg.Port) {
 		output.Info("  Status:  RUNNING (port %d)", cfg.Port)
 	} else {
@@ -94,7 +98,6 @@ func (cmd *StatusCmd) Run(globals *Globals, runner platform.CommandRunner, outpu
 	}
 	output.Info("")
 
-	stats, err := management.GetProcessStats(ctx, runner)
 	if err == nil && stats.PID > 0 {
 		output.Info("  PID:     %d", stats.PID)
 		output.Info("  Memory:  %s", stats.Memory)
