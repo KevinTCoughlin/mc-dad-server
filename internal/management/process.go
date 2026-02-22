@@ -61,6 +61,18 @@ func GetProcessStats(ctx context.Context, runner platform.CommandRunner) (Proces
 	return stats, nil
 }
 
+// IsServerRunning checks whether a Minecraft server is running using screen
+// session detection, process detection, and port probing.
+func IsServerRunning(ctx context.Context, screen *ScreenManager, runner platform.CommandRunner, port int) bool {
+	if screen.IsRunning(ctx) {
+		return true
+	}
+	if stats, err := GetProcessStats(ctx, runner); err == nil && stats.PID > 0 {
+		return true
+	}
+	return IsPortListening(port)
+}
+
 // IsPortListening checks if something is listening on the given TCP port.
 func IsPortListening(port int) bool {
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 1*time.Second)

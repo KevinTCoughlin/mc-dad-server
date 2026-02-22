@@ -22,8 +22,8 @@ func (cmd *StartCmd) Run(globals *Globals, runner platform.CommandRunner, output
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	if screen.IsRunning(ctx) {
-		output.Warn("Server is already running! Use: screen -r %s", cfg.SessionName)
+	if management.IsServerRunning(ctx, screen, runner, cfg.Port) {
+		output.Warn("Server is already running!")
 		return nil
 	}
 
@@ -52,7 +52,7 @@ func (cmd *StopCmd) Run(globals *Globals, runner platform.CommandRunner, output 
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	if !screen.IsRunning(ctx) {
+	if !management.IsServerRunning(ctx, screen, runner, cfg.Port) {
 		output.Info("No running Minecraft server found.")
 		return nil
 	}
@@ -132,7 +132,7 @@ func (cmd *SetupParkourCmd) Run(globals *Globals, runner platform.CommandRunner,
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	if !screen.IsRunning(ctx) {
+	if !management.IsServerRunning(ctx, screen, runner, cfg.Port) {
 		return fmt.Errorf("server not running — start it first with: mc-dad-server start")
 	}
 
@@ -191,7 +191,7 @@ func (cmd *RotateParkourCmd) Run(globals *Globals, runner platform.CommandRunner
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	if !screen.IsRunning(ctx) {
+	if !management.IsServerRunning(ctx, screen, runner, cfg.Port) {
 		output.Info("Server not running, skipping rotation")
 		return nil
 	}
@@ -211,7 +211,7 @@ func (cmd *VoteMapCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 	cfg := globalsToConfig(globals)
 	screen := management.NewScreenManager(runner, cfg.SessionName)
 
-	if !screen.IsRunning(ctx) {
+	if !management.IsServerRunning(ctx, screen, runner, cfg.Port) {
 		return fmt.Errorf("server not running — start it first with: mc-dad-server start")
 	}
 

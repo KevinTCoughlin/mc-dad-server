@@ -35,10 +35,12 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 	var buf bytes.Buffer
 	output := ui.NewWriter(&buf, false)
 
+	running := management.IsServerRunning(ctx, screen, runner, cfg.Port)
+
 	switch cmd {
 	case "start":
-		if screen.IsRunning(ctx) {
-			output.Warn("Server is already running! Use: screen -r %s", cfg.SessionName)
+		if running {
+			output.Warn("Server is already running!")
 		} else {
 			output.Info("Starting Minecraft server in screen session '%s'...", cfg.SessionName)
 			if err := screen.Start(ctx, "bash", cfg.Dir+"/start.sh"); err != nil {
@@ -49,7 +51,7 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 		}
 
 	case "stop":
-		if !screen.IsRunning(ctx) {
+		if !running {
 			output.Info("No running Minecraft server found.")
 		} else {
 			output.Info("Sending shutdown command...")
@@ -94,14 +96,14 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 		}
 
 	case "rotate-parkour":
-		if !screen.IsRunning(ctx) {
+		if !running {
 			output.Info("Server not running, skipping rotation")
 		} else if err := management.RotateParkour(ctx, cfg.Dir, screen, output); err != nil {
 			output.Warn("Rotation failed: %s", err)
 		}
 
 	case "vote-map":
-		if !screen.IsRunning(ctx) {
+		if !running {
 			output.Warn("Server not running — start it first")
 		} else {
 			result, err := vote.RunVote(ctx, vote.Config{
