@@ -32,6 +32,7 @@ type CLI struct {
 	Stop              StopCmd              `cmd:"" help:"Gracefully stop the Minecraft server"`
 	Status            StatusCmd            `cmd:"" help:"Show server status and resource usage"`
 	Backup            BackupCmd            `cmd:"" help:"Backup world data with rotation"`
+	Console           ConsoleCmd           `cmd:"" help:"Interactive console with live server log"`
 	SetupParkour      SetupParkourCmd      `cmd:"setup-parkour" help:"Set up parkour world (first-time setup)"`
 	RotateParkour     RotateParkourCmd     `cmd:"rotate-parkour" help:"Rotate the featured parkour map"`
 	VoteMap           VoteMapCmd           `cmd:"vote-map" help:"Start a map vote (CS:GO style)"`

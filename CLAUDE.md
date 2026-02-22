@@ -24,8 +24,13 @@ internal/
   cli/                      Kong CLI structs and command handlers
     cli.go                  Globals + CLI struct (top-level command tree)
     commands.go             Simple commands (start, stop, status, backup, parkour, vote)
+    console.go              Console command (bridges to console package)
     install.go              Install command (flags, validation, orchestration)
     license.go              License commands (validate, activate, deactivate)
+  console/                  Interactive TUI console (Bubbletea)
+    console.go              Bubbletea model, Run() entry point
+    commands.go             Command dispatcher (parses input, calls management logic)
+    logtail.go              Polls logs/latest.log, sends lines as TUI messages
   config/                   ServerConfig struct, defaults, validation
   configs/                  Deploy embedded config files + start script
   license/                  LemonSqueezy license client + manager
@@ -56,7 +61,7 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 
 - No package-level mutable state — all dependencies passed explicitly
 - `platform.CommandRunner` interface for all shell-outs (testable via `MockRunner`)
-- `ui.UI` for all user-facing output (color auto-detected)
+- `ui.UI` for all user-facing output (color auto-detected); `ui.NewWriter(w, color)` to capture output into a buffer
 - Helpers in install.go take explicit `cfg`, `runner`, `output` params
 - Enum validation via Kong tags; range validation in `config.Validate()`
 - `context.Background()` in each command's `Run()` method
