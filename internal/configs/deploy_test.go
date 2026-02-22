@@ -138,3 +138,78 @@ func TestDeployStartScript(t *testing.T) {
 		t.Error("start.sh missing memory setting")
 	}
 }
+
+func TestDeployCompose(t *testing.T) {
+	setupTestFS(t)
+
+	dir := t.TempDir()
+	cfg := config.DefaultConfig()
+	cfg.Dir = dir
+	cfg.Port = 25565
+	cfg.Memory = "4G"
+	cfg.ServerType = "paper"
+	cfg.MOTD = "My Test Server"
+	cfg.MaxPlayers = 15
+	cfg.Difficulty = "hard"
+	cfg.GameMode = "creative"
+	cfg.GCType = "g1gc"
+	cfg.Whitelist = true
+	cfg.Version = "latest"
+
+	if err := DeployCompose(cfg, dir); err != nil {
+		t.Fatalf("DeployCompose() error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, "compose.yml"))
+	if err != nil {
+		t.Fatalf("reading compose.yml: %v", err)
+	}
+	content := string(data)
+
+	checks := []struct {
+		desc string
+		want string
+	}{
+		{"port mapping", "25565:25565"},
+		{"bedrock UDP port", "19132:19132/udp"},
+		{"server type uppercase", `TYPE: "PAPER"`},
+		{"memory", `MEMORY: "4G"`},
+		{"MOTD", `MOTD: "My Test Server"`},
+		{"max players", `MAX_PLAYERS: "15"`},
+		{"difficulty", `DIFFICULTY: "hard"`},
+		{"game mode", `MODE: "creative"`},
+		{"whitelist enabled", `ENABLE_WHITELIST: "true"`},
+		{"aikar flags", `USE_AIKAR_FLAGS: "true"`},
+		{"volume mount", "minecraft_data:/data"},
+		{"volume definition", "minecraft_data:"},
+		{"restart policy", "restart: unless-stopped"},
+	}
+	for _, c := range checks {
+		if !strings.Contains(content, c.want) {
+			t.Errorf("compose.yml missing %s (%q)", c.desc, c.want)
+		}
+	}
+}
+
+func TestDeployComposeZGC(t *testing.T) {
+	setupTestFS(t)
+
+	dir := t.TempDir()
+	cfg := config.DefaultConfig()
+	cfg.Dir = dir
+	cfg.GCType = "zgc"
+
+	if err := DeployCompose(cfg, dir); err != nil {
+		t.Fatalf("DeployCompose() error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, "compose.yml"))
+	if err != nil {
+		t.Fatalf("reading compose.yml: %v", err)
+	}
+
+	// With ZGC, Aikar flags should be disabled.
+	if !strings.Contains(string(data), `USE_AIKAR_FLAGS: "false"`) {
+		t.Error("compose.yml should have USE_AIKAR_FLAGS false for ZGC")
+	}
+}

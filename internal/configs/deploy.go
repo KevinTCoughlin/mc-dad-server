@@ -110,6 +110,42 @@ func DeployChatSentryConfig(serverDir string) error {
 	return os.WriteFile(filepath.Join(sentryDir, "config.yml"), data, 0o644)
 }
 
+// DeployCompose renders and writes a compose.yml file for Docker / Podman Compose.
+func DeployCompose(cfg *config.ServerConfig, destDir string) error {
+	data, err := readEmbedded("embedded/templates/compose.yml.tmpl")
+	if err != nil {
+		return fmt.Errorf("reading compose.yml template: %w", err)
+	}
+
+	tmpl, err := template.New("compose.yml").Parse(string(data))
+	if err != nil {
+		return fmt.Errorf("parsing compose.yml template: %w", err)
+	}
+
+	serverType := strings.ToUpper(cfg.ServerType)
+
+	dest := filepath.Join(destDir, "compose.yml")
+	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	if err != nil {
+		return fmt.Errorf("creating compose.yml: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	return tmpl.Execute(f, map[string]any{
+		"Port":          cfg.Port,
+		"BedrockPort":   config.BedrockPort,
+		"ServerType":    serverType,
+		"Version":       cfg.Version,
+		"Memory":        cfg.Memory,
+		"MOTD":          cfg.MOTD,
+		"MaxPlayers":    cfg.MaxPlayers,
+		"Difficulty":    cfg.Difficulty,
+		"GameMode":      cfg.GameMode,
+		"Whitelist":     cfg.Whitelist,
+		"UseAikarFlags": cfg.GCType == "g1gc",
+	})
+}
+
 // DeployStartScript renders and writes the start.sh script.
 func DeployStartScript(cfg *config.ServerConfig) error {
 	data, err := readEmbedded("embedded/templates/start.sh.tmpl")
