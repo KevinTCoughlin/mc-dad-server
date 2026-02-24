@@ -20,7 +20,8 @@ const (
 )
 
 // RCONClient implements the Source RCON protocol for communicating with a
-// Minecraft server. It is safe for concurrent use after Connect returns.
+// Minecraft server. It supports concurrent Command calls after Connect
+// returns, but Connect and Close must be externally synchronized.
 type RCONClient struct {
 	addr     string
 	password string

@@ -33,13 +33,21 @@ func (s *rconTestServer) Addr() string { return s.ln.Addr().String() }
 
 func (s *rconTestServer) Close() { _ = s.ln.Close() }
 
-// Serve accepts one connection and handles it synchronously.
+// Serve accepts connections and handles them. It keeps accepting new
+// connections so that reconnect tests work.
 func (s *rconTestServer) Serve(t *testing.T) {
 	t.Helper()
-	conn, err := s.ln.Accept()
-	if err != nil {
-		return // listener closed
+	for {
+		conn, err := s.ln.Accept()
+		if err != nil {
+			return // listener closed
+		}
+		go s.handleConn(t, conn)
 	}
+}
+
+func (s *rconTestServer) handleConn(t *testing.T, conn net.Conn) {
+	t.Helper()
 	defer func() { _ = conn.Close() }()
 
 	for {
