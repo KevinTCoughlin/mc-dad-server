@@ -296,6 +296,11 @@ func TestDeployContainerEnv(t *testing.T) {
 			t.Errorf(".env missing %s (%q)", c.desc, c.want)
 		}
 	}
+
+	// Verify template placeholders are not present
+	if strings.Contains(content, "{{") {
+		t.Error(".env still contains unsubstituted template placeholders")
+	}
 }
 
 func TestDeployQuadlet(t *testing.T) {

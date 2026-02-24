@@ -39,6 +39,7 @@ StopTimeout=60
 [Service]
 Restart=on-failure
 RestartSec=30
+# Safety limits — keep slightly above container MEMORY to allow JVM overhead
 MemoryMax=3G
 CPUQuota=200%
 
