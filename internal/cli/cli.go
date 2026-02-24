@@ -11,6 +11,7 @@ import (
 type Globals struct {
 	Dir     string           `help:"Server directory (default: ~/minecraft-server)" default:""`
 	Session string           `help:"Screen session name" default:"minecraft"`
+	Mode    string           `help:"Server mode (auto, screen, container)" default:"auto" enum:"auto,screen,container"`
 	Version kong.VersionFlag `help:"Print version" short:"v" hidden:""`
 }
 

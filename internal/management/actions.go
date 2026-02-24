@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
@@ -13,14 +12,14 @@ import (
 // It prints status messages to output. It returns true if the server was
 // already running (no action taken), false if it was freshly started.
 // Returns an error if the start attempt fails.
-func StartServer(ctx context.Context, screen *ScreenManager, runner platform.CommandRunner, port int, dir, sessionName string, output *ui.UI) (bool, error) {
-	if IsServerRunning(ctx, screen, runner, port) {
+func StartServer(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, dir, sessionName string, output *ui.UI) (bool, error) {
+	if IsServerRunning(ctx, mgr, runner, port) {
 		output.Warn("Server is already running!")
 		return true, nil
 	}
 
-	output.Info("Starting Minecraft server in screen session '%s'...", sessionName)
-	if err := screen.Start(ctx, "bash", filepath.Join(dir, "start.sh")); err != nil {
+	output.Info("Starting Minecraft server...")
+	if err := mgr.Launch(ctx); err != nil {
 		return false, fmt.Errorf("starting server: %w", err)
 	}
 	output.Success("Server started!")
@@ -29,20 +28,20 @@ func StartServer(ctx context.Context, screen *ScreenManager, runner platform.Com
 
 // StopServer gracefully stops the Minecraft server.
 // It prints status messages to output and returns any error encountered.
-func StopServer(ctx context.Context, screen *ScreenManager, runner platform.CommandRunner, port int, output *ui.UI) error {
-	if !IsServerRunning(ctx, screen, runner, port) {
+func StopServer(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, output *ui.UI) error {
+	if !IsServerRunning(ctx, mgr, runner, port) {
 		output.Info("No running Minecraft server found.")
 		return nil
 	}
 
 	output.Info("Sending shutdown command...")
-	if err := screen.SendCommand(ctx, "say Server shutting down in 10 seconds..."); err != nil {
+	if err := mgr.SendCommand(ctx, "say Server shutting down in 10 seconds..."); err != nil {
 		return err
 	}
 	if err := Sleep(ctx, 10); err != nil {
 		return err
 	}
-	if err := screen.SendCommand(ctx, "stop"); err != nil {
+	if err := mgr.SendCommand(ctx, "stop"); err != nil {
 		return err
 	}
 	output.Success("Stop command sent. Server shutting down...")
@@ -50,13 +49,13 @@ func StopServer(ctx context.Context, screen *ScreenManager, runner platform.Comm
 }
 
 // PrintStatus prints the server status and resource usage to output.
-func PrintStatus(ctx context.Context, screen *ScreenManager, runner platform.CommandRunner, port int, sessionName string, output *ui.UI) {
+func PrintStatus(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, sessionName string, output *ui.UI) {
 	output.Step("Minecraft Server Status")
 
 	stats, err := GetProcessStats(ctx, runner)
 
 	switch {
-	case screen.IsRunning(ctx):
+	case mgr.IsRunning(ctx):
 		output.Info("  Status:  RUNNING")
 		output.Info("  Session: screen -r %s", sessionName)
 	case err == nil && stats.PID > 0:

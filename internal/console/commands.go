@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,36 +31,36 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 	args := parts[1:]
 
 	cfg := optsToConfig(opts)
-	screen := management.NewScreenManager(runner, cfg.SessionName)
+	var mgr management.ServerManager = management.NewScreenManager(runner, cfg.SessionName, filepath.Join(cfg.Dir, "start.sh"))
 
 	var buf bytes.Buffer
 	output := ui.NewWriter(&buf, false)
 
-	running := management.IsServerRunning(ctx, screen, runner, cfg.Port)
+	running := management.IsServerRunning(ctx, mgr, runner, cfg.Port)
 
 	switch cmd {
 	case "start":
-		if _, err := management.StartServer(ctx, screen, runner, cfg.Port, cfg.Dir, cfg.SessionName, output); err != nil {
+		if _, err := management.StartServer(ctx, mgr, runner, cfg.Port, cfg.Dir, cfg.SessionName, output); err != nil {
 			output.Warn("Starting server: %s", err)
 		}
 
 	case "stop":
-		if err := management.StopServer(ctx, screen, runner, cfg.Port, output); err != nil {
+		if err := management.StopServer(ctx, mgr, runner, cfg.Port, output); err != nil {
 			output.Warn("%s", err)
 		}
 
 	case "status":
-		management.PrintStatus(ctx, screen, runner, cfg.Port, cfg.SessionName, output)
+		management.PrintStatus(ctx, mgr, runner, cfg.Port, cfg.SessionName, output)
 
 	case "backup":
-		if err := management.Backup(ctx, cfg.Dir, cfg.MaxBackups, screen, output); err != nil {
+		if err := management.Backup(ctx, cfg.Dir, cfg.MaxBackups, mgr, output); err != nil {
 			output.Warn("Backup failed: %s", err)
 		}
 
 	case "rotate-parkour":
 		if !running {
 			output.Info("Server not running, skipping rotation")
-		} else if err := management.RotateParkour(ctx, cfg.Dir, screen, output); err != nil {
+		} else if err := management.RotateParkour(ctx, cfg.Dir, mgr, output); err != nil {
 			output.Warn("Rotation failed: %s", err)
 		}
 
@@ -72,7 +73,7 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 				Duration:   time.Duration(cfg.VoteDuration) * time.Second,
 				MaxChoices: cfg.VoteChoices,
 				ServerDir:  cfg.Dir,
-				Screen:     screen,
+				Screen:     mgr,
 				Output:     output,
 			})
 			if err != nil {
@@ -87,7 +88,7 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 			output.Warn("Usage: say <message>")
 		} else {
 			msg := strings.Join(args, " ")
-			if err := screen.SendCommand(ctx, "say "+msg); err != nil {
+			if err := mgr.SendCommand(ctx, "say "+msg); err != nil {
 				output.Warn("%s", err)
 			} else {
 				output.Success("Sent: say %s", msg)
@@ -99,7 +100,7 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 			output.Warn("Usage: cmd <raw minecraft command>")
 		} else {
 			raw := strings.Join(args, " ")
-			if err := screen.SendCommand(ctx, raw); err != nil {
+			if err := mgr.SendCommand(ctx, raw); err != nil {
 				output.Warn("%s", err)
 			} else {
 				output.Success("Sent: %s", raw)
