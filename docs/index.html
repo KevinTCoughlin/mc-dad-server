@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MC Dad Server — Minecraft server in 60 seconds</title>
-  <meta name="description" content="Minecraft server in 60 seconds — for busy dads who just want their kids to play. No Docker. No Kubernetes. No nonsense.">
+  <meta name="description" content="Minecraft server in 60 seconds — for busy dads who just want their kids to play. Bare-metal or containerized. No nonsense.">
   <meta name="theme-color" content="#0f0f1a">
   <style>
     :root {
@@ -498,7 +498,7 @@
   <!-- Hero -->
   <header class="hero">
     <h1><span class="highlight">Minecraft server</span> in 60 seconds</h1>
-    <p class="tagline">For busy dads who just want their kids to play. No Docker. No Kubernetes. No nonsense.</p>
+    <p class="tagline">For busy dads who just want their kids to play. Bare-metal or containerized. No nonsense.</p>
 
     <div class="install-block">
       <span class="label">Download &amp; install</span>
@@ -602,6 +602,10 @@
           <strong>🌐 No Port Forwarding</strong>
           <span>Optional playit.gg tunnel — friends connect without touching your router.</span>
         </li>
+        <li>
+          <strong>🐳 Docker / Podman</strong>
+          <span>Containerfile included. Debian Trixie slim, health checks, graceful shutdown, Quadlet systemd integration.</span>
+        </li>
       </ul>
     </div>
   </section>
@@ -617,6 +621,7 @@
         <li>Arch Linux</li>
         <li>macOS</li>
         <li>WSL2 (Windows)</li>
+        <li>Docker / Podman</li>
         <li>Raspberry Pi</li>
       </ul>
     </div>
@@ -645,6 +650,7 @@
             <tr><td><code>--playit</code></td><td>true</td><td>Set up playit.gg tunnel</td></tr>
             <tr><td><code>--chat-filter</code></td><td>true</td><td>Install chat filter plugin</td></tr>
             <tr><td><code>--mc-version</code></td><td>latest</td><td>Minecraft version</td></tr>
+            <tr><td><code>--mode</code></td><td>auto</td><td>auto, screen, or container</td></tr>
           </tbody>
         </table>
       </div>
@@ -681,8 +687,12 @@
           <div class="faq-answer">Whitelist is on by default — only players you approve can join. Online mode verifies real Minecraft accounts.</div>
         </details>
         <details class="faq-item">
+          <summary>Can I run this in Docker/Podman?</summary>
+          <div class="faq-answer">Yes! Use <code>podman compose up -d</code> or <code>docker compose up -d</code>. The CLI auto-detects container mode, or use <code>--mode container</code>. Includes health checks, graceful shutdown, and Quadlet systemd integration.</div>
+        </details>
+        <details class="faq-item">
           <summary>What if my server crashes?</summary>
-          <div class="faq-answer">Systemd auto-restarts it. Backups run daily at 4 AM.</div>
+          <div class="faq-answer">Systemd auto-restarts it. Backups run daily at 4 AM. In container mode, the restart policy handles it automatically.</div>
         </details>
       </div>
     </div>
