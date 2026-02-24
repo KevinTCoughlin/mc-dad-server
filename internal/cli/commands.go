@@ -93,21 +93,23 @@ func (cmd *StatusCmd) Run(globals *Globals, runner platform.CommandRunner, outpu
 }
 
 // printContainerStatus shows container-specific status information.
+// It type-asserts to the HealthChecker interface rather than a concrete type,
+// so any backend that implements Health() and Stats() will work.
 func printContainerStatus(ctx context.Context, mgr management.ServerManager, cfg *config.ServerConfig, output *ui.UI) {
 	output.Step("Minecraft Server Status (container)")
 
-	cm, ok := mgr.(*container.Manager)
+	hc, ok := mgr.(management.HealthChecker)
 	if !ok {
-		output.Info("  Status:  UNKNOWN (not a container manager)")
+		output.Info("  Status:  UNKNOWN (manager does not support health checks)")
 		return
 	}
 
 	switch {
-	case cm.IsRunning(ctx):
-		health := cm.Health(ctx)
+	case mgr.IsRunning(ctx):
+		health := hc.Health(ctx)
 		output.Info("  Status:    RUNNING (%s)", health)
-		output.Info("  Container: %s", cm.Session())
-		if stats, err := cm.Stats(ctx); err == nil {
+		output.Info("  Container: %s", mgr.Session())
+		if stats, err := hc.Stats(ctx); err == nil {
 			output.Info("  Resources: %s", stats)
 		}
 	case management.IsPortListening(cfg.Port):

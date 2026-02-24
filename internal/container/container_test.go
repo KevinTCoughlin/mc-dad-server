@@ -8,7 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
+)
+
+// Compile-time checks that Manager satisfies both interfaces.
+var (
+	_ management.ServerManager = (*Manager)(nil)
+	_ management.HealthChecker = (*Manager)(nil)
 )
 
 func TestManager_IsRunning(t *testing.T) {
