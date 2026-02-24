@@ -39,7 +39,7 @@ func TestScreenManager_IsRunning(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mock := platform.NewMockRunner()
 			mock.OutputMap["screen [-list]"] = []byte(tt.output)
-			sm := NewScreenManager(mock, "minecraft")
+			sm := NewScreenManager(mock, "minecraft", "")
 
 			if got := sm.IsRunning(ctx); got != tt.want {
 				t.Errorf("IsRunning() = %v, want %v", got, tt.want)
@@ -51,7 +51,7 @@ func TestScreenManager_IsRunning(t *testing.T) {
 func TestScreenManager_IsRunning_Error(t *testing.T) {
 	mock := platform.NewMockRunner()
 	mock.ErrorMap["screen [-list]"] = context.DeadlineExceeded
-	sm := NewScreenManager(mock, "minecraft")
+	sm := NewScreenManager(mock, "minecraft", "")
 
 	if sm.IsRunning(context.Background()) {
 		t.Error("IsRunning() should return false on error")
@@ -60,7 +60,7 @@ func TestScreenManager_IsRunning_Error(t *testing.T) {
 
 func TestScreenManager_SendCommand(t *testing.T) {
 	mock := platform.NewMockRunner()
-	sm := NewScreenManager(mock, "minecraft")
+	sm := NewScreenManager(mock, "minecraft", "")
 
 	if err := sm.SendCommand(context.Background(), "say hello"); err != nil {
 		t.Fatalf("SendCommand() error = %v", err)
@@ -82,10 +82,10 @@ func TestScreenManager_SendCommand(t *testing.T) {
 
 func TestScreenManager_Start(t *testing.T) {
 	mock := platform.NewMockRunner()
-	sm := NewScreenManager(mock, "minecraft")
+	sm := NewScreenManager(mock, "minecraft", "/srv/start.sh")
 
-	if err := sm.Start(context.Background(), "bash", "/srv/start.sh"); err != nil {
-		t.Fatalf("Start() error = %v", err)
+	if err := sm.Launch(context.Background()); err != nil {
+		t.Fatalf("Launch() error = %v", err)
 	}
 
 	if len(mock.Commands) != 1 {
@@ -95,11 +95,21 @@ func TestScreenManager_Start(t *testing.T) {
 	if cmd.Name != "screen" {
 		t.Errorf("command name = %q, want %q", cmd.Name, "screen")
 	}
+	// Verify the screen args include the script path
+	wantArgs := []string{"-dmS", "minecraft", "bash", "/srv/start.sh"}
+	if len(cmd.Args) != len(wantArgs) {
+		t.Fatalf("args = %v, want %v", cmd.Args, wantArgs)
+	}
+	for i, a := range wantArgs {
+		if cmd.Args[i] != a {
+			t.Errorf("arg[%d] = %q, want %q", i, cmd.Args[i], a)
+		}
+	}
 }
 
 func TestScreenManager_Session(t *testing.T) {
 	mock := platform.NewMockRunner()
-	sm := NewScreenManager(mock, "myserver")
+	sm := NewScreenManager(mock, "myserver", "")
 	if got := sm.Session(); got != "myserver" {
 		t.Errorf("Session() = %q, want %q", got, "myserver")
 	}

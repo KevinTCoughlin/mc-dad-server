@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
@@ -13,14 +12,14 @@ import (
 // It prints status messages to output. It returns true if the server was
 // already running (no action taken), false if it was freshly started.
 // Returns an error if the start attempt fails.
-func StartServer(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, dir, sessionName string, output *ui.UI) (bool, error) {
+func StartServer(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, sessionName string, output *ui.UI) (bool, error) {
 	if IsServerRunning(ctx, mgr, runner, port) {
 		output.Warn("Server is already running!")
 		return true, nil
 	}
 
 	output.Info("Starting Minecraft server...")
-	if err := mgr.Start(ctx, "bash", filepath.Join(dir, "start.sh")); err != nil {
+	if err := mgr.Launch(ctx); err != nil {
 		return false, fmt.Errorf("starting server: %w", err)
 	}
 	output.Success("Server started!")

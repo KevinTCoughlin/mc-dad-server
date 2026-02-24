@@ -50,9 +50,8 @@ func (c *Manager) SendCommand(ctx context.Context, cmd string) error {
 	return err
 }
 
-// Start starts the container. The command and args parameters are ignored;
-// the container is started via the configured runtime (podman or docker).
-func (c *Manager) Start(ctx context.Context, _ string, _ ...string) error {
+// Launch starts the container via the configured runtime (podman or docker).
+func (c *Manager) Launch(ctx context.Context) error {
 	return c.runner.Run(ctx, c.runtime, "start", c.container)
 }
 

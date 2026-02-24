@@ -26,7 +26,7 @@ func (cmd *StartCmd) Run(globals *Globals, runner platform.CommandRunner, output
 	cfg := globalsToConfig(globals)
 	mgr := resolveManager(ctx, globals, runner, cfg)
 
-	alreadyRunning, err := management.StartServer(ctx, mgr, runner, cfg.Port, cfg.Dir, cfg.SessionName, output)
+	alreadyRunning, err := management.StartServer(ctx, mgr, runner, cfg.Port, cfg.SessionName, output)
 	if err != nil {
 		return err
 	}
@@ -255,7 +255,7 @@ func resolveManager(ctx context.Context, globals *Globals, runner platform.Comma
 		runtime := detectContainerRuntime(runner)
 		return container.NewManager(runner, runtime, cfg.SessionName, "127.0.0.1:25575", rconPass)
 	}
-	return management.NewScreenManager(runner, cfg.SessionName)
+	return management.NewScreenManager(runner, cfg.SessionName, filepath.Join(cfg.Dir, "start.sh"))
 }
 
 // resolveMode determines the server mode from the --mode flag or auto-detection.

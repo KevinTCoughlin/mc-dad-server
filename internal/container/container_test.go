@@ -66,17 +66,17 @@ func TestManager_IsRunning(t *testing.T) {
 	}
 }
 
-func TestManager_Start(t *testing.T) {
+func TestManager_Launch(t *testing.T) {
 	tests := []struct {
 		name    string
 		runtime string
 	}{
 		{
-			name:    "start with podman",
+			name:    "launch with podman",
 			runtime: "podman",
 		},
 		{
-			name:    "start with docker",
+			name:    "launch with docker",
 			runtime: "docker",
 		},
 	}
@@ -86,9 +86,9 @@ func TestManager_Start(t *testing.T) {
 			m := platform.NewMockRunner()
 			mgr := NewManager(m, tc.runtime, "minecraft", "localhost:25575", "testpass")
 
-			err := mgr.Start(context.Background(), "ignored", "args")
+			err := mgr.Launch(context.Background())
 			if err != nil {
-				t.Errorf("Start() error = %v", err)
+				t.Errorf("Launch() error = %v", err)
 			}
 
 			// Verify the correct runtime and command were used
