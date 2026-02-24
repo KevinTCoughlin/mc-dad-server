@@ -1,5 +1,5 @@
 # MC Dad Server — Multi-stage Minecraft Paper Server Build
-# Debian slim + Eclipse Temurin Java 21 JRE
+# Debian Trixie slim + Eclipse Temurin Java 21 JRE
 # https://github.com/KevinTCoughlin/mc-dad-server
 
 # Pinned versions — update these to bump components
@@ -9,7 +9,7 @@ ARG MC_VERSION=latest
 # ---------------------------------------------------------------------------
 # Stage 1: Builder — Downloads Paper JAR + plugins
 # ---------------------------------------------------------------------------
-FROM debian:bookworm-slim AS builder
+FROM debian:trixie-slim AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -62,9 +62,9 @@ RUN mkdir -p plugins && \
     echo "All plugins downloaded"
 
 # ---------------------------------------------------------------------------
-# Stage 2: Runtime — Debian slim + Temurin JRE
+# Stage 2: Runtime — Debian Trixie slim + Temurin JRE
 # ---------------------------------------------------------------------------
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -81,7 +81,7 @@ RUN apt-get update && \
     && mkdir -p /etc/apt/keyrings && \
     curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public \
         | gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb bookworm main" \
+    echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb trixie main" \
         > /etc/apt/sources.list.d/adoptium.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
