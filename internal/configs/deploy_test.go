@@ -213,3 +213,129 @@ func TestDeployComposeZGC(t *testing.T) {
 		t.Error("compose.yml should have USE_AIKAR_FLAGS false for ZGC")
 	}
 }
+
+func TestDeployContainerConfigs(t *testing.T) {
+	setupTestFS(t)
+
+	dir := t.TempDir()
+	cfg := config.DefaultConfig()
+	cfg.Dir = dir
+	cfg.Port = 25565
+	cfg.MOTD = "Container Test"
+	cfg.Difficulty = "hard"
+	cfg.GameMode = "creative"
+	cfg.MaxPlayers = 8
+	cfg.Whitelist = false
+	cfg.RCONPassword = "containerpass"
+
+	if err := DeployContainerConfigs(cfg, dir); err != nil {
+		t.Fatalf("DeployContainerConfigs() error: %v", err)
+	}
+
+	// All five config files should be in a flat directory
+	for _, name := range []string{
+		"server.properties",
+		"bukkit.yml",
+		"spigot.yml",
+		"paper-global.yml",
+		"paper-world-defaults.yml",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Errorf("missing %s: %v", name, err)
+		}
+	}
+
+	// Verify server.properties substitution
+	data, err := os.ReadFile(filepath.Join(dir, "server.properties"))
+	if err != nil {
+		t.Fatalf("reading server.properties: %v", err)
+	}
+	content := string(data)
+	if strings.Contains(content, "%%MC_PORT%%") {
+		t.Error("server.properties still contains %%MC_PORT%% placeholder")
+	}
+	if !strings.Contains(content, "motd=Container Test") {
+		t.Error("server.properties missing motd substitution")
+	}
+	if !strings.Contains(content, "rcon.password=containerpass") {
+		t.Error("server.properties missing rcon password")
+	}
+}
+
+func TestDeployContainerEnv(t *testing.T) {
+	setupTestFS(t)
+
+	dir := t.TempDir()
+	cfg := config.DefaultConfig()
+	cfg.Dir = dir
+	cfg.Port = 25565
+	cfg.RCONPassword = "secret123"
+	cfg.Version = "1.21.4"
+
+	if err := DeployContainerEnv(cfg, dir); err != nil {
+		t.Fatalf("DeployContainerEnv() error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, ".env"))
+	if err != nil {
+		t.Fatalf("reading .env: %v", err)
+	}
+	content := string(data)
+
+	checks := []struct {
+		desc string
+		want string
+	}{
+		{"rcon password", "RCON_PASSWORD=secret123"},
+		{"port", "PORT=25565"},
+		{"bedrock port", "BEDROCK_PORT=19132"},
+		{"version", "MC_VERSION=1.21.4"},
+	}
+	for _, c := range checks {
+		if !strings.Contains(content, c.want) {
+			t.Errorf(".env missing %s (%q)", c.desc, c.want)
+		}
+	}
+}
+
+func TestDeployQuadlet(t *testing.T) {
+	setupTestFS(t)
+
+	dir := t.TempDir()
+	cfg := config.DefaultConfig()
+	cfg.Dir = dir
+	cfg.Port = 25565
+	cfg.Memory = "4G"
+	cfg.GCType = "g1gc"
+
+	configDir := "/home/user/.config/mc-dad-server/configs"
+	envFile := "/home/user/.config/mc-dad-server/.env"
+
+	if err := DeployQuadlet(cfg, configDir, envFile, dir); err != nil {
+		t.Fatalf("DeployQuadlet() error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, "minecraft.container"))
+	if err != nil {
+		t.Fatalf("reading minecraft.container: %v", err)
+	}
+	content := string(data)
+
+	checks := []struct {
+		desc string
+		want string
+	}{
+		{"java port", "25565:25565/tcp"},
+		{"bedrock port", "19132:19132/udp"},
+		{"memory env", "MEMORY=4G"},
+		{"gc type env", "GC_TYPE=g1gc"},
+		{"config volume", configDir + "/server.properties:/minecraft/server.properties"},
+		{"env file", "EnvironmentFile=" + envFile},
+		{"unit description", "Minecraft Paper Server"},
+	}
+	for _, c := range checks {
+		if !strings.Contains(content, c.want) {
+			t.Errorf("minecraft.container missing %s (%q)", c.desc, c.want)
+		}
+	}
+}
