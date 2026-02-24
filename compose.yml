@@ -1,0 +1,51 @@
+# MC Dad Server — Podman / Docker Compose
+# Usage: podman compose up -d   OR   docker compose up -d
+services:
+  minecraft:
+    build:
+      context: .
+      dockerfile: Containerfile
+      args:
+        MC_VERSION: "${MC_VERSION:-latest}"
+    image: localhost/mc-dad-server:latest
+    container_name: minecraft
+    ports:
+      - "${PORT:-25565}:25565/tcp"          # Java
+      - "${BEDROCK_PORT:-19132}:19132/udp"  # Geyser / Bedrock
+      - "127.0.0.1:25575:25575/tcp"         # RCON (localhost only)
+    volumes:
+      # Persistent data (survives rebuilds)
+      - minecraft-worlds:/minecraft/world:Z
+      - minecraft-worlds-nether:/minecraft/world_nether:Z
+      - minecraft-worlds-end:/minecraft/world_the_end:Z
+      - minecraft-plugins:/minecraft/plugins:Z
+      - minecraft-logs:/minecraft/logs:Z
+      - minecraft-backups:/minecraft/backups:Z
+      # Config files (read-only bind mounts from host)
+      - ./configs/server.properties:/minecraft/server.properties:ro,Z
+      - ./configs/bukkit.yml:/minecraft/bukkit.yml:ro,Z
+      - ./configs/spigot.yml:/minecraft/spigot.yml:ro,Z
+      - ./configs/paper-global.yml:/minecraft/config/paper-global.yml:ro,Z
+      - ./configs/paper-world-defaults.yml:/minecraft/config/paper-world-defaults.yml:ro,Z
+    environment:
+      - MEMORY=${MEMORY:-2G}
+      - GC_TYPE=${GC_TYPE:-g1gc}
+      - PORT=${PORT:-25565}
+      - RCON_PORT=25575
+      - RCON_PASSWORD=${RCON_PASSWORD:?Set RCON_PASSWORD in .env}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${MEM_LIMIT:-3g}
+    cpus: ${CPUS:-2.0}
+    stop_grace_period: 60s
+    restart: unless-stopped
+
+volumes:
+  minecraft-worlds:
+  minecraft-worlds-nether:
+  minecraft-worlds-end:
+  minecraft-plugins:
+  minecraft-logs:
+  minecraft-backups:

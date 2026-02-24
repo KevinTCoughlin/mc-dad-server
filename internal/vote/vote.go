@@ -20,7 +20,7 @@ type Config struct {
 	Duration   time.Duration // vote window
 	MaxChoices int           // maps shown per vote
 	ServerDir  string
-	Screen     *management.ScreenManager
+	Screen     management.ServerManager
 	Output     *ui.UI
 }
 
@@ -150,7 +150,7 @@ func pickWinner(candidates []string, tally map[string]int) string {
 }
 
 // broadcastVoteStart sends the vote options to all players via tellraw.
-func broadcastVoteStart(ctx context.Context, screen *management.ScreenManager, candidates []string, durationSec int) error {
+func broadcastVoteStart(ctx context.Context, screen management.ServerManager, candidates []string, durationSec int) error {
 	lines := []string{
 		`["",{"text":"==========================","color":"gold"}]`,
 		`["",{"text":"   VOTE FOR NEXT MAP!","color":"gold","bold":true}]`,
@@ -177,7 +177,7 @@ func broadcastVoteStart(ctx context.Context, screen *management.ScreenManager, c
 }
 
 // sendReminders sends periodic vote reminders at halfway and 5s remaining.
-func sendReminders(ctx context.Context, screen *management.ScreenManager, candidates []string, duration time.Duration) {
+func sendReminders(ctx context.Context, screen management.ServerManager, candidates []string, duration time.Duration) {
 	half := duration / 2
 	fiveSec := duration - 5*time.Second
 
@@ -203,7 +203,7 @@ func sendReminders(ctx context.Context, screen *management.ScreenManager, candid
 }
 
 // broadcastResults announces the vote results to all players.
-func broadcastResults(ctx context.Context, screen *management.ScreenManager, candidates []string, tally map[string]int, winner string) error {
+func broadcastResults(ctx context.Context, screen management.ServerManager, candidates []string, tally map[string]int, winner string) error {
 	lines := []string{
 		`["",{"text":"==========================","color":"gold"}]`,
 		`["",{"text":"   RESULTS","color":"gold","bold":true}]`,
@@ -243,7 +243,7 @@ func mapResultColor(candidate, winner string) string {
 }
 
 // countdownAndTeleport announces a 5-second countdown then teleports all players.
-func countdownAndTeleport(ctx context.Context, screen *management.ScreenManager, mapName string, output *ui.UI) error {
+func countdownAndTeleport(ctx context.Context, screen management.ServerManager, mapName string, output *ui.UI) error {
 	msg := fmt.Sprintf(`["",{"text":"  Loading %s in 5...","color":"yellow","bold":true}]`, mapName)
 	if err := screen.SendCommand(ctx, "tellraw @a "+msg); err != nil {
 		return err

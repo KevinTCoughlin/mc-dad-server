@@ -1,0 +1,14 @@
+.git
+.github
+*.md
+dist/
+node_modules/
+.env
+.env.local
+*.exe
+mc-dad-server
+coverage.out
+.goreleaser.yml
+.golangci.yml
+justfile
+quadlet/
