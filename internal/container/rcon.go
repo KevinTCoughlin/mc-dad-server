@@ -38,7 +38,11 @@ func NewRCONClient(addr, password string) *RCONClient {
 }
 
 // Connect dials the RCON server and authenticates.
+// Connect must not be called concurrently with Command or Close.
 func (r *RCONClient) Connect(ctx context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	dialer := net.Dialer{Timeout: 5 * time.Second}
 	conn, err := dialer.DialContext(ctx, "tcp", r.addr)
 	if err != nil {
@@ -50,12 +54,14 @@ func (r *RCONClient) Connect(ctx context.Context) error {
 	id := r.nextID()
 	if err := r.writePacket(id, packetTypeAuth, r.password); err != nil {
 		_ = conn.Close()
+		r.conn = nil
 		return fmt.Errorf("rcon auth write: %w", err)
 	}
 
 	respID, respType, _, err := r.readPacket()
 	if err != nil {
 		_ = conn.Close()
+		r.conn = nil
 		return fmt.Errorf("rcon auth read: %w", err)
 	}
 
@@ -63,6 +69,7 @@ func (r *RCONClient) Connect(ctx context.Context) error {
 	// or -1 on failure.
 	if respType == packetTypeAuthResponse && respID == -1 {
 		_ = conn.Close()
+		r.conn = nil
 		return fmt.Errorf("rcon authentication failed")
 	}
 
@@ -71,10 +78,12 @@ func (r *RCONClient) Connect(ctx context.Context) error {
 		respID, respType, _, err = r.readPacket()
 		if err != nil {
 			_ = conn.Close()
+			r.conn = nil
 			return fmt.Errorf("rcon auth read (2nd): %w", err)
 		}
 		if respType == packetTypeAuthResponse && respID == -1 {
 			_ = conn.Close()
+			r.conn = nil
 			return fmt.Errorf("rcon authentication failed")
 		}
 	}

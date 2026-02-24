@@ -249,6 +249,9 @@ func resolveManager(ctx context.Context, globals *Globals, runner platform.Comma
 	mode := resolveMode(ctx, globals, runner)
 	if mode == "container" {
 		rconPass := readRCONPassword(cfg.Dir)
+		if rconPass == "" {
+			fmt.Fprintln(os.Stderr, "Warning: RCON password not found — set RCON_PASSWORD env var or configure server.properties")
+		}
 		return container.NewManager(runner, cfg.SessionName, "127.0.0.1:25575", rconPass)
 	}
 	return management.NewScreenManager(runner, cfg.SessionName)
@@ -275,15 +278,19 @@ func detectMode(ctx context.Context, globals *Globals, runner platform.CommandRu
 	return "screen"
 }
 
-// readRCONPassword reads the RCON password from server.properties in the server dir.
+// readRCONPassword reads the RCON password, checking the RCON_PASSWORD env var
+// first, then falling back to server.properties in the server dir.
 func readRCONPassword(serverDir string) string {
+	if pass := os.Getenv("RCON_PASSWORD"); pass != "" {
+		return pass
+	}
 	data, err := os.ReadFile(filepath.Join(serverDir, "server.properties"))
 	if err != nil {
 		return ""
 	}
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasPrefix(line, "rcon.password=") {
-			return strings.TrimPrefix(line, "rcon.password=")
+			return strings.TrimSpace(strings.TrimPrefix(line, "rcon.password="))
 		}
 	}
 	return ""

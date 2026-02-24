@@ -32,7 +32,8 @@ services:
       - GC_TYPE=${GC_TYPE:-g1gc}
       - PORT=${PORT:-25565}
       - RCON_PORT=25575
-      - RCON_PASSWORD=${RCON_PASSWORD:?Set RCON_PASSWORD in .env}
+      # Set RCON_PASSWORD in a .env file (see .env.example for a template)
+      - RCON_PASSWORD=${RCON_PASSWORD:?Set RCON_PASSWORD in .env (copy .env.example to .env and edit)}
     cap_drop:
       - ALL
     security_opt:

@@ -19,7 +19,7 @@ func StartServer(ctx context.Context, mgr ServerManager, runner platform.Command
 		return true, nil
 	}
 
-	output.Info("Starting Minecraft server in screen session '%s'...", sessionName)
+	output.Info("Starting Minecraft server...")
 	if err := mgr.Start(ctx, "bash", filepath.Join(dir, "start.sh")); err != nil {
 		return false, fmt.Errorf("starting server: %w", err)
 	}

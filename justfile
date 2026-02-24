@@ -95,8 +95,8 @@ container-logs:
 container-shell:
     podman exec -it minecraft bash
 
-# Send RCON command to running container
-container-rcon cmd:
+# Send command to running container via stdin FIFO
+container-fifo cmd:
     @echo "{{cmd}}" | podman exec -i minecraft bash -c 'cat > /tmp/mc-input'
 
 # Build image, install quadlet, restart service

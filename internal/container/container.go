@@ -67,11 +67,18 @@ func (c *Manager) Session() string {
 
 // Health returns the container health status string (e.g. "healthy", "unhealthy", "starting").
 func (c *Manager) Health(ctx context.Context) string {
-	out, err := c.runner.RunWithOutput(ctx, "podman", "inspect", "--format", "{{.State.Health.Status}}", c.container)
+	out, err := c.runner.RunWithOutput(ctx, "podman", "inspect", "--format", "{{.State.Healthcheck.Status}}", c.container)
 	if err != nil {
 		return "unknown"
 	}
-	return strings.TrimSpace(string(out))
+	status := strings.TrimSpace(string(out))
+	if status == "" || status == "<no value>" {
+		if c.IsRunning(ctx) {
+			return "running"
+		}
+		return "stopped"
+	}
+	return status
 }
 
 // Stats returns a formatted string with container resource usage.

@@ -8,7 +8,20 @@ MEMORY="${MEMORY:-2G}"
 GC_TYPE="${GC_TYPE:-g1gc}"
 PORT="${PORT:-25565}"
 RCON_PORT="${RCON_PORT:-25575}"
-RCON_PASSWORD="${RCON_PASSWORD:-}"
+RCON_PASSWORD="${RCON_PASSWORD:-changeme}"
+
+# --- Configure RCON in server.properties ---
+if [[ -f server.properties ]]; then
+    sed -i \
+        -e "s/^enable-rcon=.*/enable-rcon=true/" \
+        -e "s/^rcon\\.port=.*/rcon.port=${RCON_PORT}/" \
+        -e "s/^rcon\\.password=.*/rcon.password=${RCON_PASSWORD}/" \
+        server.properties
+    # Add RCON settings if missing
+    grep -q '^enable-rcon=' server.properties || echo "enable-rcon=true" >> server.properties
+    grep -q '^rcon\.port=' server.properties || echo "rcon.port=${RCON_PORT}" >> server.properties
+    grep -q '^rcon\.password=' server.properties || echo "rcon.password=${RCON_PASSWORD}" >> server.properties
+fi
 
 # --- Build JVM flags ---
 JVM_FLAGS=(
@@ -99,7 +112,7 @@ graceful_shutdown() {
         # Force kill if still running
         if kill -0 "${JAVA_PID}" 2>/dev/null; then
             echo "[entrypoint] Force-killing Java process..."
-            kill "${JAVA_PID}" 2>/dev/null || true
+            kill -9 "${JAVA_PID}" 2>/dev/null || true
         fi
     fi
 

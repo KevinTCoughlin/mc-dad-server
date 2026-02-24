@@ -26,9 +26,11 @@ Volume=%h/.config/mc-dad-server/configs/spigot.yml:/minecraft/spigot.yml:ro,Z
 Volume=%h/.config/mc-dad-server/configs/paper-global.yml:/minecraft/config/paper-global.yml:ro,Z
 Volume=%h/.config/mc-dad-server/configs/paper-world-defaults.yml:/minecraft/config/paper-world-defaults.yml:ro,Z
 
+# Load secrets from .env file (RCON_PASSWORD, etc.)
+# Create with: cp .env.example ~/.config/mc-dad-server/.env && edit
+EnvironmentFile=%h/.config/mc-dad-server/.env
 Environment=MEMORY=2G
 Environment=GC_TYPE=g1gc
-Environment=RCON_PASSWORD=CHANGEME
 
 DropCapability=ALL
 NoNewPrivileges=true
