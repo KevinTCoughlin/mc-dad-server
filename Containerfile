@@ -58,14 +58,15 @@ RUN mkdir -p plugins && \
     curl -fsSL -o plugins/Floodgate-Spigot.jar \
         "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot" && \
     echo "${FLOODGATE_SHA256}  plugins/Floodgate-Spigot.jar" | sha256sum -c - && \
-    # Parkour — verify file size from GitHub API (no SHA-256 available)
+    # Parkour — GitHub releases API does not provide SHA-256; verify file size
     PARKOUR_RELEASE=$(curl -fsSL "https://api.github.com/repos/A5H73Y/Parkour/releases/latest") && \
-    PARKOUR_URL=$(echo "$PARKOUR_RELEASE" | jq -r '.assets[0].browser_download_url') && \
-    PARKOUR_EXPECTED_SIZE=$(echo "$PARKOUR_RELEASE" | jq -r '.assets[0].size') && \
+    PARKOUR_URL=$(echo "$PARKOUR_RELEASE" | jq -r '[.assets[] | select(.name | endswith(".jar"))][0].browser_download_url') && \
+    PARKOUR_EXPECTED_SIZE=$(echo "$PARKOUR_RELEASE" | jq -r '[.assets[] | select(.name | endswith(".jar"))][0].size') && \
     curl -fsSL -o plugins/Parkour.jar "$PARKOUR_URL" && \
     PARKOUR_ACTUAL_SIZE=$(stat -c%s plugins/Parkour.jar) && \
     [ "$PARKOUR_ACTUAL_SIZE" = "$PARKOUR_EXPECTED_SIZE" ] || \
         { echo "Parkour size mismatch: expected ${PARKOUR_EXPECTED_SIZE}, got ${PARKOUR_ACTUAL_SIZE}"; exit 1; } && \
+    echo "Parkour SHA-256: $(sha256sum plugins/Parkour.jar)" && \
     # Multiverse-Core — SHA-256 from Hangar API
     MV_VERSION=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/latestrelease" \
         | tr -d '"') && \
