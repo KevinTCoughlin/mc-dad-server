@@ -17,6 +17,9 @@ const (
 	packetTypeAuthResponse int32 = 2
 	packetTypeCommand      int32 = 2
 	packetTypeResponse     int32 = 0
+
+	// maxRCONBodySize is the maximum size of an RCON response body in bytes.
+	maxRCONBodySize = 4096
 )
 
 // RCONClient implements the Source RCON protocol for communicating with a
@@ -161,7 +164,7 @@ func (r *RCONClient) readPacket() (id, pktType int32, body string, err error) {
 		return 0, 0, "", err
 	}
 	size := int32(binary.LittleEndian.Uint32(sizeBuf[:]))
-	if size < 10 || size > 4096+10 {
+	if size < 10 || size > maxRCONBodySize+10 {
 		return 0, 0, "", fmt.Errorf("rcon packet size out of range: %d", size)
 	}
 
