@@ -96,22 +96,23 @@ func (cmd *StatusCmd) Run(globals *Globals, runner platform.CommandRunner, outpu
 func printContainerStatus(ctx context.Context, mgr management.ServerManager, cfg *config.ServerConfig, output *ui.UI) {
 	output.Step("Minecraft Server Status (container)")
 
-	cm, ok := mgr.(*container.ContainerManager)
+	cm, ok := mgr.(*container.Manager)
 	if !ok {
 		output.Info("  Status:  UNKNOWN (not a container manager)")
 		return
 	}
 
-	if cm.IsRunning(ctx) {
+	switch {
+	case cm.IsRunning(ctx):
 		health := cm.Health(ctx)
 		output.Info("  Status:    RUNNING (%s)", health)
 		output.Info("  Container: %s", cm.Session())
 		if stats, err := cm.Stats(ctx); err == nil {
 			output.Info("  Resources: %s", stats)
 		}
-	} else if management.IsPortListening(cfg.Port) {
+	case management.IsPortListening(cfg.Port):
 		output.Info("  Status:  RUNNING (port %d)", cfg.Port)
-	} else {
+	default:
 		output.Info("  Status:  STOPPED")
 	}
 }
@@ -219,7 +220,7 @@ func (cmd *VoteMapCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 		return fmt.Errorf("server not running — start it first with: mc-dad-server start")
 	}
 
-	result, err := vote.RunVote(ctx, vote.Config{
+	result, err := vote.RunVote(ctx, &vote.Config{
 		Maps:       management.ParkourMaps,
 		Duration:   time.Duration(cmd.Duration) * time.Second,
 		MaxChoices: cmd.Choices,
@@ -248,7 +249,7 @@ func resolveManager(ctx context.Context, globals *Globals, runner platform.Comma
 	mode := resolveMode(ctx, globals, runner)
 	if mode == "container" {
 		rconPass := readRCONPassword(cfg.Dir)
-		return container.NewContainerManager(runner, cfg.SessionName, "127.0.0.1:25575", rconPass)
+		return container.NewManager(runner, cfg.SessionName, "127.0.0.1:25575", rconPass)
 	}
 	return management.NewScreenManager(runner, cfg.SessionName)
 }
@@ -268,7 +269,7 @@ func resolveMode(ctx context.Context, globals *Globals, runner platform.CommandR
 // detectMode auto-detects whether to use container or screen mode.
 // Priority: running container > running screen session > default screen.
 func detectMode(ctx context.Context, globals *Globals, runner platform.CommandRunner) string {
-	if container.ContainerExists(ctx, runner, globals.Session) {
+	if container.Exists(ctx, runner, globals.Session) {
 		return "container"
 	}
 	return "screen"

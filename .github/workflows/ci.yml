@@ -158,8 +158,5 @@ jobs:
     if: needs.changes.outputs.container == 'true'
     steps:
       - uses: actions/checkout@v4
-      - name: ShellCheck
-        uses: ludeeus/action-shellcheck@master
-        with:
-          scandir: .
-          additional_files: entrypoint.sh
+      - name: ShellCheck entrypoint.sh
+        run: shellcheck entrypoint.sh

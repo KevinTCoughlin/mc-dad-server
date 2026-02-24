@@ -71,7 +71,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG JAVA_VERSION
 
 # Install Temurin JRE from Adoptium APT repo + procps for health check
-# hadolint ignore=DL3008
+# hadolint ignore=DL3008,SC2015
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \

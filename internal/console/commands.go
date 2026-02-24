@@ -67,7 +67,7 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 		if !running {
 			output.Warn("Server not running — start it first")
 		} else {
-			result, err := vote.RunVote(ctx, vote.Config{
+			result, err := vote.RunVote(ctx, &vote.Config{
 				Maps:       management.ParkourMaps,
 				Duration:   time.Duration(cfg.VoteDuration) * time.Second,
 				MaxChoices: cfg.VoteChoices,

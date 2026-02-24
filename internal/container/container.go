@@ -8,18 +8,18 @@ import (
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
 
-// ContainerManager manages a Minecraft server running in a Podman container.
+// Manager manages a Minecraft server running in a Podman container.
 // It implements management.ServerManager.
-type ContainerManager struct {
+type Manager struct {
 	runner    platform.CommandRunner
 	container string
 	rconAddr  string
 	rconPass  string
 }
 
-// NewContainerManager creates a ContainerManager for the named container.
-func NewContainerManager(runner platform.CommandRunner, container, rconAddr, rconPass string) *ContainerManager {
-	return &ContainerManager{
+// NewManager creates a Manager for the named container.
+func NewManager(runner platform.CommandRunner, container, rconAddr, rconPass string) *Manager {
+	return &Manager{
 		runner:    runner,
 		container: container,
 		rconAddr:  rconAddr,
@@ -28,7 +28,7 @@ func NewContainerManager(runner platform.CommandRunner, container, rconAddr, rco
 }
 
 // IsRunning reports whether the container is running.
-func (c *ContainerManager) IsRunning(ctx context.Context) bool {
+func (c *Manager) IsRunning(ctx context.Context) bool {
 	out, err := c.runner.RunWithOutput(ctx, "podman", "inspect", "--format", "{{.State.Running}}", c.container)
 	if err != nil {
 		return false
@@ -37,12 +37,12 @@ func (c *ContainerManager) IsRunning(ctx context.Context) bool {
 }
 
 // SendCommand sends a console command to the server via RCON.
-func (c *ContainerManager) SendCommand(ctx context.Context, cmd string) error {
+func (c *Manager) SendCommand(ctx context.Context, cmd string) error {
 	rcon := NewRCONClient(c.rconAddr, c.rconPass)
 	if err := rcon.Connect(ctx); err != nil {
 		return fmt.Errorf("rcon: %w", err)
 	}
-	defer rcon.Close()
+	defer func() { _ = rcon.Close() }()
 
 	_, err := rcon.Command(ctx, cmd)
 	return err
@@ -50,23 +50,23 @@ func (c *ContainerManager) SendCommand(ctx context.Context, cmd string) error {
 
 // Start starts the container. The command and args parameters are ignored;
 // the container is started via podman.
-func (c *ContainerManager) Start(ctx context.Context, _ string, _ ...string) error {
+func (c *Manager) Start(ctx context.Context, _ string, _ ...string) error {
 	return c.runner.Run(ctx, "podman", "start", c.container)
 }
 
 // Stop stops the container with a 60-second grace period so the entrypoint
 // can perform a graceful shutdown.
-func (c *ContainerManager) Stop(ctx context.Context) error {
+func (c *Manager) Stop(ctx context.Context) error {
 	return c.runner.Run(ctx, "podman", "stop", "-t", "60", c.container)
 }
 
 // Session returns the container name.
-func (c *ContainerManager) Session() string {
+func (c *Manager) Session() string {
 	return c.container
 }
 
 // Health returns the container health status string (e.g. "healthy", "unhealthy", "starting").
-func (c *ContainerManager) Health(ctx context.Context) string {
+func (c *Manager) Health(ctx context.Context) string {
 	out, err := c.runner.RunWithOutput(ctx, "podman", "inspect", "--format", "{{.State.Health.Status}}", c.container)
 	if err != nil {
 		return "unknown"
@@ -75,7 +75,7 @@ func (c *ContainerManager) Health(ctx context.Context) string {
 }
 
 // Stats returns a formatted string with container resource usage.
-func (c *ContainerManager) Stats(ctx context.Context) (string, error) {
+func (c *Manager) Stats(ctx context.Context) (string, error) {
 	out, err := c.runner.RunWithOutput(ctx, "podman", "stats", "--no-stream", "--format",
 		"CPU: {{.CPUPerc}}  MEM: {{.MemUsage}}", c.container)
 	if err != nil {
@@ -84,8 +84,8 @@ func (c *ContainerManager) Stats(ctx context.Context) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// ContainerExists checks if a container with the given name exists (running or stopped).
-func ContainerExists(ctx context.Context, runner platform.CommandRunner, name string) bool {
+// Exists checks if a container with the given name exists (running or stopped).
+func Exists(ctx context.Context, runner platform.CommandRunner, name string) bool {
 	err := runner.Run(ctx, "podman", "inspect", "--type", "container", name)
 	return err == nil
 }
