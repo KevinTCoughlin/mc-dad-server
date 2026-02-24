@@ -220,7 +220,7 @@ func (cmd *VoteMapCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 		return fmt.Errorf("server not running — start it first with: mc-dad-server start")
 	}
 
-	result, err := vote.RunVote(ctx, vote.Config{
+	result, err := vote.RunVote(ctx, &vote.Config{
 		Maps:       management.ParkourMaps,
 		Duration:   time.Duration(cmd.Duration) * time.Second,
 		MaxChoices: cmd.Choices,

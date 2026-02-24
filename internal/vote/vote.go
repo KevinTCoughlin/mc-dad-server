@@ -33,7 +33,7 @@ type Result struct {
 
 // RunVote runs a complete map vote: broadcast options, collect votes from the
 // server log, tally results, and announce the winner.
-func RunVote(ctx context.Context, cfg Config) (*Result, error) {
+func RunVote(ctx context.Context, cfg *Config) (*Result, error) {
 	candidates := pickCandidates(cfg.Maps, cfg.MaxChoices)
 	if len(candidates) == 0 {
 		return nil, fmt.Errorf("no maps available for voting")
