@@ -1,0 +1,44 @@
+name: Dependency Check
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Monday 9am UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Check go.sum is tidy
+        run: |
+          go mod tidy
+          if ! git diff --quiet go.mod go.sum; then
+            echo "::warning::go.mod or go.sum is not tidy — run 'go mod tidy'"
+            git diff go.mod go.sum
+          fi
+
+      - name: List outdated direct dependencies
+        run: |
+          echo "## Direct dependency updates available:" >> "$GITHUB_STEP_SUMMARY"
+          go list -m -u -json all 2>/dev/null | \
+            jq -r 'select(.Update != null and .Indirect != true) | "- \(.Path): \(.Version) → \(.Update.Version)"' \
+            >> "$GITHUB_STEP_SUMMARY" || echo "All direct dependencies are up to date." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check Go toolchain version
+        run: |
+          CURRENT=$(go env GOVERSION)
+          LATEST=$(curl -fsSL "https://go.dev/dl/?mode=json" | jq -r '.[0].version')
+          echo "Current: ${CURRENT}, Latest stable: ${LATEST}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${CURRENT}" != "${LATEST}" ]; then
+            echo "::notice::Go toolchain update available: ${CURRENT} → ${LATEST}"
+          fi

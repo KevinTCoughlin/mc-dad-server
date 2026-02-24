@@ -1,0 +1,47 @@
+# MC Dad Server — Podman Quadlet systemd unit
+# Install: cp minecraft.container ~/.config/containers/systemd/
+# Enable:  systemctl --user daemon-reload && systemctl --user start minecraft
+[Unit]
+Description=Minecraft Paper Server (MC Dad Server)
+After=network-online.target
+
+[Container]
+Image=localhost/mc-dad-server:latest
+ContainerName=minecraft
+
+PublishPort=25565:25565/tcp
+PublishPort=19132:19132/udp
+PublishPort=127.0.0.1:25575:25575/tcp
+
+Volume=minecraft-worlds:/minecraft/world:Z
+Volume=minecraft-worlds-nether:/minecraft/world_nether:Z
+Volume=minecraft-worlds-end:/minecraft/world_the_end:Z
+Volume=minecraft-plugins:/minecraft/plugins:Z
+Volume=minecraft-logs:/minecraft/logs:Z
+Volume=minecraft-backups:/minecraft/backups:Z
+
+Volume=%h/.config/mc-dad-server/configs/server.properties:/minecraft/server.properties:ro,Z
+Volume=%h/.config/mc-dad-server/configs/bukkit.yml:/minecraft/bukkit.yml:ro,Z
+Volume=%h/.config/mc-dad-server/configs/spigot.yml:/minecraft/spigot.yml:ro,Z
+Volume=%h/.config/mc-dad-server/configs/paper-global.yml:/minecraft/config/paper-global.yml:ro,Z
+Volume=%h/.config/mc-dad-server/configs/paper-world-defaults.yml:/minecraft/config/paper-world-defaults.yml:ro,Z
+
+# Load secrets from .env file (RCON_PASSWORD, etc.)
+# Create with: cp .env.example ~/.config/mc-dad-server/.env && edit
+EnvironmentFile=%h/.config/mc-dad-server/.env
+Environment=MEMORY=2G
+Environment=GC_TYPE=g1gc
+
+DropCapability=ALL
+NoNewPrivileges=true
+Notify=healthy
+StopTimeout=60
+
+[Service]
+Restart=on-failure
+RestartSec=30
+MemoryMax=3G
+CPUQuota=200%
+
+[Install]
+WantedBy=default.target
