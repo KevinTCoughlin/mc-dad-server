@@ -39,8 +39,11 @@ StopTimeout=60
 [Service]
 Restart=on-failure
 RestartSec=30
-# Safety limits — keep slightly above container MEMORY to allow JVM overhead
-MemoryMax=3G
+# Safety limits — MemoryMax adds 1 GiB headroom above MEMORY for JVM overhead
+# (metaspace, native allocations, etc.). Adjust if you see unexpected OOM kills.
+MemoryMax={{.MemoryMax}}
+# CPUQuota: 200% = 2 CPU cores; conservative default for small servers.
+# Increase on hosts with more cores or higher player counts.
 CPUQuota=200%
 
 [Install]

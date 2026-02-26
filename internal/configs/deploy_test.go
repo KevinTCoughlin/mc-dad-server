@@ -333,14 +333,37 @@ func TestDeployQuadlet(t *testing.T) {
 		{"java port", "25565:25565/tcp"},
 		{"bedrock port", "19132:19132/udp"},
 		{"memory env", "MEMORY=4G"},
+		{"memory max", "MemoryMax=5G"},
 		{"gc type env", "GC_TYPE=g1gc"},
 		{"config volume", configDir + "/server.properties:/minecraft/server.properties"},
 		{"env file", "EnvironmentFile=" + envFile},
 		{"unit description", "Minecraft Paper Server"},
+		{"cpu quota comment", "CPUQuota: 200% = 2 CPU cores"},
 	}
 	for _, c := range checks {
 		if !strings.Contains(content, c.want) {
 			t.Errorf("minecraft.container missing %s (%q)", c.desc, c.want)
+		}
+	}
+}
+
+func TestComputeMemoryMax(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"2G", "3G"},
+		{"4G", "5G"},
+		{"8G", "9G"},
+		{"512M", "1536M"},
+		{"1024M", "2048M"},
+		{"", "3G"},
+		{"bad", "3G"},
+	}
+	for _, tt := range tests {
+		got := computeMemoryMax(tt.input)
+		if got != tt.want {
+			t.Errorf("computeMemoryMax(%q) = %q, want %q", tt.input, got, tt.want)
 		}
 	}
 }

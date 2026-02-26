@@ -235,10 +235,36 @@ func DeployQuadlet(cfg *config.ServerConfig, configDir, envFile, destDir string)
 		"Port":        cfg.Port,
 		"BedrockPort": config.BedrockPort,
 		"Memory":      cfg.Memory,
+		"MemoryMax":   computeMemoryMax(cfg.Memory),
 		"GCType":      cfg.GCType,
 		"ConfigDir":   configDir,
 		"EnvFile":     envFile,
 	})
+}
+
+// computeMemoryMax adds 1G headroom to the configured memory for JVM overhead.
+func computeMemoryMax(memory string) string {
+	memory = strings.TrimSpace(memory)
+	if len(memory) == 0 {
+		return "3G"
+	}
+
+	suffix := memory[len(memory)-1:]
+	numStr := memory[:len(memory)-1]
+
+	var value int
+	if _, err := fmt.Sscanf(numStr, "%d", &value); err != nil || value <= 0 {
+		return "3G"
+	}
+
+	switch strings.ToUpper(suffix) {
+	case "G":
+		return fmt.Sprintf("%dG", value+1)
+	case "M":
+		return fmt.Sprintf("%dM", value+1024)
+	default:
+		return "3G"
+	}
 }
 
 // DeployStartScript renders and writes the start.sh script.
