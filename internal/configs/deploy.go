@@ -245,7 +245,7 @@ func DeployQuadlet(cfg *config.ServerConfig, configDir, envFile, destDir string)
 // computeMemoryMax adds 1G headroom to the configured memory for JVM overhead.
 func computeMemoryMax(memory string) string {
 	memory = strings.TrimSpace(memory)
-	if len(memory) == 0 {
+	if memory == "" {
 		return "3G"
 	}
 
