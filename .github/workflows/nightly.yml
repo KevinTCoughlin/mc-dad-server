@@ -38,6 +38,10 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Run tests
+        if: steps.check.outputs.changed == 'true'
+        run: go test -race ./...
+
       - name: GoReleaser (snapshot)
         if: steps.check.outputs.changed == 'true'
         uses: goreleaser/goreleaser-action@v6
@@ -68,7 +72,7 @@ jobs:
           tag_name: nightly
           name: Nightly Build
           prerelease: true
-          make_latest: true
+          make_latest: false
           files: dist/release/*
           body: |
             Automated nightly build from `main` branch.

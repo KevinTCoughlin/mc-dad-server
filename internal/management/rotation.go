@@ -22,7 +22,7 @@ var ParkourMaps = []string{
 }
 
 // RotateParkour advances the featured parkour map, broadcasts, and teleports.
-func RotateParkour(ctx context.Context, serverDir string, screen *ScreenManager, output *ui.UI) error {
+func RotateParkour(ctx context.Context, serverDir string, mgr ServerManager, output *ui.UI) error {
 	maps := ParkourMaps
 	if len(maps) == 0 {
 		output.Info("No parkour maps configured")
@@ -52,14 +52,14 @@ func RotateParkour(ctx context.Context, serverDir string, screen *ScreenManager,
 		time.Now().Format("2006-01-02 15:04:05"), currentMap, nextMap)
 
 	// Broadcast
-	if err := screen.SendCommand(ctx, fmt.Sprintf(
+	if err := mgr.SendCommand(ctx, fmt.Sprintf(
 		"say [PARKOUR] Featured map: %s! Type /mv tp %s to play!", nextMap, nextMap)); err != nil {
 		return err
 	}
 	_ = Sleep(ctx, 1)
 
 	// Teleport players
-	if err := screen.SendCommand(ctx, fmt.Sprintf("mv tp * %s", nextMap)); err != nil {
+	if err := mgr.SendCommand(ctx, fmt.Sprintf("mv tp * %s", nextMap)); err != nil {
 		return err
 	}
 
@@ -68,14 +68,14 @@ func RotateParkour(ctx context.Context, serverDir string, screen *ScreenManager,
 }
 
 // RotateToMap broadcasts and teleports all players to the named map.
-func RotateToMap(ctx context.Context, mapName string, screen *ScreenManager, output *ui.UI) error {
-	if err := screen.SendCommand(ctx, fmt.Sprintf(
+func RotateToMap(ctx context.Context, mapName string, mgr ServerManager, output *ui.UI) error {
+	if err := mgr.SendCommand(ctx, fmt.Sprintf(
 		"say [PARKOUR] Loading map: %s!", mapName)); err != nil {
 		return err
 	}
 	_ = Sleep(ctx, 1)
 
-	if err := screen.SendCommand(ctx, fmt.Sprintf("mv tp * %s", mapName)); err != nil {
+	if err := mgr.SendCommand(ctx, fmt.Sprintf("mv tp * %s", mapName)); err != nil {
 		return err
 	}
 

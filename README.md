@@ -3,12 +3,13 @@
 [![CI](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/ci.yml/badge.svg)](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/ci.yml)
 [![Release](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/release.yml/badge.svg)](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/release.yml)
 [![Nightly](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/nightly.yml/badge.svg)](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/nightly.yml)
+[![Container](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/container.yml/badge.svg)](https://github.com/KevinTCoughlin/mc-dad-server/actions/workflows/container.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/KevinTCoughlin/mc-dad-server)](https://goreportcard.com/report/github.com/KevinTCoughlin/mc-dad-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 **Minecraft server in 60 seconds — for busy dads who just want their kids to play.**
 
-No Docker. No Kubernetes. No nonsense. Download one binary and run `mc-dad-server install` — with Bedrock cross-play, Parkour courses, and tuned configs out of the box.
+One binary, zero fuss. Run `mc-dad-server install` for a bare-metal server, or use the included Containerfile for Docker/Podman — with Bedrock cross-play, Parkour courses, and tuned configs out of the box.
 
 ## Quick Start
 
@@ -67,6 +68,7 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 | macOS | Fully supported |
 | Windows (x64/ARM64) | Fully supported |
 | WSL2 (Windows) | Fully supported |
+| Docker / Podman | Fully supported (`--mode container`) |
 | Raspberry Pi | Works (use `--memory 1G`) |
 
 ## Options
@@ -100,6 +102,14 @@ mc-dad-server install \
 | `--mc-version` | `latest` | Minecraft version |
 | `--experimental-bun` | `false` | Enable [TypeScript/JS scripting sidecar](docs/scripting.md) |
 
+### Global Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dir` | `~/minecraft-server` | Server directory |
+| `--session` | `minecraft` | Screen session / container name |
+| `--mode` | `auto` | `auto`, `screen`, or `container` — how to manage the server process |
+
 ## Daily Commands
 
 ```bash
@@ -109,16 +119,60 @@ mc-dad-server start
 # Check if it's running
 mc-dad-server status
 
-# View the server console
+# View the server console (screen mode)
 screen -r minecraft
 # (Press Ctrl+A then D to detach)
 
-# Stop the server
+# Stop the server (graceful 30s countdown)
 mc-dad-server stop
 
 # Manual backup
 mc-dad-server backup
 ```
+
+## Container Deployment
+
+Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Debian Trixie slim with Eclipse Temurin Java 21 and includes Geyser, Floodgate, Parkour, Multiverse, and WorldEdit.
+
+```bash
+# Build and start with Podman Compose
+podman compose up -d
+
+# Or with Docker Compose
+docker compose up -d
+
+# CLI auto-detects container mode
+mc-dad-server status              # auto-detects running container
+mc-dad-server --mode container status   # force container mode
+
+# Manage the container
+mc-dad-server stop                # graceful shutdown with player countdown
+podman logs -f minecraft          # follow server logs
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MEMORY` | `2G` | JVM heap size |
+| `GC_TYPE` | `g1gc` | `g1gc` (Aikar's flags) or `zgc` |
+| `PORT` | `25565` | Minecraft server port |
+| `RCON_PORT` | `25575` | RCON port (localhost only) |
+| `RCON_PASSWORD` | `changeme` | RCON password |
+| `MC_VERSION` | `latest` | Minecraft version to download |
+
+### Systemd Integration (Quadlet)
+
+For always-on servers, install the Quadlet unit for rootless Podman with systemd:
+
+```bash
+mkdir -p ~/.config/containers/systemd
+cp quadlet/minecraft.container ~/.config/containers/systemd/
+systemctl --user daemon-reload
+systemctl --user start minecraft
+```
+
+See `compose.yml` for volume mounts, port mappings, and security hardening (cap_drop, no-new-privileges, memory limits).
 
 ## Bedrock Cross-Play (iPad, Switch, Phone)
 
@@ -209,6 +263,10 @@ just build       # build binary
 just test        # run tests
 just check       # fmt + vet + lint + test
 just build-all   # cross-compile all 7 targets
+
+# Container
+just container-build   # build container image
+just container-up      # start with Podman Compose
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
@@ -236,8 +294,11 @@ Use `--type fabric` for mods (plugins won't install). Paper supports plugins (di
 **Q: Is this safe?**
 Whitelist is on by default — only players you approve can join. Online mode verifies real Minecraft accounts.
 
+**Q: Can I run this in Docker/Podman?**
+Yes! Use `podman compose up -d` (or `docker compose up -d`). The CLI auto-detects container mode, or force it with `--mode container`. See [Container Deployment](#container-deployment).
+
 **Q: What if my server crashes?**
-Systemd will auto-restart it. Backups run daily at 4 AM.
+Systemd will auto-restart it. Backups run daily at 4 AM. In container mode, Podman/Docker restarts the container automatically.
 
 **Q: What Java does it install?**
 Adoptium Temurin 21 — open source, production-ready, no Oracle licensing nonsense.
