@@ -3,6 +3,7 @@ package container
 import (
 	"context"
 	"errors"
+	"net"
 	"testing"
 	"time"
 
@@ -177,6 +178,12 @@ func TestManager_Health(t *testing.T) {
 			output: "\n",
 			want:   "stopped",
 		},
+		{
+			name:       "empty status running error",
+			output:     "\n",
+			runningErr: errors.New("inspect failed"),
+			want:       "stopped",
+		},
 	}
 
 	for _, tt := range tests {
@@ -271,13 +278,22 @@ func TestManager_SendCommand(t *testing.T) {
 
 func TestManager_SendCommand_ConnectFailure(t *testing.T) {
 	mock := platform.NewMockRunner()
-	// Use an unreachable address.
-	m := NewManager(mock, "minecraft", "127.0.0.1:1", "pass")
+	// Allocate an ephemeral port, then close it so that dialing will fail.
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen() error = %v", err)
+	}
+	addr := l.Addr().String()
+	if err := l.Close(); err != nil {
+		t.Fatalf("listener Close() error = %v", err)
+	}
+
+	m := NewManager(mock, "minecraft", addr, "pass")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	err := m.SendCommand(ctx, "list")
+	err = m.SendCommand(ctx, "list")
 	if err == nil {
 		t.Fatal("SendCommand() expected error, got nil")
 	}
