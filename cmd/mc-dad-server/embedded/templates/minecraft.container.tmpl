@@ -1,0 +1,50 @@
+# MC Dad Server — Podman Quadlet systemd unit
+# Install: mc-dad-server setup-container
+# Enable:  systemctl --user daemon-reload && systemctl --user start minecraft
+[Unit]
+Description=Minecraft Paper Server (MC Dad Server)
+After=network-online.target
+
+[Container]
+Image=localhost/mc-dad-server:latest
+ContainerName=minecraft
+
+PublishPort={{.Port}}:{{.Port}}/tcp
+PublishPort={{.BedrockPort}}:{{.BedrockPort}}/udp
+PublishPort=127.0.0.1:25575:25575/tcp
+
+Volume=minecraft-worlds:/minecraft/world:Z
+Volume=minecraft-worlds-nether:/minecraft/world_nether:Z
+Volume=minecraft-worlds-end:/minecraft/world_the_end:Z
+Volume=minecraft-plugins:/minecraft/plugins:Z
+Volume=minecraft-logs:/minecraft/logs:Z
+Volume=minecraft-backups:/minecraft/backups:Z
+
+Volume={{.ConfigDir}}/server.properties:/minecraft/server.properties:ro,Z
+Volume={{.ConfigDir}}/bukkit.yml:/minecraft/bukkit.yml:ro,Z
+Volume={{.ConfigDir}}/spigot.yml:/minecraft/spigot.yml:ro,Z
+Volume={{.ConfigDir}}/paper-global.yml:/minecraft/config/paper-global.yml:ro,Z
+Volume={{.ConfigDir}}/paper-world-defaults.yml:/minecraft/config/paper-world-defaults.yml:ro,Z
+
+# Load secrets from .env file (RCON_PASSWORD, etc.)
+EnvironmentFile={{.EnvFile}}
+Environment=MEMORY={{.Memory}}
+Environment=GC_TYPE={{.GCType}}
+
+DropCapability=ALL
+NoNewPrivileges=true
+Notify=healthy
+StopTimeout=60
+
+[Service]
+Restart=on-failure
+RestartSec=30
+# Safety limits — MemoryMax adds 1 GiB headroom above MEMORY for JVM overhead
+# (metaspace, native allocations, etc.). Adjust if you see unexpected OOM kills.
+MemoryMax={{.MemoryMax}}
+# CPUQuota: 200% = 2 CPU cores; conservative default for small servers.
+# Increase on hosts with more cores or higher player counts.
+CPUQuota=200%
+
+[Install]
+WantedBy=default.target
