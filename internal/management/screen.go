@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -38,7 +39,15 @@ func (s *ScreenManager) SendCommand(ctx context.Context, cmd string) error {
 // Launch starts the server in a new detached screen session using the
 // configured start script.
 func (s *ScreenManager) Launch(ctx context.Context) error {
+	if s.scriptPath == "" {
+		return fmt.Errorf("screen manager: start script path not configured")
+	}
 	return s.runner.Run(ctx, "screen", "-dmS", s.session, "bash", s.scriptPath)
+}
+
+// Stop sends the "stop" command to the running server via screen.
+func (s *ScreenManager) Stop(ctx context.Context) error {
+	return s.SendCommand(ctx, "stop")
 }
 
 // Sleep pauses for the given number of seconds, respecting context cancellation.

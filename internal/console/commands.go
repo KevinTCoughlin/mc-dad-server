@@ -40,7 +40,7 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 
 	switch cmd {
 	case "start":
-		if _, err := management.StartServer(ctx, mgr, runner, cfg.Port, cfg.Dir, cfg.SessionName, output); err != nil {
+		if _, err := management.StartServer(ctx, mgr, runner, cfg.Port, cfg.SessionName, output); err != nil {
 			output.Warn("Starting server: %s", err)
 		}
 
@@ -73,7 +73,7 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 				Duration:   time.Duration(cfg.VoteDuration) * time.Second,
 				MaxChoices: cfg.VoteChoices,
 				ServerDir:  cfg.Dir,
-				Screen:     mgr,
+				Manager:    mgr,
 				Output:     output,
 			})
 			if err != nil {

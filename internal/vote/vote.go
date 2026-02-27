@@ -20,7 +20,7 @@ type Config struct {
 	Duration   time.Duration // vote window
 	MaxChoices int           // maps shown per vote
 	ServerDir  string
-	Screen     management.ServerManager
+	Manager    management.ServerManager
 	Output     *ui.UI
 }
 
@@ -34,6 +34,25 @@ type Result struct {
 // RunVote runs a complete map vote: broadcast options, collect votes from the
 // server log, tally results, and announce the winner.
 func RunVote(ctx context.Context, cfg *Config) (*Result, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("vote config is nil")
+	}
+	if cfg.Manager == nil {
+		return nil, fmt.Errorf("vote config Manager is nil")
+	}
+	if cfg.Output == nil {
+		return nil, fmt.Errorf("vote config Output is nil")
+	}
+	if cfg.ServerDir == "" {
+		return nil, fmt.Errorf("vote config ServerDir is empty")
+	}
+	if cfg.Duration <= 0 {
+		return nil, fmt.Errorf("vote duration must be positive")
+	}
+	if cfg.MaxChoices <= 0 {
+		return nil, fmt.Errorf("vote MaxChoices must be positive")
+	}
+
 	candidates := pickCandidates(cfg.Maps, cfg.MaxChoices)
 	if len(candidates) == 0 {
 		return nil, fmt.Errorf("no maps available for voting")
@@ -42,7 +61,7 @@ func RunVote(ctx context.Context, cfg *Config) (*Result, error) {
 	cfg.Output.Info("Starting map vote with %d candidates for %s", len(candidates), cfg.Duration)
 
 	// Broadcast vote options.
-	if err := broadcastVoteStart(ctx, cfg.Screen, candidates, int(cfg.Duration.Seconds())); err != nil {
+	if err := broadcastVoteStart(ctx, cfg.Manager, candidates, int(cfg.Duration.Seconds())); err != nil {
 		return nil, fmt.Errorf("broadcasting vote: %w", err)
 	}
 
@@ -61,7 +80,7 @@ func RunVote(ctx context.Context, cfg *Config) (*Result, error) {
 	playerVotes := make(map[string]int) // player -> choice index (1-based)
 
 	// Schedule reminders.
-	go sendReminders(voteCtx, cfg.Screen, candidates, cfg.Duration)
+	go sendReminders(voteCtx, cfg.Manager, candidates, cfg.Duration)
 
 	// Read votes until timeout.
 	for line := range lines {
@@ -99,12 +118,12 @@ func RunVote(ctx context.Context, cfg *Config) (*Result, error) {
 		winner, tally[winner], result.Voters)
 
 	// Announce results and teleport.
-	if err := broadcastResults(ctx, cfg.Screen, candidates, tally, winner); err != nil {
+	if err := broadcastResults(ctx, cfg.Manager, candidates, tally, winner); err != nil {
 		return result, fmt.Errorf("broadcasting results: %w", err)
 	}
 
 	// Countdown then teleport.
-	if err := countdownAndTeleport(ctx, cfg.Screen, winner, cfg.Output); err != nil {
+	if err := countdownAndTeleport(ctx, cfg.Manager, winner, cfg.Output); err != nil {
 		return result, fmt.Errorf("teleporting: %w", err)
 	}
 
@@ -150,7 +169,7 @@ func pickWinner(candidates []string, tally map[string]int) string {
 }
 
 // broadcastVoteStart sends the vote options to all players via tellraw.
-func broadcastVoteStart(ctx context.Context, screen management.ServerManager, candidates []string, durationSec int) error {
+func broadcastVoteStart(ctx context.Context, mgr management.ServerManager, candidates []string, durationSec int) error {
 	lines := []string{
 		`["",{"text":"==========================","color":"gold"}]`,
 		`["",{"text":"   VOTE FOR NEXT MAP!","color":"gold","bold":true}]`,
@@ -169,7 +188,7 @@ func broadcastVoteStart(ctx context.Context, screen management.ServerManager, ca
 	)
 
 	for _, l := range lines {
-		if err := screen.SendCommand(ctx, "tellraw @a "+l); err != nil {
+		if err := mgr.SendCommand(ctx, "tellraw @a "+l); err != nil {
 			return err
 		}
 	}
@@ -177,7 +196,7 @@ func broadcastVoteStart(ctx context.Context, screen management.ServerManager, ca
 }
 
 // sendReminders sends periodic vote reminders at halfway and 5s remaining.
-func sendReminders(ctx context.Context, screen management.ServerManager, candidates []string, duration time.Duration) {
+func sendReminders(ctx context.Context, mgr management.ServerManager, candidates []string, duration time.Duration) {
 	half := duration / 2
 	fiveSec := duration - 5*time.Second
 
@@ -187,7 +206,7 @@ func sendReminders(ctx context.Context, screen management.ServerManager, candida
 	case <-time.After(half):
 		msg := fmt.Sprintf(`["",{"text":"Vote reminder! %d seconds left. Type 1-%d to vote!","color":"yellow"}]`,
 			int(duration.Seconds())-int(half.Seconds()), len(candidates))
-		_ = screen.SendCommand(ctx, "tellraw @a "+msg)
+		_ = mgr.SendCommand(ctx, "tellraw @a "+msg)
 	}
 
 	if fiveSec > half {
@@ -197,13 +216,13 @@ func sendReminders(ctx context.Context, screen management.ServerManager, candida
 			return
 		case <-time.After(remaining):
 			msg := `["",{"text":"5 seconds left to vote!","color":"red","bold":true}]`
-			_ = screen.SendCommand(ctx, "tellraw @a "+msg)
+			_ = mgr.SendCommand(ctx, "tellraw @a "+msg)
 		}
 	}
 }
 
 // broadcastResults announces the vote results to all players.
-func broadcastResults(ctx context.Context, screen management.ServerManager, candidates []string, tally map[string]int, winner string) error {
+func broadcastResults(ctx context.Context, mgr management.ServerManager, candidates []string, tally map[string]int, winner string) error {
 	lines := []string{
 		`["",{"text":"==========================","color":"gold"}]`,
 		`["",{"text":"   RESULTS","color":"gold","bold":true}]`,
@@ -228,7 +247,7 @@ func broadcastResults(ctx context.Context, screen management.ServerManager, cand
 	)
 
 	for _, l := range lines {
-		if err := screen.SendCommand(ctx, "tellraw @a "+l); err != nil {
+		if err := mgr.SendCommand(ctx, "tellraw @a "+l); err != nil {
 			return err
 		}
 	}
@@ -243,9 +262,9 @@ func mapResultColor(candidate, winner string) string {
 }
 
 // countdownAndTeleport announces a 5-second countdown then teleports all players.
-func countdownAndTeleport(ctx context.Context, screen management.ServerManager, mapName string, output *ui.UI) error {
+func countdownAndTeleport(ctx context.Context, mgr management.ServerManager, mapName string, output *ui.UI) error {
 	msg := fmt.Sprintf(`["",{"text":"  Loading %s in 5...","color":"yellow","bold":true}]`, mapName)
-	if err := screen.SendCommand(ctx, "tellraw @a "+msg); err != nil {
+	if err := mgr.SendCommand(ctx, "tellraw @a "+msg); err != nil {
 		return err
 	}
 
@@ -254,7 +273,7 @@ func countdownAndTeleport(ctx context.Context, screen management.ServerManager, 
 			return err
 		}
 		msg := fmt.Sprintf(`["",{"text":"%d...","color":"yellow"}]`, i)
-		if err := screen.SendCommand(ctx, "tellraw @a "+msg); err != nil {
+		if err := mgr.SendCommand(ctx, "tellraw @a "+msg); err != nil {
 			return err
 		}
 	}
@@ -264,5 +283,5 @@ func countdownAndTeleport(ctx context.Context, screen management.ServerManager, 
 	}
 
 	output.Info("Teleporting all players to %s", mapName)
-	return management.RotateToMap(ctx, mapName, screen, output)
+	return management.RotateToMap(ctx, mapName, mgr, output)
 }

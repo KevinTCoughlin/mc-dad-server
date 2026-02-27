@@ -38,7 +38,6 @@ func NewRCONClient(addr, password string) *RCONClient {
 }
 
 // Connect dials the RCON server and authenticates.
-// Connect must not be called concurrently with Command or Close.
 func (r *RCONClient) Connect(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -49,6 +48,15 @@ func (r *RCONClient) Connect(ctx context.Context) error {
 		return fmt.Errorf("rcon dial: %w", err)
 	}
 	r.conn = conn
+
+	// Apply a deadline for the auth handshake so reads don't block
+	// indefinitely if the server accepts the connection but never responds.
+	if deadline, ok := ctx.Deadline(); ok {
+		_ = conn.SetDeadline(deadline)
+	} else {
+		_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+	}
+	defer func() { _ = conn.SetDeadline(time.Time{}) }()
 
 	// Authenticate.
 	id := r.nextID()
@@ -123,10 +131,16 @@ func (r *RCONClient) Command(ctx context.Context, cmd string) (string, error) {
 
 // Close closes the underlying connection.
 func (r *RCONClient) Close() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if r.conn == nil {
 		return nil
 	}
-	return r.conn.Close()
+
+	err := r.conn.Close()
+	r.conn = nil
+	return err
 }
 
 func (r *RCONClient) nextID() int32 {

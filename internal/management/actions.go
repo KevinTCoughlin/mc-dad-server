@@ -12,7 +12,7 @@ import (
 // It prints status messages to output. It returns true if the server was
 // already running (no action taken), false if it was freshly started.
 // Returns an error if the start attempt fails.
-func StartServer(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, dir, sessionName string, output *ui.UI) (bool, error) {
+func StartServer(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, sessionName string, output *ui.UI) (bool, error) {
 	if IsServerRunning(ctx, mgr, runner, port) {
 		output.Warn("Server is already running!")
 		return true, nil
@@ -27,7 +27,8 @@ func StartServer(ctx context.Context, mgr ServerManager, runner platform.Command
 }
 
 // StopServer gracefully stops the Minecraft server.
-// It prints status messages to output and returns any error encountered.
+// It attempts a graceful shutdown via SendCommand, falling back to
+// mgr.Stop() if the console path is unavailable.
 func StopServer(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, output *ui.UI) error {
 	if !IsServerRunning(ctx, mgr, runner, port) {
 		output.Info("No running Minecraft server found.")
@@ -35,13 +36,22 @@ func StopServer(ctx context.Context, mgr ServerManager, runner platform.CommandR
 	}
 
 	output.Info("Sending shutdown command...")
-	if err := mgr.SendCommand(ctx, "say Server shutting down in 10 seconds..."); err != nil {
-		return err
+
+	// Try graceful in-game countdown + stop command.
+	sayErr := mgr.SendCommand(ctx, "say Server shutting down in 10 seconds...")
+	if sayErr == nil {
+		if err := Sleep(ctx, 10); err != nil {
+			return err
+		}
+		if err := mgr.SendCommand(ctx, "stop"); err == nil {
+			output.Success("Stop command sent. Server shutting down...")
+			return nil
+		}
 	}
-	if err := Sleep(ctx, 10); err != nil {
-		return err
-	}
-	if err := mgr.SendCommand(ctx, "stop"); err != nil {
+
+	// Fallback to manager-level stop (e.g. podman stop).
+	output.Info("Console unavailable, using manager stop...")
+	if err := mgr.Stop(ctx); err != nil {
 		return err
 	}
 	output.Success("Stop command sent. Server shutting down...")

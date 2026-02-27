@@ -15,6 +15,10 @@ type ServerManager interface {
 	// details (screen session + start script, podman start, etc.).
 	Launch(ctx context.Context) error
 
+	// Stop performs a manager-level stop (e.g. screen "stop" command,
+	// podman stop). Used as a fallback when SendCommand is unavailable.
+	Stop(ctx context.Context) error
+
 	// Session returns the session or container name.
 	Session() string
 }
