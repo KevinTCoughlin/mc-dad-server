@@ -38,8 +38,7 @@ func StopServer(ctx context.Context, mgr ServerManager, runner platform.CommandR
 	output.Info("Sending shutdown command...")
 
 	// Try graceful in-game countdown + stop command.
-	sayErr := mgr.SendCommand(ctx, "say Server shutting down in 10 seconds...")
-	if sayErr == nil {
+	if err := mgr.SendCommand(ctx, "say Server shutting down in 10 seconds..."); err == nil {
 		if err := Sleep(ctx, 10); err != nil {
 			return err
 		}

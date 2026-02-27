@@ -273,8 +273,8 @@ func resolveMode(ctx context.Context, globals *Globals, runner platform.CommandR
 // It selects container mode only when a container with the session name
 // is currently running; otherwise it defaults to screen mode.
 func detectMode(ctx context.Context, globals *Globals, runner platform.CommandRunner) string {
-	out, err := runner.RunWithOutput(ctx, "podman", "inspect", "--format", "{{.State.Running}}", globals.Session)
-	if err == nil && strings.TrimSpace(string(out)) == "true" {
+	cm := container.NewManager(runner, globals.Session, "", "")
+	if cm.IsRunning(ctx) {
 		return "container"
 	}
 	return "screen"
