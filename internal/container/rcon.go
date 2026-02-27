@@ -13,17 +13,23 @@ import (
 
 // Source RCON protocol packet types.
 const (
-	packetTypeAuth         int32 = 3
+	packetTypeAuth int32 = 3
+
+	// packetTypeAuthResponse and packetTypeCommand both use value 2 per the
+	// Source RCON protocol spec. Callers distinguish them by context (auth
+	// phase vs command phase) and request ID.
 	packetTypeAuthResponse int32 = 2
 	packetTypeCommand      int32 = 2
-	packetTypeResponse     int32 = 0
+
+	packetTypeResponse int32 = 0
 
 	// maxRCONBodySize is the maximum size of an RCON response body in bytes.
 	maxRCONBodySize = 4096
 )
 
 // RCONClient implements the Source RCON protocol for communicating with a
-// Minecraft server. It is safe for concurrent use after Connect returns.
+// Minecraft server. It supports concurrent Command calls after Connect
+// returns, but Connect and Close must be externally synchronized.
 type RCONClient struct {
 	addr     string
 	password string
@@ -41,7 +47,6 @@ func NewRCONClient(addr, password string) *RCONClient {
 }
 
 // Connect dials the RCON server and authenticates.
-// Connect must not be called concurrently with Command or Close.
 func (r *RCONClient) Connect(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -52,6 +57,15 @@ func (r *RCONClient) Connect(ctx context.Context) error {
 		return fmt.Errorf("rcon dial: %w", err)
 	}
 	r.conn = conn
+
+	// Apply a deadline for the auth handshake so we don't block forever
+	// if the server accepts the connection but never responds.
+	authDeadline := time.Now().Add(5 * time.Second)
+	if d, ok := ctx.Deadline(); ok && d.Before(authDeadline) {
+		authDeadline = d
+	}
+	_ = conn.SetDeadline(authDeadline)
+	defer func() { _ = conn.SetDeadline(time.Time{}) }()
 
 	// Authenticate.
 	id := r.nextID()
@@ -76,7 +90,9 @@ func (r *RCONClient) Connect(ctx context.Context) error {
 		return fmt.Errorf("rcon authentication failed")
 	}
 
-	// Some servers send an empty response before the auth response.
+	// Some servers send an empty command-response packet before the real
+	// auth response. Only read the second packet when the first was NOT
+	// an auth response (and therefore not a failure).
 	if respType != packetTypeAuthResponse {
 		respID, respType, _, err = r.readPacket()
 		if err != nil {
@@ -118,7 +134,7 @@ func (r *RCONClient) Command(ctx context.Context, cmd string) (string, error) {
 		return "", fmt.Errorf("rcon command read: %w", err)
 	}
 	if respID != id {
-		return body, fmt.Errorf("rcon response ID mismatch: got %d, want %d", respID, id)
+		return "", fmt.Errorf("rcon response ID mismatch: got %d, want %d", respID, id)
 	}
 
 	return body, nil

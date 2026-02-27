@@ -9,8 +9,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
+
+// Verify Manager satisfies management.ServerManager at compile time.
+var _ management.ServerManager = (*Manager)(nil)
 
 // Manager manages a Minecraft server running in a Podman container.
 // It implements management.ServerManager.
@@ -61,8 +65,8 @@ func (c *Manager) SendCommand(ctx context.Context, cmd string) error {
 		_ = c.rcon.Close()
 		c.rcon = nil
 
-		if err := c.ensureConnectedLocked(ctx); err != nil {
-			return fmt.Errorf("rcon reconnect: %w", err)
+		if reconnErr := c.ensureConnectedLocked(ctx); reconnErr != nil {
+			return fmt.Errorf("rcon reconnect: %w", reconnErr)
 		}
 		_, err = c.rcon.Command(ctx, cmd)
 	}

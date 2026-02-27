@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
@@ -41,28 +42,24 @@ func TestManager_SendCommand_LazyConnect(t *testing.T) {
 	mgr := NewManager(mock, "minecraft", srv.addr(), "pass")
 	defer func() { _ = mgr.Close() }()
 
-	// rcon should be nil before first SendCommand.
-	mgr.mu.Lock()
-	if mgr.rcon != nil {
-		t.Error("rcon should be nil before first SendCommand")
+	// Close before any SendCommand should be a no-op (nothing connected yet).
+	if err := mgr.Close(); err != nil {
+		t.Fatalf("Close() before connect error = %v", err)
 	}
-	mgr.mu.Unlock()
 
+	// First SendCommand lazily establishes the connection.
 	if err := mgr.SendCommand(context.Background(), "say hello"); err != nil {
 		t.Fatalf("SendCommand() error = %v", err)
 	}
 
-	// rcon should be non-nil after first SendCommand.
-	mgr.mu.Lock()
-	if mgr.rcon == nil {
-		t.Error("rcon should be non-nil after SendCommand")
+	cmds := srv.getCommands()
+	if len(cmds) != 1 || cmds[0] != "say hello" {
+		t.Errorf("server received %v, want [say hello]", cmds)
 	}
-	mgr.mu.Unlock()
 }
 
 func TestManager_SendCommand_ReconnectsOnBrokenConnection(t *testing.T) {
 	srv := newFakeRCON(t, "pass")
-	defer srv.close()
 
 	mock := platform.NewMockRunner()
 	mgr := NewManager(mock, "minecraft", srv.addr(), "pass")
@@ -75,19 +72,23 @@ func TestManager_SendCommand_ReconnectsOnBrokenConnection(t *testing.T) {
 		t.Fatalf("first SendCommand() error = %v", err)
 	}
 
-	// Simulate a broken connection by closing the underlying RCON client.
-	mgr.mu.Lock()
-	_ = mgr.rcon.Close()
-	mgr.mu.Unlock()
+	// Shut down the fake server to break all existing connections, then
+	// start a new one on the same address so the reconnect succeeds.
+	addr := srv.addr()
+	srv.close()
+	time.Sleep(50 * time.Millisecond) // let OS release the port
 
-	// The next command should trigger a reconnect.
+	srv2 := newFakeRCONAt(t, addr, "pass")
+	defer srv2.close()
+
+	// The next command should detect the broken connection and reconnect.
 	if err := mgr.SendCommand(ctx, "say second"); err != nil {
 		t.Fatalf("SendCommand() after broken connection error = %v", err)
 	}
 
-	cmds := srv.getCommands()
-	if len(cmds) != 2 {
-		t.Errorf("server received %d commands, want 2", len(cmds))
+	cmds := srv2.getCommands()
+	if len(cmds) != 1 || cmds[0] != "say second" {
+		t.Errorf("server received %v, want [say second]", cmds)
 	}
 }
 

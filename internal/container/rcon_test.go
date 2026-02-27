@@ -14,6 +14,7 @@ type fakeRCON struct {
 	listener net.Listener
 	mu       sync.Mutex
 	commands []string
+	conns    []net.Conn
 	password string
 }
 
@@ -28,9 +29,30 @@ func newFakeRCON(t *testing.T, password string) *fakeRCON {
 	return f
 }
 
+// newFakeRCONAt creates a fake RCON server on a specific address.
+// Useful for reconnect tests that need a new server on the same port.
+func newFakeRCONAt(t *testing.T, addr, password string) *fakeRCON {
+	t.Helper()
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		t.Fatalf("listen on %s: %v", addr, err)
+	}
+	f := &fakeRCON{listener: ln, password: password}
+	go f.serve(t)
+	return f
+}
+
 func (f *fakeRCON) addr() string { return f.listener.Addr().String() }
 
-func (f *fakeRCON) close() { _ = f.listener.Close() }
+func (f *fakeRCON) close() {
+	_ = f.listener.Close()
+	f.mu.Lock()
+	for _, c := range f.conns {
+		_ = c.Close()
+	}
+	f.conns = nil
+	f.mu.Unlock()
+}
 
 func (f *fakeRCON) serve(t *testing.T) {
 	t.Helper()
@@ -39,6 +61,9 @@ func (f *fakeRCON) serve(t *testing.T) {
 		if err != nil {
 			return
 		}
+		f.mu.Lock()
+		f.conns = append(f.conns, conn)
+		f.mu.Unlock()
 		go f.handleConn(t, conn)
 	}
 }
