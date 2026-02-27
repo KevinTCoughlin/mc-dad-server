@@ -73,7 +73,7 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 				Duration:   time.Duration(cfg.VoteDuration) * time.Second,
 				MaxChoices: cfg.VoteChoices,
 				ServerDir:  cfg.Dir,
-				Screen:     mgr,
+				Manager:    mgr,
 				Output:     output,
 			})
 			if err != nil {
