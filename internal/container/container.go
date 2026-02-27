@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
@@ -20,6 +21,7 @@ type Manager struct {
 	rconAddr  string
 	rconPass  string
 	rcon      *RCONClient
+	rconMu    sync.Mutex
 }
 
 // NewManager creates a Manager for the named container using the specified runtime.
@@ -44,6 +46,7 @@ func (c *Manager) IsRunning(ctx context.Context) bool {
 
 // ensureRCON lazily initialises and returns the persistent RCON connection,
 // reconnecting if the previous connection was lost.
+// Must be called with c.rconMu held.
 func (c *Manager) ensureRCON(ctx context.Context) (*RCONClient, error) {
 	if c.rcon != nil {
 		return c.rcon, nil
@@ -59,6 +62,9 @@ func (c *Manager) ensureRCON(ctx context.Context) (*RCONClient, error) {
 // SendCommand sends a console command to the server via RCON.
 // It reuses a persistent connection and reconnects once on failure.
 func (c *Manager) SendCommand(ctx context.Context, cmd string) error {
+	c.rconMu.Lock()
+	defer c.rconMu.Unlock()
+
 	rc, err := c.ensureRCON(ctx)
 	if err != nil {
 		return fmt.Errorf("rcon: %w", err)

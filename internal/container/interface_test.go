@@ -9,5 +9,5 @@ import (
 // Compile-time interface compliance check.
 var (
 	_ management.ServerManager = (*container.Manager)(nil)
-	_ management.ServerManager = container.NewManager(platform.NewMockRunner(), "test", "", "")
+	_ management.ServerManager = container.NewManager(platform.NewMockRunner(), "podman", "test", "", "")
 )
