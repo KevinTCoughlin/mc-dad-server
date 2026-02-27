@@ -123,10 +123,16 @@ func (r *RCONClient) Command(ctx context.Context, cmd string) (string, error) {
 
 // Close closes the underlying connection.
 func (r *RCONClient) Close() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if r.conn == nil {
 		return nil
 	}
-	return r.conn.Close()
+
+	err := r.conn.Close()
+	r.conn = nil
+	return err
 }
 
 func (r *RCONClient) nextID() int32 {
