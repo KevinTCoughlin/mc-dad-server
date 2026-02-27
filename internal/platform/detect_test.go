@@ -36,7 +36,7 @@ func TestDetect_LinuxDistroAPT(t *testing.T) {
 	m := NewMockRunner()
 	m.ExistsMap["apt-get"] = true
 	m.ExistsMap["systemctl"] = true
-	m.OutputMap[m.key("cat", "/proc/version")] = []byte("Linux version 5.15.0 (gcc)")
+	m.OutputMap[m.Key("cat", "/proc/version")] = []byte("Linux version 5.15.0 (gcc)")
 
 	if runtime.GOOS != "linux" {
 		t.Skip("skipping linux-specific test on non-linux")

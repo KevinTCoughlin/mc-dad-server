@@ -88,14 +88,15 @@ func NewMockRunner() *MockRunner {
 	}
 }
 
-func (m *MockRunner) key(name string, args ...string) string {
+// Key returns the map key used for OutputMap / ErrorMap lookups.
+func (m *MockRunner) Key(name string, args ...string) string {
 	return fmt.Sprintf("%s %v", name, args)
 }
 
 // Run records the command and returns any preconfigured error.
 func (m *MockRunner) Run(_ context.Context, name string, args ...string) error {
 	m.Commands = append(m.Commands, MockCommand{Name: name, Args: args})
-	if err, ok := m.ErrorMap[m.key(name, args...)]; ok {
+	if err, ok := m.ErrorMap[m.Key(name, args...)]; ok {
 		return err
 	}
 	return nil
@@ -104,10 +105,10 @@ func (m *MockRunner) Run(_ context.Context, name string, args ...string) error {
 // RunWithOutput records the command and returns preconfigured output or error.
 func (m *MockRunner) RunWithOutput(_ context.Context, name string, args ...string) ([]byte, error) {
 	m.Commands = append(m.Commands, MockCommand{Name: name, Args: args})
-	if err, ok := m.ErrorMap[m.key(name, args...)]; ok {
+	if err, ok := m.ErrorMap[m.Key(name, args...)]; ok {
 		return nil, err
 	}
-	if out, ok := m.OutputMap[m.key(name, args...)]; ok {
+	if out, ok := m.OutputMap[m.Key(name, args...)]; ok {
 		return out, nil
 	}
 	return nil, nil
@@ -116,7 +117,7 @@ func (m *MockRunner) RunWithOutput(_ context.Context, name string, args ...strin
 // RunSudo records the command as a sudo invocation and returns any preconfigured error.
 func (m *MockRunner) RunSudo(_ context.Context, name string, args ...string) error {
 	m.Commands = append(m.Commands, MockCommand{Name: name, Args: args, Sudo: true})
-	if err, ok := m.ErrorMap[m.key(name, args...)]; ok {
+	if err, ok := m.ErrorMap[m.Key(name, args...)]; ok {
 		return err
 	}
 	return nil

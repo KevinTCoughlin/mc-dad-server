@@ -22,7 +22,7 @@ func TestMockRunner_Run(t *testing.T) {
 
 func TestMockRunner_RunWithOutput(t *testing.T) {
 	m := NewMockRunner()
-	m.OutputMap[m.key("cat", "/etc/hostname")] = []byte("testhost\n")
+	m.OutputMap[m.Key("cat", "/etc/hostname")] = []byte("testhost\n")
 
 	out, err := m.RunWithOutput(context.Background(), "cat", "/etc/hostname")
 	if err != nil {
