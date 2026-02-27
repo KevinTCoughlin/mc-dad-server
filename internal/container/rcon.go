@@ -50,6 +50,12 @@ func (r *RCONClient) Connect(ctx context.Context) error {
 	}
 	r.conn = conn
 
+	// Apply ctx deadline to the connection during auth exchange.
+	if deadline, ok := ctx.Deadline(); ok {
+		_ = conn.SetDeadline(deadline)
+		defer func() { _ = conn.SetDeadline(time.Time{}) }()
+	}
+
 	// Authenticate.
 	id := r.nextID()
 	if err := r.writePacket(id, packetTypeAuth, r.password); err != nil {
@@ -67,24 +73,39 @@ func (r *RCONClient) Connect(ctx context.Context) error {
 
 	// Minecraft sends an auth response with the request ID on success,
 	// or -1 on failure.
-	if respType == packetTypeAuthResponse && respID == -1 {
-		_ = conn.Close()
-		r.conn = nil
-		return fmt.Errorf("rcon authentication failed")
-	}
-
-	// Some servers send an empty response before the auth response.
-	if respType != packetTypeAuthResponse {
+	if respType == packetTypeAuthResponse {
+		if respID == -1 {
+			_ = conn.Close()
+			r.conn = nil
+			return fmt.Errorf("rcon authentication failed")
+		}
+		if respID != id {
+			_ = conn.Close()
+			r.conn = nil
+			return fmt.Errorf("rcon authentication failed: response ID mismatch")
+		}
+	} else {
+		// Some servers send an empty response before the auth response.
 		respID, respType, _, err = r.readPacket()
 		if err != nil {
 			_ = conn.Close()
 			r.conn = nil
 			return fmt.Errorf("rcon auth read (2nd): %w", err)
 		}
-		if respType == packetTypeAuthResponse && respID == -1 {
+		if respType != packetTypeAuthResponse {
+			_ = conn.Close()
+			r.conn = nil
+			return fmt.Errorf("rcon authentication failed: unexpected packet type %d", respType)
+		}
+		if respID == -1 {
 			_ = conn.Close()
 			r.conn = nil
 			return fmt.Errorf("rcon authentication failed")
+		}
+		if respID != id {
+			_ = conn.Close()
+			r.conn = nil
+			return fmt.Errorf("rcon authentication failed: response ID mismatch")
 		}
 	}
 

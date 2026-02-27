@@ -242,6 +242,12 @@ func TestManager_Health(t *testing.T) {
 			inspectErr:    true,
 			wantHealth:    "unknown",
 		},
+		{
+			name:          "podman empty status running error",
+			runtime:       "podman",
+			inspectOutput: "\n",
+			wantHealth:    "stopped",
+		},
 	}
 
 	for _, tc := range tests {

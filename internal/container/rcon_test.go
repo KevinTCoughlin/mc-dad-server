@@ -143,12 +143,21 @@ func TestRCONClient_AuthFailure(t *testing.T) {
 }
 
 func TestRCONClient_ConnectionRefused(t *testing.T) {
-	// Use a port that nothing is listening on.
-	client := NewRCONClient("127.0.0.1:1", "pass")
+	// Allocate an ephemeral port, then close it so that dialing will fail.
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen() error = %v", err)
+	}
+	addr := l.Addr().String()
+	if err := l.Close(); err != nil {
+		t.Fatalf("listener Close() error = %v", err)
+	}
+
+	client := NewRCONClient(addr, "pass")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	err := client.Connect(ctx)
+	err = client.Connect(ctx)
 	if err == nil {
 		_ = client.Close()
 		t.Fatal("Connect() expected dial error, got nil")
@@ -295,12 +304,22 @@ func TestRCONClient_ServerClosesConnection(t *testing.T) {
 }
 
 func TestRCONClient_DialCancelledContext(t *testing.T) {
+	// Allocate an ephemeral port, then close it.
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen() error = %v", err)
+	}
+	addr := l.Addr().String()
+	if err := l.Close(); err != nil {
+		t.Fatalf("listener Close() error = %v", err)
+	}
+
 	// A cancelled context should prevent dialing.
-	client := NewRCONClient("127.0.0.1:1", "pass")
+	client := NewRCONClient(addr, "pass")
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err := client.Connect(ctx)
+	err = client.Connect(ctx)
 	if err == nil {
 		_ = client.Close()
 		t.Fatal("Connect() expected error with cancelled context, got nil")
