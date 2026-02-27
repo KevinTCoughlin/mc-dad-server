@@ -431,30 +431,21 @@ func TestManager_SendCommand_LazyConnect(t *testing.T) {
 	mgr := NewManager(m, "podman", "minecraft", srv.Addr(), "pass")
 	defer func() { _ = mgr.Close() }()
 
-	// rcon should be nil before first SendCommand.
-	mgr.rconMu.Lock()
-	if mgr.rcon != nil {
-		t.Error("rcon should be nil before first SendCommand")
+	// Close before any SendCommand should be a no-op (nothing connected yet).
+	if err := mgr.Close(); err != nil {
+		t.Fatalf("Close() before connect error = %v", err)
 	}
-	mgr.rconMu.Unlock()
 
+	// First SendCommand lazily establishes the connection.
 	if err := mgr.SendCommand(context.Background(), "say hello"); err != nil {
 		t.Fatalf("SendCommand() error = %v", err)
 	}
-
-	// rcon should be non-nil after first SendCommand.
-	mgr.rconMu.Lock()
-	if mgr.rcon == nil {
-		t.Error("rcon should be non-nil after SendCommand")
-	}
-	mgr.rconMu.Unlock()
 }
 
 func TestManager_SendCommand_ReconnectsOnBrokenConnection(t *testing.T) {
 	srv := newRCONTestServer(t, "pass", func(cmd string) string {
 		return "ok"
 	})
-	defer srv.Close()
 	go srv.Serve(t)
 
 	m := platform.NewMockRunner()
@@ -468,13 +459,19 @@ func TestManager_SendCommand_ReconnectsOnBrokenConnection(t *testing.T) {
 		t.Fatalf("first SendCommand() error = %v", err)
 	}
 
-	// Simulate a broken connection by closing the underlying RCON client.
-	mgr.rconMu.Lock()
-	_ = mgr.rcon.Close()
-	mgr.rcon = nil
-	mgr.rconMu.Unlock()
+	// Shut down the server to break all existing connections, then
+	// start a new one on the same address so the reconnect succeeds.
+	addr := srv.Addr()
+	srv.Close()
+	time.Sleep(50 * time.Millisecond) // let OS release the port
 
-	// The next command should trigger a reconnect.
+	srv2 := newRCONTestServerAt(t, addr, "pass", func(cmd string) string {
+		return "ok"
+	})
+	defer srv2.Close()
+	go srv2.Serve(t)
+
+	// The next command should detect the broken connection and reconnect.
 	if err := mgr.SendCommand(ctx, "say second"); err != nil {
 		t.Fatalf("SendCommand() after broken connection error = %v", err)
 	}

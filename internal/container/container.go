@@ -9,8 +9,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
+
+// Verify Manager satisfies management.ServerManager at compile time.
+var _ management.ServerManager = (*Manager)(nil)
 
 // Manager manages a Minecraft server running in a container (Podman or Docker).
 // It implements management.ServerManager.

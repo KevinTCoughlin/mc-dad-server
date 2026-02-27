@@ -14,6 +14,8 @@ import (
 // for unit-testing the RCONClient.
 type rconTestServer struct {
 	ln       net.Listener
+	mu       sync.Mutex
+	conns    []net.Conn
 	password string
 	// handler is called for each command packet; return the response body.
 	handler func(cmd string) string
@@ -29,9 +31,29 @@ func newRCONTestServer(t *testing.T, password string, handler func(string) strin
 	return s
 }
 
+// newRCONTestServerAt creates a test RCON server on a specific address.
+// Useful for reconnect tests that need a new server on the same port.
+func newRCONTestServerAt(t *testing.T, addr, password string, handler func(string) string) *rconTestServer {
+	t.Helper()
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		t.Fatalf("listen on %s: %v", addr, err)
+	}
+	s := &rconTestServer{ln: ln, password: password, handler: handler}
+	return s
+}
+
 func (s *rconTestServer) Addr() string { return s.ln.Addr().String() }
 
-func (s *rconTestServer) Close() { _ = s.ln.Close() }
+func (s *rconTestServer) Close() {
+	_ = s.ln.Close()
+	s.mu.Lock()
+	for _, c := range s.conns {
+		_ = c.Close()
+	}
+	s.conns = nil
+	s.mu.Unlock()
+}
 
 // Serve accepts connections and handles them. It keeps accepting new
 // connections so that reconnect tests work.
@@ -42,6 +64,9 @@ func (s *rconTestServer) Serve(t *testing.T) {
 		if err != nil {
 			return // listener closed
 		}
+		s.mu.Lock()
+		s.conns = append(s.conns, conn)
+		s.mu.Unlock()
 		go s.handleConn(t, conn)
 	}
 }
