@@ -16,7 +16,7 @@ import (
 )
 
 // Backup creates a compressed backup of world directories with rotation.
-func Backup(ctx context.Context, serverDir string, maxBackups int, screen *ScreenManager, output *ui.UI) error {
+func Backup(ctx context.Context, serverDir string, maxBackups int, mgr ServerManager, output *ui.UI) error {
 	backupDir := filepath.Join(serverDir, "backups")
 	if err := os.MkdirAll(backupDir, 0o755); err != nil {
 		return fmt.Errorf("creating backup dir: %w", err)
@@ -26,11 +26,11 @@ func Backup(ctx context.Context, serverDir string, maxBackups int, screen *Scree
 	backupFile := filepath.Join(backupDir, fmt.Sprintf("world_%s.tar.gz", timestamp))
 
 	// Notify server and save
-	if screen.IsRunning(ctx) {
-		_ = screen.SendCommand(ctx, "say Backup starting...")
-		_ = screen.SendCommand(ctx, "save-all")
+	if mgr.IsRunning(ctx) {
+		_ = mgr.SendCommand(ctx, "say Backup starting...")
+		_ = mgr.SendCommand(ctx, "save-all")
 		_ = Sleep(ctx, 3)
-		_ = screen.SendCommand(ctx, "save-off")
+		_ = mgr.SendCommand(ctx, "save-off")
 		_ = Sleep(ctx, 1)
 	}
 
@@ -47,9 +47,9 @@ func Backup(ctx context.Context, serverDir string, maxBackups int, screen *Scree
 	}
 
 	// Re-enable auto-save
-	if screen.IsRunning(ctx) {
-		_ = screen.SendCommand(ctx, "save-on")
-		_ = screen.SendCommand(ctx, "say Backup complete!")
+	if mgr.IsRunning(ctx) {
+		_ = mgr.SendCommand(ctx, "save-on")
+		_ = mgr.SendCommand(ctx, "say Backup complete!")
 	}
 
 	// Rotate old backups

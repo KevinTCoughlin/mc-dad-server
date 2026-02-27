@@ -2,7 +2,7 @@
 
 ## What is this?
 
-MC Dad Server — a single-binary CLI that installs and manages a Minecraft server (Java/Bedrock cross-play via Geyser, PaperMC tuned configs, parkour, chat filter, playit.gg tunnel). Targets Linux (primary), macOS, and Windows. Written in Go.
+MC Dad Server — a single-binary CLI that installs and manages a Minecraft server (Java/Bedrock cross-play via Geyser, PaperMC tuned configs, parkour, chat filter, playit.gg tunnel). Supports bare-metal (GNU screen) and container (Podman/Docker) modes. Targets Linux (primary), macOS, and Windows. Written in Go.
 
 ## Build & Test
 
@@ -23,7 +23,7 @@ cmd/mc-dad-server/          Entry point, embedded assets (configs, templates)
 internal/
   cli/                      Kong CLI structs and command handlers
     cli.go                  Globals + CLI struct (top-level command tree)
-    commands.go             Simple commands (start, stop, status, backup, parkour, vote)
+    commands.go             Simple commands (start, stop, status, backup, parkour, vote) + mode resolution
     console.go              Console command (bridges to console package)
     install.go              Install command (flags, validation, orchestration)
     license.go              License commands (validate, activate, deactivate)
@@ -33,8 +33,9 @@ internal/
     logtail.go              Polls logs/latest.log, sends lines as TUI messages
   config/                   ServerConfig struct, defaults, validation
   configs/                  Deploy embedded config files + start script
+  container/                RCON client (rcon.go) and Podman container manager (container.go)
   license/                  LemonSqueezy license client + manager
-  management/               Screen session, backup, process stats, parkour rotation
+  management/               ServerManager interface, screen/container backends, backup, process stats, parkour rotation
   nag/                      Shareware nag/grace-period logic
   parkour/                  Parkour map definitions and setup
   platform/                 OS detection, package install, Java, firewall, cron, services
@@ -56,6 +57,8 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 - **Config**: `config.ServerConfig` is framework-agnostic — built from Kong flags in `InstallCmd.toConfig()`, validated via `cfg.Validate()`
 - **Embedded assets**: `//go:embed all:embedded` in main.go — configs, templates, blocked-words list
 - **Version**: Set via ldflags (`-X main.version=... -X main.commit=...`) by goreleaser
+- **Server modes**: `--mode auto|screen|container` — `ServerManager` interface (`management/manager.go`) with `ScreenManager` and `container.Manager` backends. Auto-detection checks for running container first, falls back to screen.
+- **Container**: Debian Trixie slim + Temurin 21 JRE. FIFO-based stdin (`entrypoint.sh`), RCON for remote commands (`container/rcon.go`), graceful 30s shutdown countdown.
 
 ## Key Conventions
 
@@ -68,4 +71,9 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 
 ## CI
 
-GitHub Actions runs lint, test (ubuntu/macos/windows matrix), and cross-compile build verification on push to main and PRs. Release via goreleaser on tags.
+GitHub Actions workflows:
+- **ci.yml**: lint, fmt (gofumpt), vet, tidy check, test (ubuntu/macos/windows), cross-compile build (7 targets), hadolint (Containerfile), shellcheck (entrypoint.sh)
+- **container.yml**: build container image, Trivy security scan, push to ghcr.io, SBOM generation
+- **dependency-check.yml**: weekly go.sum tidy check, outdated deps, Go toolchain version
+- **release.yml**: goreleaser on tags
+- **nightly.yml**: nightly pre-release builds

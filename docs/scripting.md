@@ -171,6 +171,8 @@ These limits only affect the scripting sidecar, not the Java server.
 
 The RCON password is never written to disk in the sidecar's `.env` file. It is extracted at runtime from `server.properties` and passed as an inline environment variable to the Bun process.
 
+> **Container mode**: When running in `--mode container`, the Go CLI also reads the RCON password from `server.properties` for its own RCON client. The sidecar's RCON and the CLI's RCON use the same credentials and protocol.
+
 ## Configuration
 
 All settings are configurable via environment variables in `bun-scripts/.env`:

@@ -38,6 +38,13 @@ just fmt     # format code with gofumpt
 just vet     # run go vet
 just check   # fmt + vet + lint + test (run before submitting)
 just clean   # remove build artifacts
+
+# Container development
+just container-build   # build container image
+just container-up      # start with Podman Compose
+just container-down    # stop containers
+just container-logs    # follow server logs
+just container-shell   # shell into the container
 ```
 
 ## Project Layout
@@ -48,8 +55,9 @@ internal/
   cli/                 Kong CLI structs and command handlers
   config/              Server configuration and validation
   configs/             Embedded Minecraft config files
+  container/           RCON client and Podman container manager
   license/             LemonSqueezy license client and manager
-  management/          Process, backup, and screen management
+  management/          ServerManager interface, backup, screen, process mgmt
   nag/                 Shareware nag/grace-period logic
   parkour/             Parkour world and map features
   platform/            OS-specific helpers (Java install, cron, firewall)
@@ -63,6 +71,10 @@ embedded/bun/          Bun runtime framework (TypeScript) and templates
 configs/               Minecraft server config templates
 docs/                  Documentation and GitHub Pages
 scripts/               Utility scripts
+Containerfile          Multi-stage container build (Debian Trixie + Temurin 21)
+entrypoint.sh          Container entrypoint with graceful shutdown
+compose.yml            Podman/Docker Compose configuration
+quadlet/               Systemd Quadlet unit for rootless Podman
 ```
 
 ## Submitting Changes
@@ -72,7 +84,7 @@ scripts/               Utility scripts
 3. Run `just check` to verify formatting, linting, and tests pass.
 4. Open a pull request against `main`.
 
-CI runs lint (golangci-lint), tests (Ubuntu, macOS, Windows), and cross-platform build verification automatically on every PR.
+CI runs lint (golangci-lint), tests (Ubuntu, macOS, Windows), cross-platform build verification, hadolint (Containerfile), and shellcheck (entrypoint.sh) automatically on every PR.
 
 ## Style Guide
 
