@@ -88,3 +88,54 @@ func TestPlatform_IsLinux(t *testing.T) {
 		}
 	}
 }
+
+func TestDetectContainerRuntime(t *testing.T) {
+	tests := []struct {
+		name        string
+		hasPodman   bool
+		hasDocker   bool
+		wantRuntime string
+	}{
+		{
+			name:        "podman only",
+			hasPodman:   true,
+			hasDocker:   false,
+			wantRuntime: "podman",
+		},
+		{
+			name:        "docker only",
+			hasPodman:   false,
+			hasDocker:   true,
+			wantRuntime: "docker",
+		},
+		{
+			name:        "both available (prefers podman)",
+			hasPodman:   true,
+			hasDocker:   true,
+			wantRuntime: "podman",
+		},
+		{
+			name:        "neither available",
+			hasPodman:   false,
+			hasDocker:   false,
+			wantRuntime: "unknown",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m := NewMockRunner()
+			if tc.hasPodman {
+				m.ExistsMap["podman"] = true
+			}
+			if tc.hasDocker {
+				m.ExistsMap["docker"] = true
+			}
+
+			got := detectContainerRuntime(m)
+			if got != tc.wantRuntime {
+				t.Errorf("detectContainerRuntime() = %q, want %q", got, tc.wantRuntime)
+			}
+		})
+	}
+}

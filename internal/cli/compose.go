@@ -44,7 +44,7 @@ func (cmd *GenerateComposeCmd) toConfig() *config.ServerConfig {
 }
 
 // Run generates a compose.yml file.
-func (cmd *GenerateComposeCmd) Run(_ *Globals, _ platform.CommandRunner, output *ui.UI) error {
+func (cmd *GenerateComposeCmd) Run(_ *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	cfg := cmd.toConfig()
 	if err := cfg.Validate(); err != nil {
 		return err
@@ -54,11 +54,23 @@ func (cmd *GenerateComposeCmd) Run(_ *Globals, _ platform.CommandRunner, output 
 		return fmt.Errorf("generating compose.yml: %w", err)
 	}
 
+	// Detect container runtime
+	runtime := "docker"
+	if runner.CommandExists("podman") {
+		runtime = "podman"
+	} else if runner.CommandExists("docker") {
+		runtime = "docker"
+	}
+
 	output.Success("compose.yml written to %s", cmd.Output)
 	output.Info("")
-	output.Info("Start with:  docker compose up -d")
-	output.Info("       or:   podman compose up -d")
-	output.Info("Stop with:   docker compose down")
+	output.Info("Start with:  %s compose up -d", runtime)
+	if runtime == "podman" {
+		output.Info("       or:   docker compose up -d")
+	} else {
+		output.Info("       or:   podman compose up -d")
+	}
+	output.Info("Stop with:   %s compose down", runtime)
 	output.Info("")
 	return nil
 }

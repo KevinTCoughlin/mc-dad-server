@@ -8,21 +8,23 @@ import (
 
 // Platform holds detected OS, distro, package manager, and init system.
 type Platform struct {
-	OS         string // linux, macos, wsl, windows
-	Distro     string // debian, fedora, arch, suse, unknown
-	PkgMgr     string // apt, dnf, pacman, zypper, brew, unknown
-	InitSystem string // systemd, launchd, unknown
-	Arch       string // amd64, arm64, armv7
+	OS               string // linux, macos, wsl, windows
+	Distro           string // debian, fedora, arch, suse, unknown
+	PkgMgr           string // apt, dnf, pacman, zypper, brew, unknown
+	InitSystem       string // systemd, launchd, unknown
+	Arch             string // amd64, arm64, armv7
+	ContainerRuntime string // podman, docker, unknown
 }
 
 // Detect probes the runtime environment and returns platform info.
 func Detect(ctx context.Context, runner CommandRunner) Platform {
 	p := Platform{
-		OS:         "unknown",
-		Distro:     "unknown",
-		PkgMgr:     "unknown",
-		InitSystem: "unknown",
-		Arch:       normalizeArch(runtime.GOARCH),
+		OS:               "unknown",
+		Distro:           "unknown",
+		PkgMgr:           "unknown",
+		InitSystem:       "unknown",
+		Arch:             normalizeArch(runtime.GOARCH),
+		ContainerRuntime: "unknown",
 	}
 
 	switch runtime.GOOS {
@@ -44,6 +46,9 @@ func Detect(ctx context.Context, runner CommandRunner) Platform {
 	case "windows":
 		p.OS = "windows"
 	}
+
+	// Detect container runtime (podman preferred over docker)
+	p.ContainerRuntime = detectContainerRuntime(runner)
 
 	return p
 }
@@ -85,4 +90,16 @@ func containsCI(s, substr string) bool {
 // IsLinux returns true if the platform is linux or WSL.
 func (p *Platform) IsLinux() bool {
 	return p.OS == "linux" || p.OS == "wsl"
+}
+
+// detectContainerRuntime detects available container runtime (podman or docker).
+// Prefers podman if both are available.
+func detectContainerRuntime(runner CommandRunner) string {
+	if runner.CommandExists("podman") {
+		return "podman"
+	}
+	if runner.CommandExists("docker") {
+		return "docker"
+	}
+	return "unknown"
 }

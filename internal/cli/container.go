@@ -45,7 +45,7 @@ func (cmd *SetupContainerCmd) toConfig() *config.ServerConfig {
 }
 
 // Run deploys container configs, .env, and Quadlet unit.
-func (cmd *SetupContainerCmd) Run(_ *Globals, _ platform.CommandRunner, output *ui.UI) error {
+func (cmd *SetupContainerCmd) Run(_ *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	cfg := cmd.toConfig()
 	if err := cfg.Validate(); err != nil {
 		return err
@@ -85,11 +85,19 @@ func (cmd *SetupContainerCmd) Run(_ *Globals, _ platform.CommandRunner, output *
 	}
 	output.Success("Quadlet unit written to %s", filepath.Join(quadletDir, "minecraft.container"))
 
+	// Detect container runtime
+	runtime := "podman"
+	if runner.CommandExists("podman") {
+		runtime = "podman"
+	} else if runner.CommandExists("docker") {
+		runtime = "docker"
+	}
+
 	// Print next steps
 	output.Info("")
 	output.Info("Container setup complete! Next steps:")
 	output.Info("  1. Build the container image:")
-	output.Info("       podman build -t mc-dad-server:latest .")
+	output.Info("       %s build -t mc-dad-server:latest .", runtime)
 	output.Info("  2. Reload systemd and start the service:")
 	output.Info("       systemctl --user daemon-reload")
 	output.Info("       systemctl --user start minecraft")
