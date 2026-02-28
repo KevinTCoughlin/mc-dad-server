@@ -252,7 +252,8 @@ func resolveManager(ctx context.Context, globals *Globals, runner platform.Comma
 		if rconPass == "" {
 			fmt.Fprintln(os.Stderr, "Warning: RCON password not found — set RCON_PASSWORD env var or configure server.properties")
 		}
-		return container.NewManager(runner, cfg.SessionName, "127.0.0.1:25575", rconPass)
+		runtime := detectContainerRuntime(runner)
+		return container.NewManager(runner, runtime, cfg.SessionName, "127.0.0.1:25575", rconPass)
 	}
 	return management.NewScreenManager(runner, cfg.SessionName)
 }
@@ -272,10 +273,23 @@ func resolveMode(ctx context.Context, globals *Globals, runner platform.CommandR
 // detectMode auto-detects whether to use container or screen mode.
 // Priority: running container > running screen session > default screen.
 func detectMode(ctx context.Context, globals *Globals, runner platform.CommandRunner) string {
-	if container.Exists(ctx, runner, globals.Session) {
+	runtime := detectContainerRuntime(runner)
+	if runtime != "unknown" && container.Exists(ctx, runner, runtime, globals.Session) {
 		return "container"
 	}
 	return "screen"
+}
+
+// detectContainerRuntime detects available container runtime (podman or docker).
+// Prefers podman if both are available.
+func detectContainerRuntime(runner platform.CommandRunner) string {
+	if runner.CommandExists("podman") {
+		return "podman"
+	}
+	if runner.CommandExists("docker") {
+		return "docker"
+	}
+	return "unknown"
 }
 
 // readRCONPassword reads the RCON password, checking the RCON_PASSWORD env var
