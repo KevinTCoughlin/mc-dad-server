@@ -262,7 +262,7 @@ just tools       # install dev tools
 just build       # build binary
 just test        # run tests
 just check       # fmt + vet + lint + test
-just build-all   # cross-compile all targets (via goreleaser)
+just build-all   # cross-compile all targets (go build matrix)
 
 # Container
 just container-build   # build container image

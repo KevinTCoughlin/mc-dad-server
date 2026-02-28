@@ -24,41 +24,54 @@ RUN apt-get update && \
 WORKDIR /minecraft
 
 # Download plugins (changes infrequently — cached layer)
-# hadolint ignore=SC2015
+# Parallel downloads with PID tracking so any failure fails the build.
+# GeyserMC and Floodgate SHA-256 hashes are fetched from the builds API and verified.
+# hadolint ignore=SC2016,SC2034
 RUN mkdir -p plugins && \
-    ( curl -fsSL -o plugins/Geyser-Spigot.jar \
-        "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot" ) & \
-    ( curl -fsSL -o plugins/Floodgate-Spigot.jar \
-        "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot" ) & \
+    pids=() && \
+    ( GEYSER_DATA=$(curl -fsSL "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest") && \
+      GEYSER_SHA=$(echo "$GEYSER_DATA" | jq -r '.downloads.spigot.sha256') && \
+      curl -fsSL -o plugins/Geyser-Spigot.jar \
+        "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot" && \
+      echo "${GEYSER_SHA}  plugins/Geyser-Spigot.jar" | sha256sum -c ) & pids+=("$!") && \
+    ( FLOOD_DATA=$(curl -fsSL "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest") && \
+      FLOOD_SHA=$(echo "$FLOOD_DATA" | jq -r '.downloads.spigot.sha256') && \
+      curl -fsSL -o plugins/Floodgate-Spigot.jar \
+        "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot" && \
+      echo "${FLOOD_SHA}  plugins/Floodgate-Spigot.jar" | sha256sum -c ) & pids+=("$!") && \
     ( PARKOUR_URL=$(curl -fsSL "https://api.github.com/repos/A5H73Y/Parkour/releases/latest" \
         | jq -r '.assets[0].browser_download_url') && \
-      curl -fsSL -o plugins/Parkour.jar "$PARKOUR_URL" ) & \
+      curl -fsSL -o plugins/Parkour.jar "$PARKOUR_URL" ) & pids+=("$!") && \
     ( MV_VERSION=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/latestrelease" \
         | tr -d '"') && \
       curl -fsSL -o plugins/Multiverse-Core.jar \
-        "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MV_VERSION}/PAPER/download" ) & \
+        "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MV_VERSION}/PAPER/download" ) & pids+=("$!") && \
     ( WE_VERSION=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/WorldEdit/latestrelease" \
         | tr -d '"') && \
       curl -fsSL -o plugins/WorldEdit.jar \
-        "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WE_VERSION}/PAPER/download" ) & \
-    wait && echo "All plugins downloaded"
+        "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WE_VERSION}/PAPER/download" ) & pids+=("$!") && \
+    for pid in "${pids[@]}"; do \
+        wait "$pid" || exit 1; \
+    done && \
+    echo "All plugins downloaded"
 
 # ARG placed here so MC_VERSION changes only bust the Paper download layer
 ARG MC_VERSION
 
-# Download Paper server JAR via PaperMC API
+# Download Paper server JAR via PaperMC API with SHA-256 verification
 RUN set -e && \
     MC_VER="${MC_VERSION}" && \
     if [ "$MC_VER" = "latest" ] || [ -z "$MC_VER" ]; then \
         MC_VER=$(curl -fsSL https://api.papermc.io/v2/projects/paper | jq -r '.versions[-1]'); \
     fi && \
-    LATEST_BUILD=$(curl -fsSL "https://api.papermc.io/v2/projects/paper/versions/${MC_VER}/builds" \
-        | jq -r '.builds[-1].build') && \
-    JAR_NAME=$(curl -fsSL "https://api.papermc.io/v2/projects/paper/versions/${MC_VER}/builds" \
-        | jq -r '.builds[-1].downloads.application.name') && \
+    BUILD_DATA=$(curl -fsSL "https://api.papermc.io/v2/projects/paper/versions/${MC_VER}/builds") && \
+    LATEST_BUILD=$(echo "$BUILD_DATA" | jq -r '.builds[-1].build') && \
+    JAR_NAME=$(echo "$BUILD_DATA" | jq -r '.builds[-1].downloads.application.name') && \
+    JAR_SHA=$(echo "$BUILD_DATA" | jq -r '.builds[-1].downloads.application.sha256') && \
     curl -fsSL -o server.jar \
         "https://api.papermc.io/v2/projects/paper/versions/${MC_VER}/builds/${LATEST_BUILD}/downloads/${JAR_NAME}" && \
-    echo "Downloaded Paper ${MC_VER} build ${LATEST_BUILD}"
+    echo "${JAR_SHA}  server.jar" | sha256sum -c && \
+    echo "Downloaded and verified Paper ${MC_VER} build ${LATEST_BUILD}"
 
 # Accept EULA
 RUN echo "eula=true" > eula.txt
