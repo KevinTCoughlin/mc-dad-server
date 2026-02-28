@@ -64,7 +64,21 @@ jobs:
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build image for scanning
+      - name: Build and push
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Containerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build for PR scanning
+        if: github.event_name == 'pull_request'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -79,7 +93,10 @@ jobs:
         id: trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.image.outputs.name }}:scan
+          image-ref: >-
+            ${{ github.event_name == 'pull_request'
+              && format('{0}:scan', steps.image.outputs.name)
+              || format('{0}/{1}:{2}', env.REGISTRY, steps.image.outputs.name, 'latest') }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -93,22 +110,12 @@ jobs:
       - name: Trivy table output
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.image.outputs.name }}:scan
+          image-ref: >-
+            ${{ github.event_name == 'pull_request'
+              && format('{0}:scan', steps.image.outputs.name)
+              || format('{0}/{1}:{2}', env.REGISTRY, steps.image.outputs.name, 'latest') }}
           format: 'table'
           severity: 'CRITICAL,HIGH,MEDIUM'
-
-      - name: Push container image
-        if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Containerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Generate SBOM
         if: github.event_name != 'pull_request'

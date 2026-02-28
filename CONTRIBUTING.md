@@ -71,7 +71,7 @@ embedded/bun/          Bun runtime framework (TypeScript) and templates
 configs/               Minecraft server config templates
 docs/                  Documentation and GitHub Pages
 scripts/               Utility scripts
-Containerfile          Multi-stage container build (Debian Trixie + Temurin 21)
+Containerfile          Multi-stage container build (Eclipse Temurin 21 JRE on Ubuntu Noble)
 entrypoint.sh          Container entrypoint with graceful shutdown
 compose.yml            Podman/Docker Compose configuration
 quadlet/               Systemd Quadlet unit for rootless Podman
@@ -84,7 +84,7 @@ quadlet/               Systemd Quadlet unit for rootless Podman
 3. Run `just check` to verify formatting, linting, and tests pass.
 4. Open a pull request against `main`.
 
-CI runs lint (golangci-lint), tests (Ubuntu, macOS, Windows), cross-platform build verification, hadolint (Containerfile), and shellcheck (entrypoint.sh) automatically on every PR.
+CI runs checks (lint + tidy + vet), tests (Ubuntu on every PR; macOS/Windows on push to main), build verification (goreleaser snapshot), hadolint (Containerfile), and shellcheck (entrypoint.sh) automatically.
 
 ## Style Guide
 
