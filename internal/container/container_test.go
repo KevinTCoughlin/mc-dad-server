@@ -178,3 +178,161 @@ func TestManager_Session(t *testing.T) {
 		t.Errorf("Session() = %q, want %q", got, "my-container")
 	}
 }
+
+func TestManager_Health(t *testing.T) {
+	tests := []struct {
+		name          string
+		runtime       string
+		inspectOutput string
+		inspectErr    bool
+		runningOutput string
+		wantHealth    string
+	}{
+		{
+			name:          "podman healthy",
+			runtime:       "podman",
+			inspectOutput: "healthy\n",
+			wantHealth:    "healthy",
+		},
+		{
+			name:          "docker healthy",
+			runtime:       "docker",
+			inspectOutput: "healthy\n",
+			wantHealth:    "healthy",
+		},
+		{
+			name:          "podman unhealthy",
+			runtime:       "podman",
+			inspectOutput: "unhealthy\n",
+			wantHealth:    "unhealthy",
+		},
+		{
+			name:          "docker starting",
+			runtime:       "docker",
+			inspectOutput: "starting\n",
+			wantHealth:    "starting",
+		},
+		{
+			name:          "podman no healthcheck running",
+			runtime:       "podman",
+			inspectOutput: "<no value>\n",
+			runningOutput: "true\n",
+			wantHealth:    "running",
+		},
+		{
+			name:          "docker no healthcheck stopped",
+			runtime:       "docker",
+			inspectOutput: "<no value>\n",
+			runningOutput: "false\n",
+			wantHealth:    "stopped",
+		},
+		{
+			name:          "podman inspect error",
+			runtime:       "podman",
+			inspectOutput: "",
+			inspectErr:    true,
+			wantHealth:    "unknown",
+		},
+		{
+			name:          "docker inspect error",
+			runtime:       "docker",
+			inspectOutput: "",
+			inspectErr:    true,
+			wantHealth:    "unknown",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m := platform.NewMockRunner()
+
+			// Setup inspect mock based on runtime
+			var inspectFormat string
+			if tc.runtime == "docker" {
+				inspectFormat = "{{.State.Health.Status}}"
+			} else {
+				inspectFormat = "{{.State.Healthcheck.Status}}"
+			}
+			inspectKey := tc.runtime + " [inspect --format " + inspectFormat + " minecraft]"
+			m.OutputMap[inspectKey] = []byte(tc.inspectOutput)
+			if tc.inspectErr {
+				m.ErrorMap[inspectKey] = errors.New("mock error")
+			}
+
+			// Setup IsRunning mock for fallback cases
+			if tc.inspectOutput == "<no value>\n" {
+				runningKey := tc.runtime + " [inspect --format {{.State.Running}} minecraft]"
+				m.OutputMap[runningKey] = []byte(tc.runningOutput)
+			}
+
+			mgr := NewManager(m, tc.runtime, "minecraft", "localhost:25575", "testpass")
+			got := mgr.Health(context.Background())
+			if got != tc.wantHealth {
+				t.Errorf("Health() = %q, want %q", got, tc.wantHealth)
+			}
+		})
+	}
+}
+
+func TestManager_Stats(t *testing.T) {
+	tests := []struct {
+		name      string
+		runtime   string
+		output    string
+		err       bool
+		wantStats string
+		wantErr   bool
+	}{
+		{
+			name:      "podman stats success",
+			runtime:   "podman",
+			output:    "CPU: 5.23%  MEM: 512MiB / 16GiB\n",
+			wantStats: "CPU: 5.23%  MEM: 512MiB / 16GiB",
+			wantErr:   false,
+		},
+		{
+			name:      "docker stats success",
+			runtime:   "docker",
+			output:    "CPU: 10.50%  MEM: 1GiB / 32GiB\n",
+			wantStats: "CPU: 10.50%  MEM: 1GiB / 32GiB",
+			wantErr:   false,
+		},
+		{
+			name:      "podman stats error",
+			runtime:   "podman",
+			output:    "",
+			err:       true,
+			wantStats: "",
+			wantErr:   true,
+		},
+		{
+			name:      "docker stats error",
+			runtime:   "docker",
+			output:    "",
+			err:       true,
+			wantStats: "",
+			wantErr:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m := platform.NewMockRunner()
+			key := tc.runtime + " [stats --no-stream --format CPU: {{.CPUPerc}}  MEM: {{.MemUsage}} minecraft]"
+			m.OutputMap[key] = []byte(tc.output)
+			if tc.err {
+				m.ErrorMap[key] = errors.New("mock error")
+			}
+
+			mgr := NewManager(m, tc.runtime, "minecraft", "localhost:25575", "testpass")
+			got, err := mgr.Stats(context.Background())
+			if (err != nil) != tc.wantErr {
+				t.Errorf("Stats() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
+			if got != tc.wantStats {
+				t.Errorf("Stats() = %q, want %q", got, tc.wantStats)
+			}
+		})
+	}
+}

@@ -69,7 +69,13 @@ func (c *Manager) Session() string {
 
 // Health returns the container health status string (e.g. "healthy", "unhealthy", "starting").
 func (c *Manager) Health(ctx context.Context) string {
-	out, err := c.runner.RunWithOutput(ctx, c.runtime, "inspect", "--format", "{{.State.Healthcheck.Status}}", c.container)
+	// Docker and Podman use different health status paths
+	format := "{{.State.Healthcheck.Status}}" // Podman
+	if c.runtime == "docker" {
+		format = "{{.State.Health.Status}}" // Docker
+	}
+
+	out, err := c.runner.RunWithOutput(ctx, c.runtime, "inspect", "--format", format, c.container)
 	if err != nil {
 		return "unknown"
 	}
