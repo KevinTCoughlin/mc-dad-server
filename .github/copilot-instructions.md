@@ -52,4 +52,4 @@ gofumpt -w .                           # format
 - No unnecessary abstractions — keep helpers minimal and explicit
 - Prefer passing explicit params over closures capturing shared state
 - Only add comments where logic isn't self-evident
-- CI runs lint + test (ubuntu/macos/windows matrix) + cross-compile build verification
+- CI runs checks (lint + tidy + vet) + test (ubuntu; macOS/Windows on push only) + build (goreleaser snapshot)

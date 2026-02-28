@@ -58,7 +58,7 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 - **Embedded assets**: `//go:embed all:embedded` in main.go — configs, templates, blocked-words list
 - **Version**: Set via ldflags (`-X main.version=... -X main.commit=...`) by goreleaser
 - **Server modes**: `--mode auto|screen|container` — `ServerManager` interface (`management/manager.go`) with `ScreenManager` and `container.Manager` backends. Auto-detection checks for running container first, falls back to screen.
-- **Container**: Debian Trixie slim + Temurin 21 JRE. FIFO-based stdin (`entrypoint.sh`), RCON for remote commands (`container/rcon.go`), graceful 30s shutdown countdown.
+- **Container**: Eclipse Temurin 21 JRE on Ubuntu Noble (builder stays on Debian Trixie slim). FIFO-based stdin (`entrypoint.sh`), RCON for remote commands (`container/rcon.go`), graceful 30s shutdown countdown.
 
 ## Key Conventions
 
@@ -72,7 +72,7 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 ## CI
 
 GitHub Actions workflows:
-- **ci.yml**: lint, fmt (gofumpt), vet, tidy check, test (ubuntu/macos/windows), cross-compile build (7 targets), hadolint (Containerfile), shellcheck (entrypoint.sh)
+- **ci.yml**: checks (lint + tidy + vet), test (ubuntu; macOS/Windows on push only), build (goreleaser snapshot), hadolint (Containerfile), shellcheck (entrypoint.sh)
 - **container.yml**: build container image, Trivy security scan, push to ghcr.io, SBOM generation
 - **dependency-check.yml**: weekly go.sum tidy check, outdated deps, Go toolchain version
 - **release.yml**: goreleaser on tags
