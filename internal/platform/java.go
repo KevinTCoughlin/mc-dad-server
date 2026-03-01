@@ -45,7 +45,7 @@ func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, outp
 	// Verify
 	ver, verErr := javaVersion(ctx, runner)
 	if verErr != nil || ver < 21 {
-		return fmt.Errorf("Java installation verification failed")
+		return fmt.Errorf("java installation verification failed")
 	}
 	output.Success("Java %d installed successfully", ver)
 	return nil

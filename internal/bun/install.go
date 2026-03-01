@@ -30,7 +30,7 @@ func InstallBun(ctx context.Context, runner platform.CommandRunner, plat *platfo
 	// Verify installation
 	ver, err := bunVersion(ctx, runner)
 	if err != nil {
-		return fmt.Errorf("Bun installation verification failed: %w", err)
+		return fmt.Errorf("bun installation verification failed: %w", err)
 	}
 	output.Success("Bun %s installed successfully", ver)
 	return nil

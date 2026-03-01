@@ -48,7 +48,7 @@ func VanillaDownloadURL(ctx context.Context, version string) (string, error) {
 		}
 	}
 	if versionURL == "" {
-		return "", fmt.Errorf("Minecraft version %q not found", version)
+		return "", fmt.Errorf("minecraft version %q not found", version)
 	}
 
 	metaBody, err := httpGet(ctx, versionURL)
