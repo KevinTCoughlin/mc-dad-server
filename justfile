@@ -75,9 +75,9 @@ clean:
 
 # --- Container recipes ---
 
-# Build container image
+# Build container image (--format docker required for SHELL instruction support)
 container-build:
-    podman build -t {{binary}}:latest .
+    podman build --format docker -t {{binary}}:latest .
 
 # Start containerized server
 container-up:
@@ -101,7 +101,7 @@ container-fifo cmd:
 
 # Build image, install quadlet, restart service
 container-deploy:
-    podman build -t {{binary}}:latest .
+    podman build --format docker -t {{binary}}:latest .
     mkdir -p ~/.config/containers/systemd
     cp quadlet/minecraft.container ~/.config/containers/systemd/
     systemctl --user daemon-reload
