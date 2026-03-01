@@ -233,7 +233,7 @@ environment:
   max-block-ticks: 65536
   max-fluid-ticks: 65536
   nether-ceiling-void-damage-height: disabled
-  optimize-explosions: false
+  optimize-explosions: true
   portal-create-radius: 16
   portal-search-radius: 128
   portal-search-vanilla-dimension-scaling: true
@@ -287,7 +287,7 @@ misc:
   disable-sprint-interruption-on-attack: false
   legacy-ender-pearl-behavior: false
   max-leash-distance: default
-  redstone-implementation: VANILLA
+  redstone-implementation: ALTERNATE_CURRENT
   show-sign-click-command-failure-msgs-to-player: false
   update-pathfinding-on-block-update: true
 scoreboards:
@@ -308,5 +308,5 @@ tick-rates:
       secondarypoisensor: 40
   wet-farmland: 1
 unsupported-settings:
-  disable-world-ticking-when-empty: false
+  disable-world-ticking-when-empty: true
   fix-invulnerable-end-crystal-exploit: true

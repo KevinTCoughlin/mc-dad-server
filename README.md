@@ -132,7 +132,7 @@ mc-dad-server backup
 
 ## Container Deployment
 
-Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Eclipse Temurin 21 JRE on Ubuntu Noble and includes Geyser, Floodgate, Parkour, Multiverse, and WorldEdit.
+Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Eclipse Temurin 25 JRE on Ubuntu Noble and includes Geyser, Floodgate, Parkour, Multiverse, and WorldEdit.
 
 ```bash
 # Build and start with Podman Compose

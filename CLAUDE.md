@@ -58,7 +58,7 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 - **Embedded assets**: `//go:embed all:embedded` in main.go — configs, templates, blocked-words list
 - **Version**: Set via ldflags (`-X main.version=... -X main.commit=...`) by goreleaser
 - **Server modes**: `--mode auto|screen|container` — `ServerManager` interface (`management/manager.go`) with `ScreenManager` and `container.Manager` backends. Auto-detection checks for running container first, falls back to screen.
-- **Container**: Eclipse Temurin 21 JRE on Ubuntu Noble (builder stays on Debian Trixie slim). FIFO-based stdin (`entrypoint.sh`), RCON for remote commands (`container/rcon.go`), graceful 30s shutdown countdown.
+- **Container**: Eclipse Temurin 25 JRE on Ubuntu Noble (builder stays on Debian Trixie slim). FIFO-based stdin (`entrypoint.sh`), RCON for remote commands (`container/rcon.go`), graceful 30s shutdown countdown.
 
 ## Key Conventions
 

@@ -71,7 +71,7 @@ embedded/bun/          Bun runtime framework (TypeScript) and templates
 configs/               Minecraft server config templates
 docs/                  Documentation and GitHub Pages
 scripts/               Utility scripts
-Containerfile          Multi-stage container build (Eclipse Temurin 21 JRE on Ubuntu Noble)
+Containerfile          Multi-stage container build (Eclipse Temurin 25 JRE on Ubuntu Noble)
 entrypoint.sh          Container entrypoint with graceful shutdown
 compose.yml            Podman/Docker Compose configuration
 quadlet/               Systemd Quadlet unit for rootless Podman

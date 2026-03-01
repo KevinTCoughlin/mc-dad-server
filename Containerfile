@@ -1,6 +1,6 @@
 # MC Dad Server — Multi-stage Minecraft Paper Server Build
 # Builder: Debian Trixie slim (curl/jq only)
-# Runtime: Eclipse Temurin 21 JRE on Ubuntu Noble
+# Runtime: Eclipse Temurin 25 JRE on Ubuntu Noble
 # https://github.com/KevinTCoughlin/mc-dad-server
 
 # Pinned versions — update these to bump components
@@ -9,7 +9,7 @@ ARG MC_VERSION=latest
 # ---------------------------------------------------------------------------
 # Stage 1: Builder — Downloads Paper JAR + plugins
 # ---------------------------------------------------------------------------
-FROM debian:trixie-slim AS builder
+FROM debian:trixie-slim@sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa15431ac275d3d430 AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -77,9 +77,9 @@ RUN set -e && \
 RUN echo "eula=true" > eula.txt
 
 # ---------------------------------------------------------------------------
-# Stage 2: Runtime — Eclipse Temurin 21 JRE on Ubuntu Noble
+# Stage 2: Runtime — Eclipse Temurin 25 JRE on Ubuntu Noble
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:21-jre-noble AS runtime
+FROM eclipse-temurin:25-jre-noble@sha256:e7e348559e36c85a3fe868d7c298517b7cc75f01b34ce3813798a5cd781795f1 AS runtime
 
 # Non-root user
 RUN useradd --no-log-init -r -m -s /usr/sbin/nologin minecraft
