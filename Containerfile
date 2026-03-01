@@ -88,6 +88,13 @@ RUN useradd --no-log-init -r -m -s /usr/sbin/nologin minecraft
 COPY --from=builder --chown=minecraft:minecraft /minecraft /minecraft
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 
+# Copy config files into image (avoids rootless podman bind-mount permission issues)
+COPY --chown=minecraft:minecraft configs/server.properties /minecraft/server.properties
+COPY --chown=minecraft:minecraft configs/bukkit.yml /minecraft/bukkit.yml
+COPY --chown=minecraft:minecraft configs/spigot.yml /minecraft/spigot.yml
+COPY --chown=minecraft:minecraft configs/paper-global.yml /minecraft/config/paper-global.yml
+COPY --chown=minecraft:minecraft configs/paper-world-defaults.yml /minecraft/config/paper-world-defaults.yml
+
 LABEL org.opencontainers.image.title="MC Dad Server" \
       org.opencontainers.image.description="Containerized Minecraft Paper server with Geyser cross-play, Parkour, and tuned configs" \
       org.opencontainers.image.source="https://github.com/KevinTCoughlin/mc-dad-server" \
