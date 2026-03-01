@@ -108,6 +108,7 @@ WORKDIR /minecraft
 # plugins (Geyser) auto-update on first boot, and killing the server
 # mid-download truncates JARs.
 # ---------------------------------------------------------------------------
+# hadolint ignore=SC2016
 RUN cp -a plugins plugins.pristine && \
     sed -i \
         -e 's/%%MC_DIFFICULTY%%/normal/' \
