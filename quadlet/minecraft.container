@@ -20,11 +20,9 @@ Volume=minecraft-plugins:/minecraft/plugins:Z
 Volume=minecraft-logs:/minecraft/logs:Z
 Volume=minecraft-backups:/minecraft/backups:Z
 
-Volume=%h/.config/mc-dad-server/configs/server.properties:/minecraft/server.properties:ro,Z
-Volume=%h/.config/mc-dad-server/configs/bukkit.yml:/minecraft/bukkit.yml:ro,Z
-Volume=%h/.config/mc-dad-server/configs/spigot.yml:/minecraft/spigot.yml:ro,Z
-Volume=%h/.config/mc-dad-server/configs/paper-global.yml:/minecraft/config/paper-global.yml:ro,Z
-Volume=%h/.config/mc-dad-server/configs/paper-world-defaults.yml:/minecraft/config/paper-world-defaults.yml:ro,Z
+# Config files are baked into the image via COPY (Containerfile).
+# Paper requires write access to bukkit.yml, spigot.yml, and paper-global.yml
+# at startup, so read-only bind mounts are not viable.
 
 # Load secrets from .env file (RCON_PASSWORD, etc.)
 # Create with: cp .env.example ~/.config/mc-dad-server/.env && edit
