@@ -79,9 +79,9 @@ clean:
 container-build:
     podman build --format docker -t {{binary}}:latest .
 
-# Start containerized server
+# Start containerized server (BUILDAH_FORMAT needed for SHELL instruction in Containerfile)
 container-up:
-    podman compose up --build -d
+    BUILDAH_FORMAT=docker podman compose up --build -d
 
 # Stop containerized server
 container-down:

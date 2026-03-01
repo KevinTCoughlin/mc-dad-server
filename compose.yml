@@ -21,12 +21,8 @@ services:
       - minecraft-plugins:/minecraft/plugins:Z
       - minecraft-logs:/minecraft/logs:Z
       - minecraft-backups:/minecraft/backups:Z
-      # Config files (read-only bind mounts from host)
-      - ./configs/server.properties:/minecraft/server.properties:ro,Z
-      - ./configs/bukkit.yml:/minecraft/bukkit.yml:ro,Z
-      - ./configs/spigot.yml:/minecraft/spigot.yml:ro,Z
-      - ./configs/paper-global.yml:/minecraft/config/paper-global.yml:ro,Z
-      - ./configs/paper-world-defaults.yml:/minecraft/config/paper-world-defaults.yml:ro,Z
+      # Config files are baked into the image (Containerfile COPY).
+      # Rebuild the image to pick up config changes: just container-build
     environment:
       - MEMORY=${MEMORY:-2G}
       - GC_TYPE=${GC_TYPE:-g1gc}
