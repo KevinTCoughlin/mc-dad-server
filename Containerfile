@@ -9,7 +9,7 @@ ARG MC_VERSION=latest
 # ---------------------------------------------------------------------------
 # Stage 1: Builder — Downloads Paper JAR + plugins
 # ---------------------------------------------------------------------------
-FROM debian:trixie-slim@sha256:b29a157cc8540addda9836c23750e389693bf3b6d9a932a55504899e5601a66b AS builder
+FROM debian:trixie-slim AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -79,7 +79,7 @@ RUN echo "eula=true" > eula.txt
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime — Eclipse Temurin 21 JRE on Ubuntu Noble
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:21-jre-noble@sha256:bb4d41d883e59e82cad021feb8e06401c15bff1d40bdaca23cabc48a80c3114b AS runtime
+FROM eclipse-temurin:21-jre-noble AS runtime
 
 # Non-root user
 RUN useradd --no-log-init -r -m -s /usr/sbin/nologin minecraft
