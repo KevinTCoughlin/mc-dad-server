@@ -35,11 +35,11 @@ Environment=GC_TYPE=g1gc
 DropCapability=ALL
 NoNewPrivileges=true
 Notify=healthy
-StopTimeout=60
 
 [Service]
 Restart=on-failure
 RestartSec=30
+TimeoutStopSec=60
 MemoryMax=3G
 CPUQuota=200%
 
