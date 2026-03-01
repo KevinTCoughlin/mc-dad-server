@@ -179,7 +179,7 @@ func broadcastVoteStart(ctx context.Context, screen management.ServerManager, ca
 // sendReminders sends periodic vote reminders at halfway and 5s remaining.
 func sendReminders(ctx context.Context, screen management.ServerManager, candidates []string, duration time.Duration) {
 	half := duration / 2
-	fiveSec := duration - 5*time.Second
+	fiveSecondsMark := duration - 5*time.Second
 
 	select {
 	case <-ctx.Done():
@@ -190,8 +190,8 @@ func sendReminders(ctx context.Context, screen management.ServerManager, candida
 		_ = screen.SendCommand(ctx, "tellraw @a "+msg)
 	}
 
-	if fiveSec > half {
-		remaining := fiveSec - half
+	if fiveSecondsMark > half {
+		remaining := fiveSecondsMark - half
 		select {
 		case <-ctx.Done():
 			return
