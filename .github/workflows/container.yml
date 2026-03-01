@@ -94,12 +94,12 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         id: trivy
-        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # 0.32.0
+        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # 0.34.1
         with:
           image-ref: >-
             ${{ github.event_name == 'pull_request'
               && format('{0}:scan', steps.image.outputs.name)
-              || format('{0}/{1}:{2}', env.REGISTRY, steps.image.outputs.name, 'latest') }}
+              || format('{0}/{1}:{2}', env.REGISTRY, steps.image.outputs.name, github.ref_name) }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -111,12 +111,12 @@ jobs:
           sarif_file: 'trivy-results.sarif'
 
       - name: Trivy table output
-        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # 0.32.0
+        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # 0.34.1
         with:
           image-ref: >-
             ${{ github.event_name == 'pull_request'
               && format('{0}:scan', steps.image.outputs.name)
-              || format('{0}/{1}:{2}', env.REGISTRY, steps.image.outputs.name, 'latest') }}
+              || format('{0}/{1}:{2}', env.REGISTRY, steps.image.outputs.name, github.ref_name) }}
           format: 'table'
           severity: 'CRITICAL,HIGH,MEDIUM'
 
@@ -124,7 +124,7 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: anchore/sbom-action@28d71544de8eaf1b958d335707167c5f783590ad # v0.22.2
         with:
-          image: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
+          image: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:${{ github.ref_name }}
           format: spdx-json
           output-file: sbom.spdx.json
 
