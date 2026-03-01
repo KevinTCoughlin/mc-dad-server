@@ -10,17 +10,20 @@ PORT="${PORT:-25565}"
 RCON_PORT="${RCON_PORT:-25575}"
 RCON_PASSWORD="${RCON_PASSWORD:-changeme}"
 
-# --- Configure RCON in server.properties ---
-if [[ -f server.properties ]]; then
+# --- Substitute template variables and configure RCON in server.properties ---
+if [[ -f server.properties ]] && [[ -w server.properties ]]; then
     sed -i \
+        -e "s/%%MC_DIFFICULTY%%/${DIFFICULTY:-normal}/" \
+        -e "s/%%MC_GAMEMODE%%/${GAMEMODE:-survival}/" \
+        -e "s/%%MC_MAX_PLAYERS%%/${MAX_PLAYERS:-20}/" \
+        -e "s|%%MC_MOTD%%|${MOTD:-Dads Minecraft Server}|" \
+        -e "s/%%MC_PORT%%/${PORT}/g" \
+        -e "s/%%MC_RCON_PASSWORD%%/${RCON_PASSWORD}/" \
+        -e "s/%%MC_WHITELIST%%/${WHITELIST:-true}/" \
         -e "s/^enable-rcon=.*/enable-rcon=true/" \
         -e "s/^rcon\\.port=.*/rcon.port=${RCON_PORT}/" \
         -e "s/^rcon\\.password=.*/rcon.password=${RCON_PASSWORD}/" \
         server.properties
-    # Add RCON settings if missing
-    grep -q '^enable-rcon=' server.properties || echo "enable-rcon=true" >> server.properties
-    grep -q '^rcon\.port=' server.properties || echo "rcon.port=${RCON_PORT}" >> server.properties
-    grep -q '^rcon\.password=' server.properties || echo "rcon.password=${RCON_PASSWORD}" >> server.properties
 fi
 
 # --- Build JVM flags ---
@@ -28,6 +31,12 @@ JVM_FLAGS=(
     -Xms"${MEMORY}"
     -Xmx"${MEMORY}"
 )
+
+# Use AppCDS archive if available (baked during container build)
+if [[ -f app-cds.jsa ]]; then
+    JVM_FLAGS+=(-XX:SharedArchiveFile=app-cds.jsa)
+    echo "[entrypoint] Using AppCDS archive for faster startup"
+fi
 
 gc_lower="${GC_TYPE,,}"
 if [[ "${gc_lower}" == "zgc" ]]; then
