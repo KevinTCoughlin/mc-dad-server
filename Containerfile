@@ -26,7 +26,7 @@ WORKDIR /minecraft
 # Download plugins (changes infrequently — cached layer)
 # Parallel downloads with PID tracking so any failure fails the build.
 # GeyserMC and Floodgate SHA-256 hashes are fetched from the builds API and verified.
-# hadolint ignore=SC2016,SC2034
+# hadolint ignore=SC2016,SC2031,SC2034
 RUN mkdir -p plugins && \
     pids=() && \
     ( GEYSER_DATA=$(curl -fsSL "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest") && \
