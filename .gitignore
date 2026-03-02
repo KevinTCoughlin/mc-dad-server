@@ -19,5 +19,9 @@ node_modules/
 bun.lockb
 .manifest.json
 
+# Container local overrides
+.env
+compose.override.yml
+
 # Not for public repo
 STOREFRONT_GUIDE.md
