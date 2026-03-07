@@ -77,6 +77,23 @@ RUN echo "eula=true" > eula.txt
 # ---------------------------------------------------------------------------
 FROM eclipse-temurin:25-jre-noble@sha256:e7e348559e36c85a3fe868d7c298517b7cc75f01b34ce3813798a5cd781795f1 AS runtime
 
+ENV DEBIAN_FRONTEND=noninteractive
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Prevent docs/man/locale from being installed (smaller image), but keep licenses
+RUN printf 'path-exclude=/usr/share/doc/*\npath-include=/usr/share/doc/*/copyright\npath-include=/usr/share/doc/*/changelog.Debian*\npath-include=/usr/share/doc/*/LICENSE\npath-exclude=/usr/share/man/*\npath-exclude=/usr/share/locale/*\npath-exclude=/usr/share/bug/*\npath-exclude=/usr/share/lintian/*\npath-exclude=/usr/share/mime/*\npath-exclude=/usr/share/info/*\n' \
+        > /etc/dpkg/dpkg.cfg.d/excludes && \
+    rm -rf /var/lib/apt/lists/* \
+           /var/cache/apt/archives/* \
+           /var/log/dpkg.log \
+           /var/log/apt \
+           /var/log/bootstrap.log \
+           /var/log/alternatives.log \
+           /tmp/* \
+           /var/tmp/* && \
+    (find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true)
+
 # Non-root user
 RUN useradd --no-log-init -r -m -s /usr/sbin/nologin minecraft
 
