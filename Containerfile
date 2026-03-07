@@ -36,6 +36,8 @@ RUN set -e && \
     LATEST_BUILD=$(echo "$BUILD_JSON" | jq -r '.build') && \
     JAR_NAME=$(echo "$BUILD_JSON" | jq -r '.downloads.application.name') && \
     EXPECTED_SHA256=$(echo "$BUILD_JSON" | jq -r '.downloads.application.sha256') && \
+    echo "$EXPECTED_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
+        { echo "Invalid SHA-256 for Paper: ${EXPECTED_SHA256}"; exit 1; } && \
     curl -fsSL -o server.jar \
         "https://api.papermc.io/v2/projects/paper/versions/${MC_VER}/builds/${LATEST_BUILD}/downloads/${JAR_NAME}" && \
     echo "${EXPECTED_SHA256}  server.jar" | sha256sum -c - && \
@@ -49,12 +51,16 @@ RUN mkdir -p plugins && \
     # Geyser — SHA-256 from GeyserMC build API
     GEYSER_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest") && \
     GEYSER_SHA256=$(echo "$GEYSER_META" | jq -r '.downloads.spigot.sha256') && \
+    echo "$GEYSER_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
+        { echo "Invalid SHA-256 for Geyser: ${GEYSER_SHA256}"; exit 1; } && \
     curl -fsSL -o plugins/Geyser-Spigot.jar \
         "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot" && \
     echo "${GEYSER_SHA256}  plugins/Geyser-Spigot.jar" | sha256sum -c - && \
     # Floodgate — SHA-256 from GeyserMC build API
     FLOODGATE_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest") && \
     FLOODGATE_SHA256=$(echo "$FLOODGATE_META" | jq -r '.downloads.spigot.sha256') && \
+    echo "$FLOODGATE_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
+        { echo "Invalid SHA-256 for Floodgate: ${FLOODGATE_SHA256}"; exit 1; } && \
     curl -fsSL -o plugins/Floodgate-Spigot.jar \
         "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot" && \
     echo "${FLOODGATE_SHA256}  plugins/Floodgate-Spigot.jar" | sha256sum -c - && \
@@ -62,6 +68,10 @@ RUN mkdir -p plugins && \
     PARKOUR_RELEASE=$(curl -fsSL "https://api.github.com/repos/A5H73Y/Parkour/releases/latest") && \
     PARKOUR_URL=$(echo "$PARKOUR_RELEASE" | jq -r '[.assets[] | select(.name | endswith(".jar"))][0].browser_download_url') && \
     PARKOUR_EXPECTED_SIZE=$(echo "$PARKOUR_RELEASE" | jq -r '[.assets[] | select(.name | endswith(".jar"))][0].size') && \
+    if [ -z "$PARKOUR_URL" ] || [ "$PARKOUR_URL" = "null" ] || \
+       [ -z "$PARKOUR_EXPECTED_SIZE" ] || [ "$PARKOUR_EXPECTED_SIZE" = "null" ]; then \
+        echo "Failed to resolve Parkour JAR asset from GitHub releases API"; exit 1; \
+    fi && \
     curl -fsSL -o plugins/Parkour.jar "$PARKOUR_URL" && \
     PARKOUR_ACTUAL_SIZE=$(stat -c%s plugins/Parkour.jar) && \
     [ "$PARKOUR_ACTUAL_SIZE" = "$PARKOUR_EXPECTED_SIZE" ] || \
@@ -72,6 +82,8 @@ RUN mkdir -p plugins && \
         | tr -d '"') && \
     MV_SHA256=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MV_VERSION}" \
         | jq -r '.downloads.PAPER.fileInfo.sha256Hash') && \
+    echo "$MV_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
+        { echo "Invalid SHA-256 for Multiverse-Core: ${MV_SHA256}"; exit 1; } && \
     curl -fsSL -o plugins/Multiverse-Core.jar \
         "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MV_VERSION}/PAPER/download" && \
     echo "${MV_SHA256}  plugins/Multiverse-Core.jar" | sha256sum -c - && \
@@ -80,6 +92,8 @@ RUN mkdir -p plugins && \
         | tr -d '"') && \
     WE_SHA256=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WE_VERSION}" \
         | jq -r '.downloads.PAPER.fileInfo.sha256Hash') && \
+    echo "$WE_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
+        { echo "Invalid SHA-256 for WorldEdit: ${WE_SHA256}"; exit 1; } && \
     curl -fsSL -o plugins/WorldEdit.jar \
         "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WE_VERSION}/PAPER/download" && \
     echo "${WE_SHA256}  plugins/WorldEdit.jar" | sha256sum -c - && \
@@ -122,7 +136,14 @@ RUN useradd --no-log-init -r -m -s /usr/sbin/nologin minecraft
 
 # Copy server files from builder
 COPY --from=builder --chown=minecraft:minecraft /minecraft /minecraft
-COPY --chmod=755 entrypoint.sh /entrypoint.sh
+# Create entrypoint script inside the image
+RUN printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -euo pipefail' \
+    '' \
+    'cd /minecraft' \
+    'exec java -jar server.jar "$@"' \
+    > /entrypoint.sh && chmod 755 /entrypoint.sh
 
 LABEL org.opencontainers.image.title="MC Dad Server" \
       org.opencontainers.image.description="Containerized Minecraft Paper server with Geyser cross-play, Parkour, and tuned configs" \
