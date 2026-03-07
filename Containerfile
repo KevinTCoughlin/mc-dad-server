@@ -47,20 +47,23 @@ RUN set -e && \
 RUN echo "eula=true" > eula.txt
 
 # Download plugins (with checksum verification)
-RUN mkdir -p plugins && \
+# hadolint ignore=SC2317
+RUN validate_sha256() { \
+        echo "$1" | grep -qE '^[a-f0-9]{64}$' || \
+            { echo "Invalid SHA-256 for $2: $1"; exit 1; }; \
+    } && \
+    mkdir -p plugins && \
     # Geyser — SHA-256 from GeyserMC build API
     GEYSER_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest") && \
     GEYSER_SHA256=$(echo "$GEYSER_META" | jq -r '.downloads.spigot.sha256') && \
-    echo "$GEYSER_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
-        { echo "Invalid SHA-256 for Geyser: ${GEYSER_SHA256}"; exit 1; } && \
+    validate_sha256 "$GEYSER_SHA256" "Geyser" && \
     curl -fsSL -o plugins/Geyser-Spigot.jar \
         "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot" && \
     echo "${GEYSER_SHA256}  plugins/Geyser-Spigot.jar" | sha256sum -c - && \
     # Floodgate — SHA-256 from GeyserMC build API
     FLOODGATE_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest") && \
     FLOODGATE_SHA256=$(echo "$FLOODGATE_META" | jq -r '.downloads.spigot.sha256') && \
-    echo "$FLOODGATE_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
-        { echo "Invalid SHA-256 for Floodgate: ${FLOODGATE_SHA256}"; exit 1; } && \
+    validate_sha256 "$FLOODGATE_SHA256" "Floodgate" && \
     curl -fsSL -o plugins/Floodgate-Spigot.jar \
         "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot" && \
     echo "${FLOODGATE_SHA256}  plugins/Floodgate-Spigot.jar" | sha256sum -c - && \
@@ -82,8 +85,7 @@ RUN mkdir -p plugins && \
         | tr -d '"') && \
     MV_SHA256=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MV_VERSION}" \
         | jq -r '.downloads.PAPER.fileInfo.sha256Hash') && \
-    echo "$MV_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
-        { echo "Invalid SHA-256 for Multiverse-Core: ${MV_SHA256}"; exit 1; } && \
+    validate_sha256 "$MV_SHA256" "Multiverse-Core" && \
     curl -fsSL -o plugins/Multiverse-Core.jar \
         "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MV_VERSION}/PAPER/download" && \
     echo "${MV_SHA256}  plugins/Multiverse-Core.jar" | sha256sum -c - && \
@@ -92,8 +94,7 @@ RUN mkdir -p plugins && \
         | tr -d '"') && \
     WE_SHA256=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WE_VERSION}" \
         | jq -r '.downloads.PAPER.fileInfo.sha256Hash') && \
-    echo "$WE_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
-        { echo "Invalid SHA-256 for WorldEdit: ${WE_SHA256}"; exit 1; } && \
+    validate_sha256 "$WE_SHA256" "WorldEdit" && \
     curl -fsSL -o plugins/WorldEdit.jar \
         "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WE_VERSION}/PAPER/download" && \
     echo "${WE_SHA256}  plugins/WorldEdit.jar" | sha256sum -c - && \
