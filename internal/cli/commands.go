@@ -109,7 +109,9 @@ func printContainerStatus(ctx context.Context, mgr management.ServerManager, cfg
 		health := hc.Health(ctx)
 		output.Info("  Status:    RUNNING (%s)", health)
 		output.Info("  Container: %s", mgr.Session())
-		if stats, err := hc.Stats(ctx); err == nil {
+		if stats, err := hc.Stats(ctx); err != nil {
+			output.Warn("  Resources: unavailable (%v)", err)
+		} else {
 			output.Info("  Resources: %s", stats)
 		}
 	case management.IsPortListening(cfg.Port):
