@@ -3,7 +3,9 @@ package container
 import (
 	"context"
 	"errors"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
@@ -240,6 +242,12 @@ func TestManager_Health(t *testing.T) {
 			inspectErr:    true,
 			wantHealth:    "unknown",
 		},
+		{
+			name:          "podman empty status running error",
+			runtime:       "podman",
+			inspectOutput: "\n",
+			wantHealth:    "stopped",
+		},
 	}
 
 	for _, tc := range tests {
@@ -334,5 +342,80 @@ func TestManager_Stats(t *testing.T) {
 				t.Errorf("Stats() = %q, want %q", got, tc.wantStats)
 			}
 		})
+	}
+}
+
+func TestManager_Start_Error(t *testing.T) {
+	m := platform.NewMockRunner()
+	key := "podman [start minecraft]"
+	m.ErrorMap[key] = errors.New("container not found")
+	mgr := NewManager(m, "podman", "minecraft", "", "")
+
+	err := mgr.Start(context.Background(), "ignored")
+	if err == nil {
+		t.Fatal("Start() expected error, got nil")
+	}
+}
+
+func TestManager_Stop_Error(t *testing.T) {
+	m := platform.NewMockRunner()
+	key := "podman [stop -t 60 minecraft]"
+	m.ErrorMap[key] = errors.New("podman error")
+	mgr := NewManager(m, "podman", "minecraft", "", "")
+
+	err := mgr.Stop(context.Background())
+	if err == nil {
+		t.Fatal("Stop() expected error, got nil")
+	}
+}
+
+func TestManager_Stats_Error(t *testing.T) {
+	m := platform.NewMockRunner()
+	key := "podman [stats --no-stream --format CPU: {{.CPUPerc}}  MEM: {{.MemUsage}} minecraft]"
+	m.ErrorMap[key] = errors.New("container not running")
+	mgr := NewManager(m, "podman", "minecraft", "", "")
+
+	_, err := mgr.Stats(context.Background())
+	if err == nil {
+		t.Fatal("Stats() expected error, got nil")
+	}
+}
+
+func TestManager_SendCommand(t *testing.T) {
+	// Start a test RCON server.
+	srv := newRCONTestServer(t, "rconpass", func(cmd string) string {
+		return "done:" + cmd
+	})
+	defer srv.Close()
+	go srv.Serve(t)
+
+	m := platform.NewMockRunner()
+	mgr := NewManager(m, "podman", "minecraft", srv.Addr(), "rconpass")
+
+	if err := mgr.SendCommand(context.Background(), "say hello"); err != nil {
+		t.Fatalf("SendCommand() error = %v", err)
+	}
+}
+
+func TestManager_SendCommand_ConnectFailure(t *testing.T) {
+	m := platform.NewMockRunner()
+	// Allocate an ephemeral port, then close it so that dialing will fail.
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen() error = %v", err)
+	}
+	addr := l.Addr().String()
+	if err := l.Close(); err != nil {
+		t.Fatalf("listener Close() error = %v", err)
+	}
+
+	mgr := NewManager(m, "podman", "minecraft", addr, "pass")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	err = mgr.SendCommand(ctx, "list")
+	if err == nil {
+		t.Fatal("SendCommand() expected error, got nil")
 	}
 }
