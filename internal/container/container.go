@@ -17,7 +17,7 @@ import (
 var _ management.ServerManager = (*Manager)(nil)
 
 // Manager manages a Minecraft server running in a container (Podman or Docker).
-// It implements management.ServerManager.
+// It implements management.ServerManager and management.HealthChecker.
 type Manager struct {
 	runner    platform.CommandRunner
 	runtime   string // "podman" or "docker"
