@@ -24,32 +24,61 @@ RUN apt-get update && \
 WORKDIR /minecraft
 
 # Download plugins sequentially with SHA-256 verification where available.
-# GeyserMC/Floodgate hashes come from their builds API; Hangar/GitHub verify via HTTPS.
-# hadolint ignore=SC2016
-RUN set -e && mkdir -p plugins && \
-    GEYSER_DATA=$(curl -fsSL "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest") && \
-    GEYSER_SHA=$(echo "$GEYSER_DATA" | jq -r '.downloads.spigot.sha256') && \
+# GeyserMC/Floodgate hashes come from their builds API; Hangar provides SHA-256
+# via fileInfo; GitHub (Parkour) has no hash so we verify file size instead.
+# hadolint ignore=SC2016,SC2317
+RUN validate_sha256() { \
+        echo "$1" | grep -qE '^[a-f0-9]{64}$' || \
+            { echo "Invalid SHA-256 for $2: $1"; exit 1; }; \
+    } && \
+    set -e && mkdir -p plugins && \
+    # Geyser — SHA-256 from GeyserMC build API
+    GEYSER_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest") && \
+    GEYSER_SHA256=$(echo "$GEYSER_META" | jq -r '.downloads.spigot.sha256') && \
+    validate_sha256 "$GEYSER_SHA256" "Geyser" && \
     curl -fsSL -o plugins/Geyser-Spigot.jar \
       "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot" && \
-    echo "${GEYSER_SHA}  plugins/Geyser-Spigot.jar" | sha256sum -c && \
-    FLOOD_DATA=$(curl -fsSL "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest") && \
-    FLOOD_SHA=$(echo "$FLOOD_DATA" | jq -r '.downloads.spigot.sha256') && \
+    echo "${GEYSER_SHA256}  plugins/Geyser-Spigot.jar" | sha256sum -c - && \
+    # Floodgate — SHA-256 from GeyserMC build API
+    FLOODGATE_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest") && \
+    FLOODGATE_SHA256=$(echo "$FLOODGATE_META" | jq -r '.downloads.spigot.sha256') && \
+    validate_sha256 "$FLOODGATE_SHA256" "Floodgate" && \
     curl -fsSL -o plugins/Floodgate-Spigot.jar \
       "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot" && \
-    echo "${FLOOD_SHA}  plugins/Floodgate-Spigot.jar" | sha256sum -c && \
-    PARKOUR_URL=$(curl -fsSL "https://api.github.com/repos/A5H73Y/Parkour/releases/latest" \
-      | jq -r '.assets[0].browser_download_url') && \
+    echo "${FLOODGATE_SHA256}  plugins/Floodgate-Spigot.jar" | sha256sum -c - && \
+    # Parkour — GitHub releases API does not provide SHA-256; verify file size
+    PARKOUR_RELEASE=$(curl -fsSL "https://api.github.com/repos/A5H73Y/Parkour/releases/latest") && \
+    PARKOUR_URL=$(echo "$PARKOUR_RELEASE" | jq -r '[.assets[] | select(.name | endswith(".jar"))][0].browser_download_url') && \
+    PARKOUR_EXPECTED_SIZE=$(echo "$PARKOUR_RELEASE" | jq -r '[.assets[] | select(.name | endswith(".jar"))][0].size') && \
+    if [ -z "$PARKOUR_URL" ] || [ "$PARKOUR_URL" = "null" ] || \
+       [ -z "$PARKOUR_EXPECTED_SIZE" ] || [ "$PARKOUR_EXPECTED_SIZE" = "null" ]; then \
+        echo "Failed to resolve Parkour JAR asset from GitHub releases API"; exit 1; \
+    fi && \
     curl -fsSL -o plugins/Parkour.jar "$PARKOUR_URL" && \
+    PARKOUR_ACTUAL_SIZE=$(stat -c%s plugins/Parkour.jar) && \
+    [ "$PARKOUR_ACTUAL_SIZE" = "$PARKOUR_EXPECTED_SIZE" ] || \
+        { echo "Parkour size mismatch: expected ${PARKOUR_EXPECTED_SIZE}, got ${PARKOUR_ACTUAL_SIZE}"; exit 1; } && \
+    echo "Parkour SHA-256: $(sha256sum plugins/Parkour.jar)" && \
+    # Multiverse-Core — SHA-256 from Hangar API
     MV_VERSION=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/latestrelease" \
       | tr -d '"') && \
+    MV_SHA256=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MV_VERSION}" \
+      | jq -r '.downloads.PAPER.fileInfo.sha256Hash') && \
+    validate_sha256 "$MV_SHA256" "Multiverse-Core" && \
     curl -fsSL -o plugins/Multiverse-Core.jar \
       "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MV_VERSION}/PAPER/download" && \
+    echo "${MV_SHA256}  plugins/Multiverse-Core.jar" | sha256sum -c - && \
+    # WorldEdit — SHA-256 from Hangar API
     WE_VERSION=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/WorldEdit/latestrelease" \
       | tr -d '"') && \
+    WE_SHA256=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WE_VERSION}" \
+      | jq -r '.downloads.PAPER.fileInfo.sha256Hash') && \
+    validate_sha256 "$WE_SHA256" "WorldEdit" && \
     curl -fsSL -o plugins/WorldEdit.jar \
       "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WE_VERSION}/PAPER/download" && \
+    echo "${WE_SHA256}  plugins/WorldEdit.jar" | sha256sum -c - && \
     ls -la plugins/*.jar && \
-    echo "All plugins downloaded"
+    echo "All plugins downloaded and verified"
 
 # ARG placed here so MC_VERSION changes only bust the Paper download layer
 ARG MC_VERSION
@@ -60,13 +89,16 @@ RUN set -e && \
     if [ "$MC_VER" = "latest" ] || [ -z "$MC_VER" ]; then \
         MC_VER=$(curl -fsSL https://api.papermc.io/v2/projects/paper | jq -r '.versions[-1]'); \
     fi && \
-    BUILD_DATA=$(curl -fsSL "https://api.papermc.io/v2/projects/paper/versions/${MC_VER}/builds") && \
-    LATEST_BUILD=$(echo "$BUILD_DATA" | jq -r '.builds[-1].build') && \
-    JAR_NAME=$(echo "$BUILD_DATA" | jq -r '.builds[-1].downloads.application.name') && \
-    JAR_SHA=$(echo "$BUILD_DATA" | jq -r '.builds[-1].downloads.application.sha256') && \
+    BUILD_JSON=$(curl -fsSL "https://api.papermc.io/v2/projects/paper/versions/${MC_VER}/builds" \
+        | jq '.builds[-1]') && \
+    LATEST_BUILD=$(echo "$BUILD_JSON" | jq -r '.build') && \
+    JAR_NAME=$(echo "$BUILD_JSON" | jq -r '.downloads.application.name') && \
+    EXPECTED_SHA256=$(echo "$BUILD_JSON" | jq -r '.downloads.application.sha256') && \
+    echo "$EXPECTED_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
+        { echo "Invalid SHA-256 for Paper: ${EXPECTED_SHA256}"; exit 1; } && \
     curl -fsSL -o server.jar \
         "https://api.papermc.io/v2/projects/paper/versions/${MC_VER}/builds/${LATEST_BUILD}/downloads/${JAR_NAME}" && \
-    echo "${JAR_SHA}  server.jar" | sha256sum -c && \
+    echo "${EXPECTED_SHA256}  server.jar" | sha256sum -c - && \
     echo "Downloaded and verified Paper ${MC_VER} build ${LATEST_BUILD}"
 
 # Accept EULA
