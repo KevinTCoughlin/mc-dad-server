@@ -9,8 +9,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
+
+// Verify Manager satisfies management.ServerManager at compile time.
+var _ management.ServerManager = (*Manager)(nil)
 
 // Manager manages a Minecraft server running in a container (Podman or Docker).
 // It implements management.ServerManager.
@@ -90,6 +94,19 @@ func (c *Manager) SendCommand(ctx context.Context, cmd string) error {
 	return err
 }
 
+// Close tears down the persistent RCON connection, if any.
+func (c *Manager) Close() error {
+	c.rconMu.Lock()
+	defer c.rconMu.Unlock()
+
+	if c.rcon == nil {
+		return nil
+	}
+	err := c.rcon.Close()
+	c.rcon = nil
+	return err
+}
+
 // Launch starts the container via the configured runtime (podman or docker).
 func (c *Manager) Launch(ctx context.Context) error {
 	return c.runner.Run(ctx, c.runtime, "start", c.container)
@@ -147,6 +164,9 @@ func Exists(ctx context.Context, runner platform.CommandRunner, runtime, name st
 // isConnectionError reports whether err looks like a broken or closed
 // network connection that warrants a reconnect attempt.
 func isConnectionError(err error) bool {
+	if err == nil {
+		return false
+	}
 	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 		return true
 	}

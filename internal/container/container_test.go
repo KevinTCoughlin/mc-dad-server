@@ -3,6 +3,7 @@ package container
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -345,15 +346,15 @@ func TestManager_Stats(t *testing.T) {
 	}
 }
 
-func TestManager_Start_Error(t *testing.T) {
+func TestManager_Launch_Error(t *testing.T) {
 	m := platform.NewMockRunner()
 	key := "podman [start minecraft]"
 	m.ErrorMap[key] = errors.New("container not found")
 	mgr := NewManager(m, "podman", "minecraft", "", "")
 
-	err := mgr.Start(context.Background(), "ignored")
+	err := mgr.Launch(context.Background())
 	if err == nil {
-		t.Fatal("Start() expected error, got nil")
+		t.Fatal("Launch() expected error, got nil")
 	}
 }
 
@@ -391,9 +392,88 @@ func TestManager_SendCommand(t *testing.T) {
 
 	m := platform.NewMockRunner()
 	mgr := NewManager(m, "podman", "minecraft", srv.Addr(), "rconpass")
+	defer func() { _ = mgr.Close() }()
 
 	if err := mgr.SendCommand(context.Background(), "say hello"); err != nil {
 		t.Fatalf("SendCommand() error = %v", err)
+	}
+}
+
+func TestManager_SendCommand_PersistentConnection(t *testing.T) {
+	srv := newRCONTestServer(t, "pass", func(cmd string) string {
+		return "ok"
+	})
+	defer srv.Close()
+	go srv.Serve(t)
+
+	m := platform.NewMockRunner()
+	mgr := NewManager(m, "podman", "minecraft", srv.Addr(), "pass")
+	defer func() { _ = mgr.Close() }()
+
+	ctx := context.Background()
+
+	// Send multiple commands — should reuse the same connection.
+	for i := 0; i < 5; i++ {
+		if err := mgr.SendCommand(ctx, "list"); err != nil {
+			t.Fatalf("SendCommand() #%d error = %v", i, err)
+		}
+	}
+}
+
+func TestManager_SendCommand_LazyConnect(t *testing.T) {
+	srv := newRCONTestServer(t, "pass", func(cmd string) string {
+		return "ok"
+	})
+	defer srv.Close()
+	go srv.Serve(t)
+
+	m := platform.NewMockRunner()
+	mgr := NewManager(m, "podman", "minecraft", srv.Addr(), "pass")
+	defer func() { _ = mgr.Close() }()
+
+	// Close before any SendCommand should be a no-op (nothing connected yet).
+	if err := mgr.Close(); err != nil {
+		t.Fatalf("Close() before connect error = %v", err)
+	}
+
+	// First SendCommand lazily establishes the connection.
+	if err := mgr.SendCommand(context.Background(), "say hello"); err != nil {
+		t.Fatalf("SendCommand() error = %v", err)
+	}
+}
+
+func TestManager_SendCommand_ReconnectsOnBrokenConnection(t *testing.T) {
+	srv := newRCONTestServer(t, "pass", func(cmd string) string {
+		return "ok"
+	})
+	go srv.Serve(t)
+
+	m := platform.NewMockRunner()
+	mgr := NewManager(m, "podman", "minecraft", srv.Addr(), "pass")
+	defer func() { _ = mgr.Close() }()
+
+	ctx := context.Background()
+
+	// Establish the connection.
+	if err := mgr.SendCommand(ctx, "say first"); err != nil {
+		t.Fatalf("first SendCommand() error = %v", err)
+	}
+
+	// Shut down the server to break all existing connections, then
+	// start a new one on the same address so the reconnect succeeds.
+	addr := srv.Addr()
+	srv.Close()
+	time.Sleep(50 * time.Millisecond) // let OS release the port
+
+	srv2 := newRCONTestServerAt(t, addr, "pass", func(cmd string) string {
+		return "ok"
+	})
+	defer srv2.Close()
+	go srv2.Serve(t)
+
+	// The next command should detect the broken connection and reconnect.
+	if err := mgr.SendCommand(ctx, "say second"); err != nil {
+		t.Fatalf("SendCommand() after broken connection error = %v", err)
 	}
 }
 
@@ -417,5 +497,62 @@ func TestManager_SendCommand_ConnectFailure(t *testing.T) {
 	err = mgr.SendCommand(ctx, "list")
 	if err == nil {
 		t.Fatal("SendCommand() expected error, got nil")
+	}
+}
+
+func TestManager_Close_Idempotent(t *testing.T) {
+	srv := newRCONTestServer(t, "pass", func(cmd string) string {
+		return "ok"
+	})
+	defer srv.Close()
+	go srv.Serve(t)
+
+	m := platform.NewMockRunner()
+	mgr := NewManager(m, "podman", "minecraft", srv.Addr(), "pass")
+
+	if err := mgr.SendCommand(context.Background(), "list"); err != nil {
+		t.Fatalf("SendCommand() error = %v", err)
+	}
+
+	if err := mgr.Close(); err != nil {
+		t.Fatalf("first Close() error = %v", err)
+	}
+	if err := mgr.Close(); err != nil {
+		t.Fatalf("second Close() error = %v", err)
+	}
+}
+
+func TestManager_Close_WithoutConnect(t *testing.T) {
+	m := platform.NewMockRunner()
+	mgr := NewManager(m, "podman", "minecraft", "127.0.0.1:0", "pass")
+
+	if err := mgr.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+}
+
+func TestIsConnectionError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "nil", err: nil, want: false},
+		{name: "EOF", err: io.EOF, want: true},
+		{name: "UnexpectedEOF", err: io.ErrUnexpectedEOF, want: true},
+		{name: "net.OpError", err: &net.OpError{Op: "write", Err: errors.New("broken pipe")}, want: true},
+		{name: "broken pipe text", err: errors.New("write: broken pipe"), want: true},
+		{name: "connection reset text", err: errors.New("read: connection reset by peer"), want: true},
+		{name: "closed conn", err: errors.New("use of closed network connection"), want: true},
+		{name: "not connected", err: errors.New("rcon not connected"), want: true},
+		{name: "other error", err: errors.New("some other error"), want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isConnectionError(tt.err); got != tt.want {
+				t.Errorf("isConnectionError(%v) = %v, want %v", tt.err, got, tt.want)
+			}
+		})
 	}
 }
