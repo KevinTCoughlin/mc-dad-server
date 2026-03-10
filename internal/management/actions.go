@@ -3,7 +3,6 @@ package management
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
@@ -13,14 +12,14 @@ import (
 // It prints status messages to output. It returns true if the server was
 // already running (no action taken), false if it was freshly started.
 // Returns an error if the start attempt fails.
-func StartServer(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, dir, sessionName string, output *ui.UI) (bool, error) {
+func StartServer(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, sessionName string, output *ui.UI) (bool, error) {
 	if IsServerRunning(ctx, mgr, runner, port) {
 		output.Warn("Server is already running!")
 		return true, nil
 	}
 
 	output.Info("Starting Minecraft server...")
-	if err := mgr.Start(ctx, "bash", filepath.Join(dir, "start.sh")); err != nil {
+	if err := mgr.Launch(ctx); err != nil {
 		return false, fmt.Errorf("starting server: %w", err)
 	}
 	output.Success("Server started!")
@@ -44,7 +43,8 @@ var shutdownCountdown = []shutdownStep{
 }
 
 // StopServer gracefully stops the Minecraft server with a multi-step countdown.
-// It prints status messages to output and returns any error encountered.
+// It attempts a graceful shutdown via SendCommand, falling back to
+// mgr.Stop() if the console path is unavailable.
 func StopServer(ctx context.Context, mgr ServerManager, runner platform.CommandRunner, port int, output *ui.UI) error {
 	if !IsServerRunning(ctx, mgr, runner, port) {
 		output.Info("No running Minecraft server found.")
@@ -52,9 +52,13 @@ func StopServer(ctx context.Context, mgr ServerManager, runner platform.CommandR
 	}
 
 	output.Info("Starting graceful shutdown (30s countdown)...")
+
+	// Try graceful in-game countdown + stop command.
+	countdownOK := true
 	for _, step := range shutdownCountdown {
 		if err := mgr.SendCommand(ctx, step.message); err != nil {
 			output.Warn("Failed to send countdown message: %s", err)
+			countdownOK = false
 			break
 		}
 		if step.delay > 0 {
@@ -64,8 +68,17 @@ func StopServer(ctx context.Context, mgr ServerManager, runner platform.CommandR
 		}
 	}
 
-	output.Info("Sending stop command...")
-	if err := mgr.SendCommand(ctx, "stop"); err != nil {
+	if countdownOK {
+		output.Info("Sending stop command...")
+		if err := mgr.SendCommand(ctx, "stop"); err == nil {
+			output.Success("Stop command sent. Server shutting down...")
+			return nil
+		}
+	}
+
+	// Fallback to manager-level stop (e.g. podman stop).
+	output.Info("Console unavailable, using manager stop...")
+	if err := mgr.Stop(ctx); err != nil {
 		return err
 	}
 	output.Success("Stop command sent. Server shutting down...")

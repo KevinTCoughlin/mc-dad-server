@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,13 +11,15 @@ import (
 
 // ScreenManager wraps GNU screen session operations.
 type ScreenManager struct {
-	runner  platform.CommandRunner
-	session string
+	runner     platform.CommandRunner
+	session    string
+	scriptPath string
 }
 
 // NewScreenManager creates a ScreenManager for the named session.
-func NewScreenManager(runner platform.CommandRunner, session string) *ScreenManager {
-	return &ScreenManager{runner: runner, session: session}
+// scriptPath is the path to the start script (e.g. "/srv/minecraft/start.sh").
+func NewScreenManager(runner platform.CommandRunner, session, scriptPath string) *ScreenManager {
+	return &ScreenManager{runner: runner, session: session, scriptPath: scriptPath}
 }
 
 // IsRunning checks if the named screen session exists.
@@ -33,11 +36,18 @@ func (s *ScreenManager) SendCommand(ctx context.Context, cmd string) error {
 	return s.runner.Run(ctx, "screen", "-S", s.session, "-p", "0", "-X", "stuff", cmd+"\r")
 }
 
-// Start launches a command in a new detached screen session.
-func (s *ScreenManager) Start(ctx context.Context, command string, args ...string) error {
-	screenArgs := []string{"-dmS", s.session, command}
-	screenArgs = append(screenArgs, args...)
-	return s.runner.Run(ctx, "screen", screenArgs...)
+// Launch starts the server in a new detached screen session using the
+// configured start script.
+func (s *ScreenManager) Launch(ctx context.Context) error {
+	if s.scriptPath == "" {
+		return fmt.Errorf("screen manager: start script path not configured")
+	}
+	return s.runner.Run(ctx, "screen", "-dmS", s.session, "bash", s.scriptPath)
+}
+
+// Stop sends the "stop" command to the running server via screen.
+func (s *ScreenManager) Stop(ctx context.Context) error {
+	return s.SendCommand(ctx, "stop")
 }
 
 // Sleep pauses for the given number of seconds, respecting context cancellation.
