@@ -8,58 +8,67 @@ import (
 	"net/http"
 )
 
+// defaultPaperAPIBase is the base URL for the PaperMC Fill v3 downloads API.
+const defaultPaperAPIBase = "https://fill.papermc.io/v3"
+
+// paperUserAgent identifies this tool to the PaperMC Fill v3 API,
+// which requires a descriptive User-Agent header on every request.
+const paperUserAgent = "mc-dad-server (https://github.com/KevinTCoughlin/mc-dad-server)"
+
 type paperVersionsResponse struct {
-	Versions []string `json:"versions"`
+	Versions []struct {
+		Version struct {
+			ID string `json:"id"`
+		} `json:"version"`
+	} `json:"versions"`
 }
 
-type paperBuildsResponse struct {
-	Builds []struct {
-		Build     int `json:"build"`
-		Downloads struct {
-			Application struct {
-				Name string `json:"name"`
-			} `json:"application"`
-		} `json:"downloads"`
-	} `json:"builds"`
+type paperBuildResponse struct {
+	Downloads map[string]struct {
+		Name      string `json:"name"`
+		URL       string `json:"url"`
+		Checksums struct {
+			SHA256 string `json:"sha256"`
+		} `json:"checksums"`
+	} `json:"downloads"`
 }
 
 // PaperDownloadURL resolves the download URL for a Paper server JAR.
 func PaperDownloadURL(ctx context.Context, version string) (string, error) {
+	return paperDownloadURL(ctx, version, defaultPaperAPIBase)
+}
+
+func paperDownloadURL(ctx context.Context, version, apiBase string) (string, error) {
 	if version == "latest" {
 		var err error
-		version, err = paperLatestVersion(ctx)
+		version, err = paperLatestVersion(ctx, apiBase)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	url := fmt.Sprintf("https://api.papermc.io/v2/projects/paper/versions/%s/builds", version)
+	url := fmt.Sprintf("%s/projects/paper/versions/%s/builds/latest", apiBase, version)
 	body, err := httpGet(ctx, url)
 	if err != nil {
-		return "", fmt.Errorf("fetching Paper builds: %w", err)
+		return "", fmt.Errorf("fetching Paper latest build: %w", err)
 	}
 
-	var builds paperBuildsResponse
-	if err := json.Unmarshal(body, &builds); err != nil {
-		return "", fmt.Errorf("parsing Paper builds: %w", err)
+	var build paperBuildResponse
+	if err := json.Unmarshal(body, &build); err != nil {
+		return "", fmt.Errorf("parsing Paper latest build: %w", err)
 	}
 
-	if len(builds.Builds) == 0 {
-		return "", fmt.Errorf("no builds found for Paper %s", version)
+	dl, ok := build.Downloads["server:default"]
+	if !ok || dl.URL == "" {
+		return "", fmt.Errorf("no download found for Paper %s latest build", version)
 	}
 
-	latest := builds.Builds[len(builds.Builds)-1]
-	filename := latest.Downloads.Application.Name
-	if filename == "" {
-		return "", fmt.Errorf("no download found for Paper %s build %d", version, latest.Build)
-	}
-
-	return fmt.Sprintf("https://api.papermc.io/v2/projects/paper/versions/%s/builds/%d/downloads/%s",
-		version, latest.Build, filename), nil
+	return dl.URL, nil
 }
 
-func paperLatestVersion(ctx context.Context) (string, error) {
-	body, err := httpGet(ctx, "https://api.papermc.io/v2/projects/paper")
+func paperLatestVersion(ctx context.Context, apiBase string) (string, error) {
+	url := fmt.Sprintf("%s/projects/paper/versions", apiBase)
+	body, err := httpGet(ctx, url)
 	if err != nil {
 		return "", fmt.Errorf("fetching Paper versions: %w", err)
 	}
@@ -73,7 +82,8 @@ func paperLatestVersion(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("no Paper versions found")
 	}
 
-	return resp.Versions[len(resp.Versions)-1], nil
+	// Fill v3 returns versions newest-first.
+	return resp.Versions[0].Version.ID, nil
 }
 
 func httpGet(ctx context.Context, url string) ([]byte, error) {
@@ -81,6 +91,8 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("User-Agent", paperUserAgent)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
