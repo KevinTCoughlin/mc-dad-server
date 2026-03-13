@@ -8,9 +8,8 @@ import (
 	"net/http"
 )
 
-// paperAPIBase is the base URL for the PaperMC Fill v3 downloads API.
-// Tests override this to point at an httptest server.
-var paperAPIBase = "https://fill.papermc.io/v3"
+// defaultPaperAPIBase is the base URL for the PaperMC Fill v3 downloads API.
+const defaultPaperAPIBase = "https://fill.papermc.io/v3"
 
 // paperUserAgent identifies this tool to the PaperMC Fill v3 API,
 // which requires a descriptive User-Agent header on every request.
@@ -36,15 +35,19 @@ type paperBuildResponse struct {
 
 // PaperDownloadURL resolves the download URL for a Paper server JAR.
 func PaperDownloadURL(ctx context.Context, version string) (string, error) {
+	return paperDownloadURL(ctx, version, defaultPaperAPIBase)
+}
+
+func paperDownloadURL(ctx context.Context, version, apiBase string) (string, error) {
 	if version == "latest" {
 		var err error
-		version, err = paperLatestVersion(ctx)
+		version, err = paperLatestVersion(ctx, apiBase)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	url := fmt.Sprintf("%s/projects/paper/versions/%s/builds/latest", paperAPIBase, version)
+	url := fmt.Sprintf("%s/projects/paper/versions/%s/builds/latest", apiBase, version)
 	body, err := httpGet(ctx, url)
 	if err != nil {
 		return "", fmt.Errorf("fetching Paper latest build: %w", err)
@@ -63,8 +66,8 @@ func PaperDownloadURL(ctx context.Context, version string) (string, error) {
 	return dl.URL, nil
 }
 
-func paperLatestVersion(ctx context.Context) (string, error) {
-	url := fmt.Sprintf("%s/projects/paper/versions", paperAPIBase)
+func paperLatestVersion(ctx context.Context, apiBase string) (string, error) {
+	url := fmt.Sprintf("%s/projects/paper/versions", apiBase)
 	body, err := httpGet(ctx, url)
 	if err != nil {
 		return "", fmt.Errorf("fetching Paper versions: %w", err)

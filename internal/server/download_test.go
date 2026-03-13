@@ -10,6 +10,8 @@ import (
 )
 
 func TestPaperDownloadURL_Latest(t *testing.T) {
+	t.Parallel()
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/v3/projects/paper/versions", func(w http.ResponseWriter, _ *http.Request) {
@@ -38,11 +40,7 @@ func TestPaperDownloadURL_Latest(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	old := paperAPIBase
-	paperAPIBase = srv.URL + "/v3"
-	defer func() { paperAPIBase = old }()
-
-	url, err := PaperDownloadURL(context.Background(), "latest")
+	url, err := paperDownloadURL(context.Background(), "latest", srv.URL+"/v3")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -53,6 +51,8 @@ func TestPaperDownloadURL_Latest(t *testing.T) {
 }
 
 func TestPaperDownloadURL_SpecificVersion(t *testing.T) {
+	t.Parallel()
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/v3/projects/paper/versions/1.20.4/builds/latest", func(w http.ResponseWriter, _ *http.Request) {
@@ -72,11 +72,7 @@ func TestPaperDownloadURL_SpecificVersion(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	old := paperAPIBase
-	paperAPIBase = srv.URL + "/v3"
-	defer func() { paperAPIBase = old }()
-
-	url, err := PaperDownloadURL(context.Background(), "1.20.4")
+	url, err := paperDownloadURL(context.Background(), "1.20.4", srv.URL+"/v3")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -87,6 +83,8 @@ func TestPaperDownloadURL_SpecificVersion(t *testing.T) {
 }
 
 func TestPaperDownloadURL_NoVersions(t *testing.T) {
+	t.Parallel()
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/v3/projects/paper/versions", func(w http.ResponseWriter, _ *http.Request) {
@@ -98,11 +96,7 @@ func TestPaperDownloadURL_NoVersions(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	old := paperAPIBase
-	paperAPIBase = srv.URL + "/v3"
-	defer func() { paperAPIBase = old }()
-
-	_, err := PaperDownloadURL(context.Background(), "latest")
+	_, err := paperDownloadURL(context.Background(), "latest", srv.URL+"/v3")
 	if err == nil {
 		t.Fatal("expected error for empty versions")
 	}
@@ -112,6 +106,8 @@ func TestPaperDownloadURL_NoVersions(t *testing.T) {
 }
 
 func TestPaperDownloadURL_NoDownload(t *testing.T) {
+	t.Parallel()
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/v3/projects/paper/versions/1.21.4/builds/latest", func(w http.ResponseWriter, _ *http.Request) {
@@ -123,11 +119,7 @@ func TestPaperDownloadURL_NoDownload(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	old := paperAPIBase
-	paperAPIBase = srv.URL + "/v3"
-	defer func() { paperAPIBase = old }()
-
-	_, err := PaperDownloadURL(context.Background(), "1.21.4")
+	_, err := paperDownloadURL(context.Background(), "1.21.4", srv.URL+"/v3")
 	if err == nil {
 		t.Fatal("expected error for missing download")
 	}
@@ -137,6 +129,8 @@ func TestPaperDownloadURL_NoDownload(t *testing.T) {
 }
 
 func TestPaperDownloadURL_UserAgent(t *testing.T) {
+	t.Parallel()
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/v3/projects/paper/versions/1.21.4/builds/latest", func(w http.ResponseWriter, r *http.Request) {
@@ -160,11 +154,7 @@ func TestPaperDownloadURL_UserAgent(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	old := paperAPIBase
-	paperAPIBase = srv.URL + "/v3"
-	defer func() { paperAPIBase = old }()
-
-	_, err := PaperDownloadURL(context.Background(), "1.21.4")
+	_, err := paperDownloadURL(context.Background(), "1.21.4", srv.URL+"/v3")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
