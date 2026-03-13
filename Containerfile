@@ -83,23 +83,26 @@ RUN validate_sha256() { \
 # ARG placed here so MC_VERSION changes only bust the Paper download layer
 ARG MC_VERSION
 
-# Download Paper server JAR via PaperMC API with SHA-256 verification
+# Download Paper server JAR via PaperMC Fill v3 API with SHA-256 verification
+# Fill v3 requires a descriptive User-Agent header on every request.
 RUN set -e && \
+    UA="mc-dad-server (https://github.com/KevinTCoughlin/mc-dad-server)" && \
     MC_VER="${MC_VERSION}" && \
     if [ "$MC_VER" = "latest" ] || [ -z "$MC_VER" ]; then \
-        MC_VER=$(curl -fsSL https://api.papermc.io/v2/projects/paper | jq -r '.versions[-1]'); \
+        MC_VER=$(curl -fsSL -H "User-Agent: ${UA}" \
+            "https://fill.papermc.io/v3/projects/paper/versions" \
+            | jq -r '.versions[0].version.id'); \
     fi && \
-    BUILD_JSON=$(curl -fsSL "https://api.papermc.io/v2/projects/paper/versions/${MC_VER}/builds" \
-        | jq '.builds[-1]') && \
-    LATEST_BUILD=$(echo "$BUILD_JSON" | jq -r '.build') && \
-    JAR_NAME=$(echo "$BUILD_JSON" | jq -r '.downloads.application.name') && \
-    EXPECTED_SHA256=$(echo "$BUILD_JSON" | jq -r '.downloads.application.sha256') && \
+    BUILD_JSON=$(curl -fsSL -H "User-Agent: ${UA}" \
+        "https://fill.papermc.io/v3/projects/paper/versions/${MC_VER}/builds/latest") && \
+    JAR_NAME=$(echo "$BUILD_JSON" | jq -r '.downloads["server:default"].name') && \
+    EXPECTED_SHA256=$(echo "$BUILD_JSON" | jq -r '.downloads["server:default"].checksums.sha256') && \
+    DOWNLOAD_URL=$(echo "$BUILD_JSON" | jq -r '.downloads["server:default"].url') && \
     echo "$EXPECTED_SHA256" | grep -qE '^[a-f0-9]{64}$' || \
         { echo "Invalid SHA-256 for Paper: ${EXPECTED_SHA256}"; exit 1; } && \
-    curl -fsSL -o server.jar \
-        "https://api.papermc.io/v2/projects/paper/versions/${MC_VER}/builds/${LATEST_BUILD}/downloads/${JAR_NAME}" && \
+    curl -fsSL -H "User-Agent: ${UA}" -o server.jar "$DOWNLOAD_URL" && \
     echo "${EXPECTED_SHA256}  server.jar" | sha256sum -c - && \
-    echo "Downloaded and verified Paper ${MC_VER} build ${LATEST_BUILD}"
+    echo "Downloaded and verified Paper ${MC_VER}: ${JAR_NAME}"
 
 # Accept EULA
 RUN echo "eula=true" > eula.txt
