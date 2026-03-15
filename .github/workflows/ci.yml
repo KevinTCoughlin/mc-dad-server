@@ -50,9 +50,9 @@ jobs:
           git diff --exit-code go.mod go.sum
       - name: Vet
         run: go vet ./...
-      - uses: golangci/golangci-lint-action@818ec4d51a1feacefc42ff1b3ec25d4962690f39 # v6.4.1
+      - uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7.0.1
         with:
-          version: latest
+          version: v2.11
 
   test:
     name: Test
