@@ -2,6 +2,15 @@
 
 The `--experimental-bun` flag enables a TypeScript/JavaScript scripting sidecar powered by [Bun](https://bun.sh). It runs alongside the Minecraft server, tails the server log for events, and connects via RCON to send commands.
 
+**Performance Note**: Bun 1.3+ is recommended for optimal performance. Recent versions include significant improvements:
+- structuredClone 25x faster for arrays
+- Buffer.slice() 1.8x faster
+- path.parse() up to 7x faster
+- Updated JavaScriptCore engine
+- Improved bundling and barrel import optimization
+
+The installer automatically detects your Bun version and upgrades if necessary.
+
 ```bash
 mc-dad-server install --experimental-bun
 ```

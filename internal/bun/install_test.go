@@ -217,3 +217,57 @@ func TestDeployScripts_PreservesExistingScripts(t *testing.T) {
 		t.Error("expected example.ts to NOT be deployed when scripts/ has existing files")
 	}
 }
+
+func TestIsBunVersionSupported(t *testing.T) {
+	tests := []struct {
+		version  string
+		expected bool
+	}{
+		{"1.3.0", true},
+		{"1.3.10", true},
+		{"1.4.0", true},
+		{"2.0.0", true},
+		{"1.2.9", false},
+		{"1.1.0", false},
+		{"1.0.0", false},
+		{"0.9.0", false},
+		{"invalid", false},
+		{"1", false},
+		{"", false},
+		{"1.3", true},
+		{"1.3.10.5", true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.version, func(t *testing.T) {
+			got := isBunVersionSupported(tc.version)
+			if got != tc.expected {
+				t.Errorf("isBunVersionSupported(%q) = %v, want %v", tc.version, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestInstallBun_UpgradeOldVersion(t *testing.T) {
+	runner := platform.NewMockRunner()
+	runner.ExistsMap["bun"] = true
+	// Initially old version
+	runner.OutputMap[mockKey("bun", "--version")] = []byte("1.2.0\n")
+
+	err := InstallBun(context.Background(), runner, nil, ui.New(false))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have run the bash installer to upgrade
+	found := false
+	for _, cmd := range runner.Commands {
+		if cmd.Name == "bash" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("expected installer to run when upgrading old bun version")
+	}
+}
