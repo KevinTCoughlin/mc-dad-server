@@ -115,8 +115,7 @@ FROM eclipse-temurin:25-jre-alpine@sha256:f10d6259d0798c1e12179b6bf3b63cea0d6843
 # Install bash (required by entrypoint.sh for arrays and parameter expansion)
 # hadolint ignore=DL3018
 RUN apk add --no-cache bash && \
-    rm -rf /tmp/* /var/tmp/* && \
-    (find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true)
+    rm -rf /tmp/* /var/tmp/*
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -140,6 +139,9 @@ LABEL org.opencontainers.image.title="MC Dad Server" \
       org.opencontainers.image.source="https://github.com/KevinTCoughlin/mc-dad-server" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.vendor="KevinTCoughlin"
+
+# Remove setuid/setgid bits after all COPY steps to cover files from builder stage
+RUN find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true
 
 USER minecraft
 WORKDIR /minecraft
