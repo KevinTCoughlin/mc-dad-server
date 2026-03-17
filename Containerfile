@@ -1,6 +1,6 @@
 # MC Dad Server — Multi-stage Minecraft Paper Server Build
 # Builder: Debian Trixie slim (curl/jq only)
-# Runtime: Eclipse Temurin 25 JRE on Ubuntu Noble
+# Runtime: Eclipse Temurin 25 JRE on Alpine Linux
 # https://github.com/KevinTCoughlin/mc-dad-server
 
 # Pinned versions — update these to bump components
@@ -108,29 +108,21 @@ RUN set -e && \
 RUN echo "eula=true" > eula.txt
 
 # ---------------------------------------------------------------------------
-# Stage 2: Runtime — Eclipse Temurin 25 JRE on Ubuntu Noble
+# Stage 2: Runtime — Eclipse Temurin 25 JRE on Alpine Linux
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:25-jre-noble@sha256:e7e348559e36c85a3fe868d7c298517b7cc75f01b34ce3813798a5cd781795f1 AS runtime
+FROM eclipse-temurin:25-jre-alpine@sha256:f10d6259d0798c1e12179b6bf3b63cea0d6843f7b09c9f9c9c422c50e44379ec AS runtime
 
-ENV DEBIAN_FRONTEND=noninteractive
+# Install bash (required by entrypoint.sh for arrays and parameter expansion)
+# hadolint ignore=DL3018
+RUN apk add --no-cache bash && \
+    rm -rf /tmp/* /var/tmp/* && \
+    (find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true)
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Prevent docs/man/locale from being installed (smaller image), but keep licenses
-RUN printf 'path-exclude=/usr/share/doc/*\npath-include=/usr/share/doc/*/copyright\npath-include=/usr/share/doc/*/changelog.Debian*\npath-include=/usr/share/doc/*/LICENSE\npath-exclude=/usr/share/man/*\npath-exclude=/usr/share/locale/*\npath-exclude=/usr/share/bug/*\npath-exclude=/usr/share/lintian/*\npath-exclude=/usr/share/mime/*\npath-exclude=/usr/share/info/*\n' \
-        > /etc/dpkg/dpkg.cfg.d/excludes && \
-    rm -rf /var/lib/apt/lists/* \
-           /var/cache/apt/archives/* \
-           /var/log/dpkg.log \
-           /var/log/apt \
-           /var/log/bootstrap.log \
-           /var/log/alternatives.log \
-           /tmp/* \
-           /var/tmp/* && \
-    (find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true)
-
 # Non-root user
-RUN useradd --no-log-init -r -m -s /usr/sbin/nologin minecraft
+RUN addgroup -S minecraft && \
+    adduser -D -S -G minecraft -s /sbin/nologin minecraft
 
 # Copy server files from builder
 COPY --from=builder --chown=minecraft:minecraft /minecraft /minecraft
