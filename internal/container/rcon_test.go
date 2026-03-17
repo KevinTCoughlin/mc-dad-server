@@ -23,7 +23,8 @@ type rconTestServer struct {
 
 func newRCONTestServer(t *testing.T, password string, handler func(string) string) *rconTestServer {
 	t.Helper()
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	lc := &net.ListenConfig{}
+	ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
@@ -35,7 +36,8 @@ func newRCONTestServer(t *testing.T, password string, handler func(string) strin
 // Useful for reconnect tests that need a new server on the same port.
 func newRCONTestServerAt(t *testing.T, addr, password string, handler func(string) string) *rconTestServer {
 	t.Helper()
-	ln, err := net.Listen("tcp", addr)
+	lc := &net.ListenConfig{}
+	ln, err := lc.Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		t.Fatalf("listen on %s: %v", addr, err)
 	}
@@ -177,7 +179,8 @@ func TestRCONClient_AuthFailure(t *testing.T) {
 
 func TestRCONClient_ConnectionRefused(t *testing.T) {
 	// Allocate an ephemeral port, then close it so that dialing will fail.
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	lc := &net.ListenConfig{}
+	l, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("net.Listen() error = %v", err)
 	}
@@ -300,7 +303,8 @@ func TestRCONClient_EmptyBody(t *testing.T) {
 
 func TestRCONClient_ServerClosesConnection(t *testing.T) {
 	// Server accepts, authenticates, then immediately closes the connection.
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	lc := &net.ListenConfig{}
+	ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,7 +342,8 @@ func TestRCONClient_ServerClosesConnection(t *testing.T) {
 
 func TestRCONClient_DialCancelledContext(t *testing.T) {
 	// Allocate an ephemeral port, then close it.
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	lc := &net.ListenConfig{}
+	l, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("net.Listen() error = %v", err)
 	}

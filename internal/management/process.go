@@ -75,7 +75,8 @@ func IsServerRunning(ctx context.Context, mgr ServerManager, runner platform.Com
 
 // IsPortListening checks if something is listening on the given TCP port.
 func IsPortListening(port int) bool {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 1*time.Second)
+	d := &net.Dialer{Timeout: 1 * time.Second}
+	conn, err := d.DialContext(context.Background(), "tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return false
 	}
