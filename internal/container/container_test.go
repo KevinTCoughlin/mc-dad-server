@@ -487,7 +487,8 @@ func TestManager_SendCommand_ReconnectsOnBrokenConnection(t *testing.T) {
 func TestManager_SendCommand_ConnectFailure(t *testing.T) {
 	m := platform.NewMockRunner()
 	// Allocate an ephemeral port, then close it so that dialing will fail.
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	lc := &net.ListenConfig{}
+	l, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("net.Listen() error = %v", err)
 	}
