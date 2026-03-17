@@ -121,7 +121,8 @@ RUN apk add --no-cache bash && \
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Non-root user
-RUN adduser -D -S -s /sbin/nologin minecraft
+RUN addgroup -S minecraft && \
+    adduser -D -S -G minecraft -s /sbin/nologin minecraft
 
 # Copy server files from builder
 COPY --from=builder --chown=minecraft:minecraft /minecraft /minecraft

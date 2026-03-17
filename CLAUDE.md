@@ -59,7 +59,7 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 - **Version**: Set via ldflags (`-X main.version=... -X main.commit=...`) by goreleaser
 - **Server modes**: `--mode auto|screen|container` — `ServerManager` interface (`management/manager.go`) with `ScreenManager` and `container.Manager` backends. Auto-detection checks for running container first, falls back to screen.
 - **Container**: Eclipse Temurin 25 JRE on Alpine Linux (builder stays on Debian Trixie slim). FIFO-based stdin (`entrypoint.sh`), RCON for remote commands (`container/rcon.go`), graceful 30s shutdown countdown.
-- **Lean image**: Alpine base with only bash added. Setuid/setgid bit removal for security hardening.
+- **Lean image**: Alpine base with minimal additional dependencies (bash for entrypoint compatibility). Setuid/setgid bit removal for security hardening.
 
 ## Key Conventions
 
