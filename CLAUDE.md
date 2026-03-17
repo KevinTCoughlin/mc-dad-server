@@ -58,8 +58,8 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 - **Embedded assets**: `//go:embed all:embedded` in main.go — configs, templates, blocked-words list
 - **Version**: Set via ldflags (`-X main.version=... -X main.commit=...`) by goreleaser
 - **Server modes**: `--mode auto|screen|container` — `ServerManager` interface (`management/manager.go`) with `ScreenManager` and `container.Manager` backends. Auto-detection checks for running container first, falls back to screen.
-- **Container**: Eclipse Temurin 25 JRE on Ubuntu Noble (builder stays on Debian Trixie slim). FIFO-based stdin (`entrypoint.sh`), RCON for remote commands (`container/rcon.go`), graceful 30s shutdown countdown.
-- **Aggressive image optimization**: dpkg configured to exclude documentation, man pages, locales, bug templates, lintian overrides, MIME database, and info pages during package installation. Runtime cleanup removes all APT caches, logs, and temporary files. Combined with setuid/setgid bit removal for security hardening.
+- **Container**: Eclipse Temurin 25 JRE on Alpine Linux (builder stays on Debian Trixie slim). FIFO-based stdin (`entrypoint.sh`), RCON for remote commands (`container/rcon.go`), graceful 30s shutdown countdown.
+- **Lean image**: Alpine base with only bash added. Setuid/setgid bit removal for security hardening.
 
 ## Key Conventions
 
