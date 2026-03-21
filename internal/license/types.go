@@ -18,7 +18,7 @@ type ValidationResponse struct {
 	Valid      bool     `json:"valid"`
 	Error      string   `json:"error,omitempty"`
 	LicenseKey Key      `json:"license_key"`
-	Instance   Instance `json:"instance,omitempty"`
+	Instance   Instance `json:"instance"`
 	Meta       Meta     `json:"meta"`
 }
 
@@ -57,7 +57,7 @@ type Meta struct {
 type ActivationResponse struct {
 	Activated bool     `json:"activated"`
 	Error     string   `json:"error,omitempty"`
-	Instance  Instance `json:"instance,omitempty"`
+	Instance  Instance `json:"instance"`
 	Meta      Meta     `json:"meta"`
 }
 

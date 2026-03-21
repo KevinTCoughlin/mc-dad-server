@@ -310,9 +310,9 @@ func readRCONPassword(serverDir string) string {
 	if err != nil {
 		return ""
 	}
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.HasPrefix(line, "rcon.password=") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "rcon.password="))
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if after, ok := strings.CutPrefix(line, "rcon.password="); ok {
+			return strings.TrimSpace(after)
 		}
 	}
 	return ""

@@ -103,10 +103,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocritic
 		m.height = msg.Height
 
 		// Reserve lines: 1 title bar + 1 input + 1 status bar.
-		viewHeight := m.height - 3
-		if viewHeight < 1 {
-			viewHeight = 1
-		}
+		viewHeight := max(m.height-3, 1)
 
 		if !m.ready {
 			m.viewport = viewport.New(m.width, viewHeight)

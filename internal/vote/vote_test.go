@@ -1,6 +1,7 @@
 package vote
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -136,13 +137,7 @@ func TestPickWinner(t *testing.T) {
 
 	t.Run("no votes picks random candidate", func(t *testing.T) {
 		winner := pickWinner(candidates, map[string]int{})
-		found := false
-		for _, c := range candidates {
-			if winner == c {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(candidates, winner)
 		if !found {
 			t.Errorf("winner %q not in candidates", winner)
 		}
