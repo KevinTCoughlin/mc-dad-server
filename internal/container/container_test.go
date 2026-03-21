@@ -420,7 +420,7 @@ func TestManager_SendCommand_PersistentConnection(t *testing.T) {
 	ctx := context.Background()
 
 	// Send multiple commands — should reuse the same connection.
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		if err := mgr.SendCommand(ctx, "list"); err != nil {
 			t.Fatalf("SendCommand() #%d error = %v", i, err)
 		}
