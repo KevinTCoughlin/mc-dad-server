@@ -4,7 +4,7 @@ PRs welcome! This is for dads, by dads. Keep it simple.
 
 ## Quick Start (GitHub Codespaces)
 
-Click **Code → Codespaces → New codespace** on the repo page. The dev container comes pre-configured with Go 1.24, Java 21, Kotlin, and all required tooling — zero local setup.
+Click **Code → Codespaces → New codespace** on the repo page. The dev container comes pre-configured with Go 1.26, Java 21, Kotlin, and all required tooling — zero local setup.
 
 ## Local Development
 
@@ -12,7 +12,7 @@ Click **Code → Codespaces → New codespace** on the repo page. The dev contai
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| [Go](https://go.dev/dl/) | 1.24+ | Build the CLI binary |
+| [Go](https://go.dev/dl/) | 1.26+ | Build the CLI binary |
 | [just](https://github.com/casey/just#installation) | latest | Task runner (replaces Make) |
 | [Java (Temurin)](https://adoptium.net/) | 21+ | Minecraft server runtime |
 | [Kotlin](https://kotlinlang.org/docs/command-line.html) | latest | Plugin development |
