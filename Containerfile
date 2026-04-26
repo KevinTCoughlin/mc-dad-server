@@ -27,8 +27,8 @@ WORKDIR /minecraft
 # GeyserMC/Floodgate hashes come from their builds API; Hangar provides SHA-256
 # via fileInfo; GitHub (Parkour) has no hash so we verify file size instead.
 #
-# NOTE: Paper 26.1.2 has compatibility issues with Geyser/Floodgate snapshots.
-# We pin to specific stable builds here. If AppCDS training fails (plugin crash),
+# NOTE: Geyser/Floodgate snapshot builds may have compatibility issues with
+# certain Paper versions. If AppCDS training fails (plugin crash),
 # entrypoint.sh will start the server without the JVM warmup cache.
 # hadolint ignore=SC2016,SC2317
 RUN validate_sha256() { \
@@ -36,8 +36,7 @@ RUN validate_sha256() { \
             { echo "Invalid SHA-256 for $2: $1"; exit 1; }; \
     } && \
     set -e && mkdir -p plugins && \
-    # Geyser — Pin to a stable build version (2.9.5 build 1100+) for Paper 26.1.2 compat.
-    # Try latest first; if that fails during AppCDS training, this helps diagnose.
+    # Geyser — download latest build; build number is logged for diagnostics.
     GEYSER_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest") && \
     GEYSER_SHA256=$(echo "$GEYSER_META" | jq -r '.downloads.spigot.sha256') && \
     GEYSER_BUILD=$(echo "$GEYSER_META" | jq -r '.build') && \
@@ -46,7 +45,7 @@ RUN validate_sha256() { \
     curl -fsSL -o plugins/Geyser-Spigot.jar \
       "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot" && \
     echo "${GEYSER_SHA256}  plugins/Geyser-Spigot.jar" | sha256sum -c - && \
-    # Floodgate — Pin to stable build for Paper 26.1.2 compat
+    # Floodgate — download latest build; build number is logged for diagnostics.
     FLOODGATE_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest") && \
     FLOODGATE_SHA256=$(echo "$FLOODGATE_META" | jq -r '.downloads.spigot.sha256') && \
     FLOODGATE_BUILD=$(echo "$FLOODGATE_META" | jq -r '.build') && \
@@ -187,7 +186,7 @@ RUN cp -a plugins plugins.pristine && \
     if test -f app-cds.jsa; then \
         echo "AppCDS archive created successfully"; \
     else \
-        echo "WARNING: AppCDS archive not created. This may be due to plugin compatibility issues with Paper 26.1.2."; \
+        echo "WARNING: AppCDS archive not created. This may be due to plugin compatibility issues with the selected Paper/MC version."; \
         echo "The container will start without JVM warmup — functionality is unaffected."; \
         echo "Check logs above for plugin startup errors, or see: https://github.com/GeyserMC/Geyser/issues/6297"; \
     fi && \
