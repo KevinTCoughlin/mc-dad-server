@@ -48,7 +48,7 @@ gofumpt -w .                           # format
 
 ## Code Style
 
-- Go 1.24, formatted with gofumpt
+- Go 1.26, formatted with gofumpt
 - No unnecessary abstractions — keep helpers minimal and explicit
 - Prefer passing explicit params over closures capturing shared state
 - Only add comments where logic isn't self-evident

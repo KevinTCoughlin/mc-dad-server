@@ -182,7 +182,7 @@ RUN cp -a plugins plugins.pristine && \
             kill -0 $PID 2>/dev/null || { echo "Server process died during AppCDS training"; break; }; \
             sleep 2; \
         done && \
-        kill $PID 2>/dev/null && wait $PID 2>/dev/null; true' || true && \
+        kill $PID 2>/dev/null; wait $PID 2>/dev/null; true' || true && \
     if test -f app-cds.jsa; then \
         echo "AppCDS archive created successfully"; \
     else \
