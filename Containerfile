@@ -170,9 +170,16 @@ RUN cp -a plugins plugins.pristine && \
             -Xms512M -Xmx512M -XX:+UseG1GC \
             -jar server.jar nogui & \
         PID=$! && \
-        until grep -q "Done" logs/latest.log 2>/dev/null; do sleep 2; done && \
-        kill $PID && wait $PID' || true && \
-    test -f app-cds.jsa && echo "AppCDS archive created successfully" && \
+        until grep -q "Done" logs/latest.log 2>/dev/null; do \
+            kill -0 $PID 2>/dev/null || break; \
+            sleep 2; \
+        done && \
+        kill $PID 2>/dev/null; wait $PID 2>/dev/null; true' || true && \
+    if test -f app-cds.jsa; then \
+        echo "AppCDS archive created successfully"; \
+    else \
+        echo "WARNING: AppCDS archive not created (server crashed or timed out); container will start without JVM warmup"; \
+    fi && \
     rm -rf world world_nether world_the_end logs cache version_history.json && \
     rm -rf plugins && mv plugins.pristine plugins
 
