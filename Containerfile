@@ -26,22 +26,30 @@ WORKDIR /minecraft
 # Download plugins sequentially with SHA-256 verification where available.
 # GeyserMC/Floodgate hashes come from their builds API; Hangar provides SHA-256
 # via fileInfo; GitHub (Parkour) has no hash so we verify file size instead.
+#
+# NOTE: Geyser/Floodgate snapshot builds may have compatibility issues with
+# certain Paper versions. If AppCDS training fails (plugin crash),
+# entrypoint.sh will start the server without the JVM warmup cache.
 # hadolint ignore=SC2016,SC2317
 RUN validate_sha256() { \
         echo "$1" | grep -qE '^[a-f0-9]{64}$' || \
             { echo "Invalid SHA-256 for $2: $1"; exit 1; }; \
     } && \
     set -e && mkdir -p plugins && \
-    # Geyser — SHA-256 from GeyserMC build API
+    # Geyser — download latest build; build number is logged for diagnostics.
     GEYSER_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest") && \
     GEYSER_SHA256=$(echo "$GEYSER_META" | jq -r '.downloads.spigot.sha256') && \
+    GEYSER_BUILD=$(echo "$GEYSER_META" | jq -r '.build') && \
+    echo "Downloading Geyser build ${GEYSER_BUILD}" && \
     validate_sha256 "$GEYSER_SHA256" "Geyser" && \
     curl -fsSL -o plugins/Geyser-Spigot.jar \
       "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot" && \
     echo "${GEYSER_SHA256}  plugins/Geyser-Spigot.jar" | sha256sum -c - && \
-    # Floodgate — SHA-256 from GeyserMC build API
+    # Floodgate — download latest build; build number is logged for diagnostics.
     FLOODGATE_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest") && \
     FLOODGATE_SHA256=$(echo "$FLOODGATE_META" | jq -r '.downloads.spigot.sha256') && \
+    FLOODGATE_BUILD=$(echo "$FLOODGATE_META" | jq -r '.build') && \
+    echo "Downloading Floodgate build ${FLOODGATE_BUILD}" && \
     validate_sha256 "$FLOODGATE_SHA256" "Floodgate" && \
     curl -fsSL -o plugins/Floodgate-Spigot.jar \
       "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot" && \
@@ -171,14 +179,16 @@ RUN cp -a plugins plugins.pristine && \
             -jar server.jar nogui & \
         PID=$! && \
         until grep -q "Done" logs/latest.log 2>/dev/null; do \
-            kill -0 $PID 2>/dev/null || break; \
+            kill -0 $PID 2>/dev/null || { echo "Server process died during AppCDS training"; break; }; \
             sleep 2; \
         done && \
         kill $PID 2>/dev/null; wait $PID 2>/dev/null; true' || true && \
     if test -f app-cds.jsa; then \
         echo "AppCDS archive created successfully"; \
     else \
-        echo "WARNING: AppCDS archive not created (server crashed or timed out); container will start without JVM warmup"; \
+        echo "WARNING: AppCDS archive not created. This may be due to plugin compatibility issues with the selected Paper/MC version."; \
+        echo "The container will start without JVM warmup — functionality is unaffected."; \
+        echo "Check logs above for plugin startup errors, or see: https://github.com/GeyserMC/Geyser/issues/6297"; \
     fi && \
     rm -rf world world_nether world_the_end logs cache version_history.json && \
     rm -rf plugins && mv plugins.pristine plugins
