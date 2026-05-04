@@ -18,6 +18,7 @@ import (
 type Options struct {
 	Dir     string
 	Session string
+	Mode    string
 }
 
 // Styles.

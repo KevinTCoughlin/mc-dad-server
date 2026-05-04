@@ -33,6 +33,11 @@ func TestScreenManager_IsRunning(t *testing.T) {
 			output: "There is a screen on:\n\t12345.other\t(Detached)\n1 Socket in /run/screen.",
 			want:   false,
 		},
+		{
+			name:   "prefix session does not match",
+			output: "There is a screen on:\n\t12345.minecraft2\t(Detached)\n1 Socket in /run/screen.",
+			want:   false,
+		},
 	}
 
 	for _, tt := range tests {

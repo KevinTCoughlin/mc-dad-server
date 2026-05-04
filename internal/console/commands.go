@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
+	"github.com/KevinTCoughlin/mc-dad-server/internal/container"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
@@ -31,7 +33,7 @@ func dispatch(ctx context.Context, input string, opts *Options, runner platform.
 	args := parts[1:]
 
 	cfg := optsToConfig(opts)
-	var mgr management.ServerManager = management.NewScreenManager(runner, cfg.SessionName, filepath.Join(cfg.Dir, "start.sh"))
+	mgr := resolveManager(ctx, opts, runner, cfg)
 
 	var buf bytes.Buffer
 	output := ui.NewWriter(&buf, false)
@@ -143,4 +145,61 @@ func optsToConfig(o *Options) *config.ServerConfig {
 	cfg.Dir = o.Dir
 	cfg.SessionName = o.Session
 	return cfg
+}
+
+func resolveManager(ctx context.Context, opts *Options, runner platform.CommandRunner, cfg *config.ServerConfig) management.ServerManager {
+	mode := resolveMode(ctx, opts, runner)
+	if mode == "container" {
+		runtime := detectContainerRuntime(runner)
+		return container.NewManager(runner, runtime, cfg.SessionName, "127.0.0.1:25575", readRCONPassword(cfg.Dir))
+	}
+	return management.NewScreenManager(runner, cfg.SessionName, filepath.Join(cfg.Dir, "start.sh"))
+}
+
+func resolveMode(ctx context.Context, opts *Options, runner platform.CommandRunner) string {
+	switch opts.Mode {
+	case "screen":
+		return "screen"
+	case "container":
+		return "container"
+	default:
+		return detectMode(ctx, opts, runner)
+	}
+}
+
+func detectMode(ctx context.Context, opts *Options, runner platform.CommandRunner) string {
+	runtime := detectContainerRuntime(runner)
+	if runtime != "unknown" {
+		cm := container.NewManager(runner, runtime, opts.Session, "", "")
+		if cm.IsRunning(ctx) {
+			return "container"
+		}
+	}
+	return "screen"
+}
+
+func detectContainerRuntime(runner platform.CommandRunner) string {
+	if runner.CommandExists("podman") {
+		return "podman"
+	}
+	if runner.CommandExists("docker") {
+		return "docker"
+	}
+	return "unknown"
+}
+
+func readRCONPassword(serverDir string) string {
+	if pass := os.Getenv("RCON_PASSWORD"); pass != "" {
+		return pass
+	}
+	data, err := os.ReadFile(filepath.Join(serverDir, "server.properties"))
+	if err != nil {
+		return ""
+	}
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if after, ok := strings.CutPrefix(line, "rcon.password="); ok {
+			return strings.TrimSpace(after)
+		}
+	}
+	return ""
 }

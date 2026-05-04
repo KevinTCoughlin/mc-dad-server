@@ -28,7 +28,7 @@ func (s *ScreenManager) IsRunning(ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
-	return strings.Contains(string(out), "."+s.session)
+	return hasScreenSession(string(out), s.session)
 }
 
 // SendCommand sends a command string to the screen session.
@@ -63,4 +63,24 @@ func Sleep(ctx context.Context, seconds int) error {
 // Session returns the session name.
 func (s *ScreenManager) Session() string {
 	return s.session
+}
+
+func hasScreenSession(screenListOutput, session string) bool {
+	for raw := range strings.SplitSeq(screenListOutput, "\n") {
+		line := strings.TrimSpace(raw)
+		if line == "" {
+			continue
+		}
+		firstField := strings.Fields(line)
+		if len(firstField) == 0 {
+			continue
+		}
+		nameField := firstField[0]
+		if dot := strings.IndexByte(nameField, '.'); dot >= 0 && dot+1 < len(nameField) {
+			if nameField[dot+1:] == session {
+				return true
+			}
+		}
+	}
+	return false
 }

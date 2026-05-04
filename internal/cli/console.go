@@ -13,5 +13,6 @@ func (cmd *ConsoleCmd) Run(globals *Globals, runner platform.CommandRunner) erro
 	return console.Run(&console.Options{
 		Dir:     globals.Dir,
 		Session: globals.Session,
+		Mode:    globals.Mode,
 	}, runner)
 }
