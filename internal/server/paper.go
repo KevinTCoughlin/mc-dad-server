@@ -16,7 +16,7 @@ const defaultPaperAPIBase = "https://fill.papermc.io/v3"
 // which requires a descriptive User-Agent header on every request.
 const paperUserAgent = "mc-dad-server (https://github.com/KevinTCoughlin/mc-dad-server)"
 
-var stablePaperVersionPattern = regexp.MustCompile(`^[0-9]+(\.[0-9]+){1,2}$`)
+var stablePaperVersionPattern = regexp.MustCompile(`^\d+(\.\d+){1,2}$`)
 
 type paperVersionsResponse struct {
 	Versions []struct {
