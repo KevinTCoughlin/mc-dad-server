@@ -1,0 +1,11 @@
+{
+  "format_on_save": "on",
+  "language_servers": [
+    "gopls"
+  ],
+  "terminal": {
+    "env": {
+      "PATH": "${env:PATH}"
+    }
+  }
+}

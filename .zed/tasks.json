@@ -1,0 +1,35 @@
+[
+  {
+    "label": "Go Test",
+    "command": "mise",
+    "args": ["exec", "--", "go", "test", "./..."],
+    "presentation": {
+      "reveal": "always",
+      "panel": "dedicated",
+      "clear": true
+    },
+    "problemMatcher": []
+  },
+  {
+    "label": "Go Build",
+    "command": "mise",
+    "args": ["exec", "--", "go", "build", "./cmd/mc-dad-server"],
+    "presentation": {
+      "reveal": "always",
+      "panel": "dedicated",
+      "clear": true
+    },
+    "problemMatcher": []
+  },
+  {
+    "label": "Go Vet",
+    "command": "mise",
+    "args": ["exec", "--", "go", "vet", "./..."],
+    "presentation": {
+      "reveal": "always",
+      "panel": "dedicated",
+      "clear": true
+    },
+    "problemMatcher": []
+  }
+]
