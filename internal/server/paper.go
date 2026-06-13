@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 )
 
 // defaultPaperAPIBase is the base URL for the PaperMC Fill v3 downloads API.
@@ -14,6 +15,8 @@ const defaultPaperAPIBase = "https://fill.papermc.io/v3"
 // paperUserAgent identifies this tool to the PaperMC Fill v3 API,
 // which requires a descriptive User-Agent header on every request.
 const paperUserAgent = "mc-dad-server (https://github.com/KevinTCoughlin/mc-dad-server)"
+
+var stablePaperVersionPattern = regexp.MustCompile(`^[0-9]+(\.[0-9]+){1,2}$`)
 
 type paperVersionsResponse struct {
 	Versions []struct {
@@ -83,7 +86,17 @@ func paperLatestVersion(ctx context.Context, apiBase string) (string, error) {
 	}
 
 	// Fill v3 returns versions newest-first.
-	return resp.Versions[0].Version.ID, nil
+	for _, version := range resp.Versions {
+		if isStablePaperVersion(version.Version.ID) {
+			return version.Version.ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("no stable Paper versions found")
+}
+
+func isStablePaperVersion(version string) bool {
+	return stablePaperVersionPattern.MatchString(version)
 }
 
 func httpGet(ctx context.Context, url string) ([]byte, error) {

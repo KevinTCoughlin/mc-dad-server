@@ -50,6 +50,48 @@ func TestPaperDownloadURL_Latest(t *testing.T) {
 	}
 }
 
+func TestPaperDownloadURL_LatestSkipsRCVersions(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/v3/projects/paper/versions", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"versions": []map[string]any{
+				{"version": map[string]any{"id": "1.21.9-rc-1"}},
+				{"version": map[string]any{"id": "1.21.8"}},
+				{"version": map[string]any{"id": "1.21.7"}},
+			},
+		})
+	})
+
+	mux.HandleFunc("/v3/projects/paper/versions/1.21.8/builds/latest", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"downloads": map[string]any{
+				"server:default": map[string]any{
+					"name": "paper-1.21.8-1.jar",
+					"url":  "https://fill-data.papermc.io/v1/objects/stable123/paper-1.21.8-1.jar",
+					"checksums": map[string]any{
+						"sha256": "stable123",
+					},
+				},
+			},
+		})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	url, err := paperDownloadURL(context.Background(), "latest", srv.URL+"/v3")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expected := "https://fill-data.papermc.io/v1/objects/stable123/paper-1.21.8-1.jar"
+	if url != expected {
+		t.Fatalf("got %q, want %q", url, expected)
+	}
+}
+
 func TestPaperDownloadURL_SpecificVersion(t *testing.T) {
 	t.Parallel()
 
@@ -101,6 +143,32 @@ func TestPaperDownloadURL_NoVersions(t *testing.T) {
 		t.Fatal("expected error for empty versions")
 	}
 	if !strings.Contains(err.Error(), "no Paper versions found") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPaperDownloadURL_NoStableVersions(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/v3/projects/paper/versions", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"versions": []map[string]any{
+				{"version": map[string]any{"id": "1.21.9-rc-1"}},
+				{"version": map[string]any{"id": "1.21.9-beta-1"}},
+			},
+		})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	_, err := paperDownloadURL(context.Background(), "latest", srv.URL+"/v3")
+	if err == nil {
+		t.Fatal("expected error for missing stable versions")
+	}
+	if !strings.Contains(err.Error(), "no stable Paper versions found") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
