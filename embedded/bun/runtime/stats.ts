@@ -55,7 +55,7 @@ export class StatsStore {
     if (!active) {
       return;
     }
-    const durationSeconds = Math.max(0, Math.floor((at.getTime() - active.joinedAtMs) / 1000));
+    const durationSeconds = this.calculateDurationSeconds(active.joinedAtMs, at.getTime());
     this.db
       .query("UPDATE player_sessions SET left_at = ?, duration_seconds = ? WHERE id = ?")
       .run(at.toISOString(), durationSeconds, active.id);
@@ -79,7 +79,7 @@ export class StatsStore {
     if (this.activeServerSession === null) {
       return;
     }
-    const durationSeconds = Math.max(0, Math.floor((at.getTime() - this.activeServerSession.startedAtMs) / 1000));
+    const durationSeconds = this.calculateDurationSeconds(this.activeServerSession.startedAtMs, at.getTime());
     this.db
       .query("UPDATE server_sessions SET stopped_at = ?, duration_seconds = ? WHERE id = ?")
       .run(at.toISOString(), durationSeconds, this.activeServerSession.id);
@@ -100,12 +100,12 @@ export class StatsStore {
 
     let totalPlayerSeconds = playerRow?.total_seconds ?? 0;
     for (const active of this.activePlayers.values()) {
-      totalPlayerSeconds += Math.max(0, Math.floor((now.getTime() - active.joinedAtMs) / 1000));
+      totalPlayerSeconds += this.calculateDurationSeconds(active.joinedAtMs, now.getTime());
     }
 
     let totalServerSeconds = serverRow?.total_seconds ?? 0;
     if (this.activeServerSession !== null) {
-      totalServerSeconds += Math.max(0, Math.floor((now.getTime() - this.activeServerSession.startedAtMs) / 1000));
+      totalServerSeconds += this.calculateDurationSeconds(this.activeServerSession.startedAtMs, now.getTime());
     }
 
     return {
@@ -118,5 +118,9 @@ export class StatsStore {
 
   close(): void {
     this.db.close();
+  }
+
+  private calculateDurationSeconds(startMs: number, endMs: number): number {
+    return Math.max(0, Math.floor((endMs - startMs) / 1000));
   }
 }

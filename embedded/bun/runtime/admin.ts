@@ -1,5 +1,6 @@
 import type { McServer } from "./server";
 import { StatsStore } from "./stats";
+import { isAbsolute, resolve } from "node:path";
 
 interface AdminActionRequest {
   action: "start" | "stop" | "say" | "whitelist";
@@ -12,6 +13,9 @@ interface SseClient {
   send: (event: string, payload: unknown) => void;
   close: () => void;
 }
+
+const INVALID_MESSAGE_CHARS = /[\n\r\0]/;
+const ALLOWED_START_COMMANDS = new Set(["./start.sh", "start.sh", "mc-dad-server", "mc-dad-server.exe"]);
 
 export class AdminControlPlane {
   private readonly host = process.env.MC_ADMIN_HOST ?? "127.0.0.1";
@@ -138,7 +142,7 @@ export class AdminControlPlane {
         }
         case "say": {
           const message = body.message?.trim() ?? "";
-          if (!message || message.length > 256 || message.includes("\n") || message.includes("\r")) {
+          if (!message || message.length > 256 || INVALID_MESSAGE_CHARS.test(message)) {
             return this.jsonResponse({ ok: false, error: "invalid message" }, 400);
           }
           const response = await this.mc.say(message);
@@ -181,9 +185,21 @@ export class AdminControlPlane {
     if (parts.length === 0) {
       return this.jsonResponse({ ok: false, error: "invalid start command" }, 400);
     }
+    if (!ALLOWED_START_COMMANDS.has(parts[0])) {
+      return this.jsonResponse({ ok: false, error: "start command is not allowed" }, 400);
+    }
+    if (!parts.slice(1).every((part) => /^[A-Za-z0-9_=-]+$/.test(part))) {
+      return this.jsonResponse({ ok: false, error: "start command args contain unsupported characters" }, 400);
+    }
+
+    const serverDir = process.env.MC_SERVER_DIR ?? "";
+    const resolvedServerDir = resolve(serverDir);
+    if (!serverDir || !isAbsolute(serverDir) || resolvedServerDir !== serverDir) {
+      return this.jsonResponse({ ok: false, error: "invalid MC_SERVER_DIR" }, 400);
+    }
 
     Bun.spawn(parts, {
-      cwd: process.env.MC_SERVER_DIR,
+      cwd: resolvedServerDir,
       stdout: "ignore",
       stderr: "ignore",
     });
@@ -197,7 +213,7 @@ export class AdminControlPlane {
     }
 
     const player = body.player?.trim() ?? "";
-    if (!/^[A-Za-z0-9_]{1,32}$/.test(player)) {
+    if (!/^[A-Za-z0-9_]{3,16}$/.test(player)) {
       return "";
     }
     if (mode === "remove") {
@@ -322,7 +338,7 @@ export class AdminControlPlane {
         const node = document.createElement("div");
         node.textContent = line;
         logsEl.appendChild(node);
-        if (logsEl.childElementCount > 600) logsEl.removeChild(logsEl.firstChild);
+        if (logsEl.childElementCount > 400) logsEl.removeChild(logsEl.firstChild);
         logsEl.scrollTop = logsEl.scrollHeight;
       }
 

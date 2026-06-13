@@ -65,10 +65,17 @@ if [[ -d "$BUN_DIR" ]]; then
     (
         ulimit -v $((512 * 1024))   # 512 MB virtual memory
         ulimit -n 256               # max open file descriptors
+        ADMIN_ENV=(
+            "MC_ADMIN_HOST=${MC_ADMIN_HOST:-127.0.0.1}"
+            "MC_ADMIN_PORT=${MC_ADMIN_PORT:-8080}"
+            "MC_ADMIN_START_CMD=${MC_ADMIN_START_CMD:-}"
+            "MC_SERVER_DIR=$SCRIPT_DIR"
+            "RCON_PASSWORD=$RCON_PASS"
+        )
         if [[ -x "$BUN_DIR/mc-dad-admin" ]]; then
-            cd "$BUN_DIR" && RCON_PASSWORD="$RCON_PASS" ./mc-dad-admin
+            cd "$BUN_DIR" && env "${ADMIN_ENV[@]}" ./mc-dad-admin
         elif command -v bun &>/dev/null; then
-            cd "$BUN_DIR" && RCON_PASSWORD="$RCON_PASS" bun run runtime/index.ts
+            cd "$BUN_DIR" && env "${ADMIN_ENV[@]}" bun run runtime/index.ts
         else
             echo "Bun sidecar skipped: no mc-dad-admin binary and bun is not installed"
             exit 0
