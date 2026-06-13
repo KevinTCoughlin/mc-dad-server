@@ -4,6 +4,8 @@
 
 import { McServer } from "./server";
 import { IntegrityChecker } from "./integrity";
+import { StatsStore } from "./stats";
+import { AdminControlPlane } from "./admin";
 import { readdir } from "node:fs/promises";
 import { join, resolve, relative } from "node:path";
 
@@ -14,6 +16,9 @@ const MC_SERVER_DIR = process.env.MC_SERVER_DIR ?? resolve(import.meta.dir, "../
 
 // Create the mc server instance
 const mc = new McServer(RCON_HOST, RCON_PORT, RCON_PASSWORD);
+const stats = new StatsStore(join(import.meta.dir, "..", "admin.sqlite"));
+const admin = new AdminControlPlane(mc, stats);
+admin.start();
 
 // Expose as global
 (globalThis as any).mc = mc;
@@ -126,6 +131,7 @@ async function tailLog() {
 
         for (const line of lines) {
           if (line.trim()) {
+            admin.recordLog(line);
             mc.logParser.parseLine(line);
           }
         }
@@ -143,10 +149,12 @@ mc.connectRcon();
 
 // --- Graceful shutdown ---
 process.on("SIGTERM", () => {
+  admin.stop();
   mc.shutdown();
   process.exit(0);
 });
 process.on("SIGINT", () => {
+  admin.stop();
   mc.shutdown();
   process.exit(0);
 });
