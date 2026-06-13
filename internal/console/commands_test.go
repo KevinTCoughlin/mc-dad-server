@@ -44,4 +44,3 @@ func TestDispatch_AutoMode_PrefersRunningContainer(t *testing.T) {
 		t.Fatalf("expected docker command for status, got %q", runner.Commands[1].Name)
 	}
 }
-

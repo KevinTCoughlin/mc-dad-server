@@ -9,7 +9,7 @@ ARG MC_VERSION=latest
 # ---------------------------------------------------------------------------
 # Stage 1: Builder — Downloads Paper JAR + plugins
 # ---------------------------------------------------------------------------
-FROM debian:trixie-slim@sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa15431ac275d3d430 AS builder
+FROM debian:trixie-slim@sha256:4e401d95de7083948053197a9c3913343cd06b706bf15eb6a0c3ccd26f436a0e AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -91,7 +91,9 @@ RUN validate_sha256() { \
 # ARG placed here so MC_VERSION changes only bust the Paper download layer
 ARG MC_VERSION
 
-# Download Paper server JAR via PaperMC Fill v3 API with SHA-256 verification
+# Download Paper server JAR via PaperMC Fill v3 API with SHA-256 verification.
+# When MC_VERSION=latest, prefer the newest stable Paper version and skip
+# release candidates / previews so bundled plugins stay on a compatible line.
 # Fill v3 requires a descriptive User-Agent header on every request.
 RUN set -e && \
     UA="mc-dad-server (https://github.com/KevinTCoughlin/mc-dad-server)" && \
@@ -99,7 +101,9 @@ RUN set -e && \
     if [ "$MC_VER" = "latest" ] || [ -z "$MC_VER" ]; then \
         MC_VER=$(curl -fsSL -H "User-Agent: ${UA}" \
             "https://fill.papermc.io/v3/projects/paper/versions" \
-            | jq -r '.versions[0].version.id'); \
+            | jq -r '[.versions[].version.id | select(test("^[0-9]+(\\.[0-9]+){1,2}$"))][0]'); \
+        [ -n "$MC_VER" ] && [ "$MC_VER" != "null" ] || \
+            { echo "Failed to resolve latest stable Paper version"; exit 1; }; \
     fi && \
     BUILD_JSON=$(curl -fsSL -H "User-Agent: ${UA}" \
         "https://fill.papermc.io/v3/projects/paper/versions/${MC_VER}/builds/latest") && \
@@ -118,7 +122,7 @@ RUN echo "eula=true" > eula.txt
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime — Eclipse Temurin 25 JRE on Alpine Linux
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:25-jre-alpine@sha256:f10d6259d0798c1e12179b6bf3b63cea0d6843f7b09c9f9c9c422c50e44379ec AS runtime
+FROM eclipse-temurin:25-jre-alpine@sha256:c707c0d18cb9e8556380719f80d96a7529d0746fbb42143893949b98ed2f8943 AS runtime
 
 # Install bash (required by entrypoint.sh for arrays and parameter expansion)
 # hadolint ignore=DL3018
