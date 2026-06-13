@@ -39,14 +39,20 @@ export class AdminControlPlane {
     if (this.started) {
       return;
     }
-    this.started = true;
 
-    this.server = Bun.serve({
-      hostname: this.host,
-      port: this.port,
-      fetch: (req) => this.handleRequest(req),
-    });
-    console.log(`[mc-admin] Dashboard running at http://${this.host}:${this.port}`);
+    try {
+      this.server = Bun.serve({
+        hostname: this.host,
+        port: this.port,
+        fetch: (req) => this.handleRequest(req),
+      });
+      this.started = true;
+      console.log(`[mc-admin] Dashboard running at http://${this.host}:${this.port}`);
+    } catch (error) {
+      this.server = null;
+      console.error(`[mc-admin] Failed to start dashboard on http://${this.host}:${this.port}`, error);
+      throw error;
+    }
   }
 
   recordLog(line: string): void {
@@ -67,6 +73,7 @@ export class AdminControlPlane {
     this.clients.clear();
     this.server?.stop();
     this.server = null;
+    this.started = false;
     this.stats.close();
   }
 
