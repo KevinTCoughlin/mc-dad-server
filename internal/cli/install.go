@@ -124,6 +124,9 @@ func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 		if err := bunpkg.InstallDependencies(ctx, runner, cfg.Dir); err != nil {
 			output.Warn("Bun dependency install failed: %v", err)
 		}
+		if err := bunpkg.CompileAdminBinary(ctx, runner, cfg.Dir); err != nil {
+			output.Warn("Bun admin binary compile failed: %v", err)
+		}
 		output.Success("Bun scripting sidecar deployed to bun-scripts/")
 	}
 

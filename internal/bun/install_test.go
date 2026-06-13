@@ -141,9 +141,10 @@ func TestDeployScripts(t *testing.T) {
 	// Verify runtime files exist
 	runtimeFiles := []string{
 		"runtime/types.ts", "runtime/events.ts", "runtime/rcon.ts",
-		"runtime/log-parser.ts", "runtime/players.ts", "runtime/scheduler.ts",
-		"runtime/webhooks.ts", "runtime/server.ts", "runtime/command-filter.ts",
-		"runtime/rate-limiter.ts", "runtime/integrity.ts", "runtime/index.ts",
+		"runtime/log-parser.ts", "runtime/players.ts", "runtime/stats.ts",
+		"runtime/scheduler.ts", "runtime/webhooks.ts", "runtime/server.ts",
+		"runtime/admin.ts", "runtime/command-filter.ts", "runtime/rate-limiter.ts",
+		"runtime/integrity.ts", "runtime/index.ts",
 	}
 	for _, f := range runtimeFiles {
 		path := filepath.Join(tmpDir, "bun-scripts", f)
@@ -172,8 +173,16 @@ func TestDeployScripts(t *testing.T) {
 	}
 
 	// Verify package.json exists
-	if _, err := os.Stat(filepath.Join(tmpDir, "bun-scripts", "package.json")); os.IsNotExist(err) {
+	packageJSONPath := filepath.Join(tmpDir, "bun-scripts", "package.json")
+	if _, err := os.Stat(packageJSONPath); os.IsNotExist(err) {
 		t.Error("expected package.json to exist")
+	}
+	packageJSON, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		t.Fatalf("reading package.json: %v", err)
+	}
+	if !strings.Contains(string(packageJSON), "\"build:admin\"") {
+		t.Errorf("expected package.json to include build:admin script, got: %s", string(packageJSON))
 	}
 
 	// Verify tsconfig.json exists
@@ -269,5 +278,25 @@ func TestInstallBun_UpgradeOldVersion(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("expected installer to run when upgrading old bun version")
+	}
+}
+
+func TestCompileAdminBinary(t *testing.T) {
+	runner := platform.NewMockRunner()
+	tmpDir := t.TempDir()
+
+	if err := CompileAdminBinary(context.Background(), runner, tmpDir); err != nil {
+		t.Fatalf("CompileAdminBinary failed: %v", err)
+	}
+
+	found := false
+	for _, cmd := range runner.Commands {
+		if cmd.Name == "bash" && len(cmd.Args) >= 2 && strings.Contains(cmd.Args[1], "bun run build:admin") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("expected bun build command to run")
 	}
 }

@@ -194,6 +194,9 @@ All settings are configurable via environment variables in `bun-scripts/.env`:
 | `RCON_BLOCKED_COMMANDS` | See [blocklist](#command-blocklist) | Comma-separated blocked commands (empty = allow all) |
 | `RCON_RATE_LIMIT` | `20` | Max RCON commands per second |
 | `RCON_RATE_BURST` | `40` | Rate limiter burst capacity |
+| `MC_ADMIN_HOST` | `127.0.0.1` | Admin dashboard bind address |
+| `MC_ADMIN_PORT` | `8080` | Admin dashboard port |
+| `MC_ADMIN_START_CMD` | _(unset)_ | Optional command used by dashboard "Start" action |
 | `WEBHOOK_HOST` | `127.0.0.1` | Webhook bind address |
 | `WEBHOOK_PORT` | `9090` | Webhook port (overrides script-provided value) |
 
@@ -204,10 +207,13 @@ Environment variables set in the shell take precedence over `.env` file values (
 ```
 ~/minecraft-server/bun-scripts/
   .env                   # Configuration (auto-generated)
+  admin.sqlite           # Player/session uptime history
+  mc-dad-admin           # Optional compiled admin executable
   package.json           # Dependencies
   tsconfig.json          # TypeScript config
   runtime/               # Framework (overwritten on upgrade)
     index.ts             # Sidecar bootstrap
+    admin.ts             # Bun.serve dashboard + SSE + RCON actions
     server.ts            # McServer API
     command-filter.ts    # RCON command blocklist
     rate-limiter.ts      # Token bucket rate limiter
@@ -217,6 +223,7 @@ Environment variables set in the shell take precedence over `.env` file values (
     rcon.ts              # RCON protocol client
     log-parser.ts        # Minecraft log parser
     players.ts           # Online player tracker
+    stats.ts             # bun:sqlite stats and session history
     scheduler.ts         # Task scheduling
     types.ts             # Type definitions
   scripts/               # Your scripts (preserved across upgrades)

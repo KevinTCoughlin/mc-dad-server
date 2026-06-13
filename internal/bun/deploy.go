@@ -32,9 +32,11 @@ func DeployScripts(cfg *config.ServerConfig) error {
 		"runtime/rcon.ts",
 		"runtime/log-parser.ts",
 		"runtime/players.ts",
+		"runtime/stats.ts",
 		"runtime/scheduler.ts",
 		"runtime/webhooks.ts",
 		"runtime/server.ts",
+		"runtime/admin.ts",
 		"runtime/command-filter.ts",
 		"runtime/rate-limiter.ts",
 		"runtime/integrity.ts",
@@ -95,6 +97,12 @@ func DeployScripts(cfg *config.ServerConfig) error {
 func InstallDependencies(ctx context.Context, runner platform.CommandRunner, serverDir string) error {
 	bunDir := filepath.Join(serverDir, "bun-scripts")
 	return runner.Run(ctx, "bash", "-c", fmt.Sprintf("cd %s && bun install", bunDir))
+}
+
+// CompileAdminBinary builds a standalone admin sidecar executable with Bun.
+func CompileAdminBinary(ctx context.Context, runner platform.CommandRunner, serverDir string) error {
+	bunDir := filepath.Join(serverDir, "bun-scripts")
+	return runner.Run(ctx, "bash", "-c", fmt.Sprintf("cd %s && bun run build:admin", bunDir))
 }
 
 // deployTemplate reads a Go template from the embedded FS, executes it with
