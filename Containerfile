@@ -9,7 +9,7 @@ ARG MC_VERSION=latest
 # ---------------------------------------------------------------------------
 # Stage 1: Builder — Downloads Paper JAR + plugins
 # ---------------------------------------------------------------------------
-FROM debian:trixie-slim@sha256:4e401d95de7083948053197a9c3913343cd06b706bf15eb6a0c3ccd26f436a0e AS builder
+FROM debian:trixie-slim@sha256:28de0877c2189802884ccd20f15ee41c203573bd87bb6b883f5f46362d24c5c2 AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -122,7 +122,7 @@ RUN echo "eula=true" > eula.txt
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime — Eclipse Temurin 25 JRE on Alpine Linux
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:25-jre-alpine@sha256:c707c0d18cb9e8556380719f80d96a7529d0746fbb42143893949b98ed2f8943 AS runtime
+FROM eclipse-temurin:25-jre-alpine@sha256:28db6fdf60e38945e43d840c0333aeaec66c15943070104f7586fd3c9d1665b0 AS runtime
 
 # Install bash (required by entrypoint.sh for arrays and parameter expansion)
 # hadolint ignore=DL3018
