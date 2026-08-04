@@ -7,9 +7,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
+
+// httpClient is used for all plugin API calls and downloads. http.DefaultClient
+// has no timeout, so an unresponsive upstream would hang the installer
+// indefinitely.
+var httpClient = &http.Client{Timeout: 5 * time.Minute}
 
 // InstallAll downloads all default plugins for a Paper server.
 func InstallAll(ctx context.Context, serverDir string, output *ui.UI) error {
@@ -73,12 +79,17 @@ func downloadPlugin(ctx context.Context, name, pluginsDir, url, filename string,
 	output.Success("%s downloaded", name)
 }
 
+// downloadFile fetches url into dest. It writes to a temporary file in the
+// destination directory and renames on success, so an interrupted download
+// never leaves a truncated JAR behind — downloadPlugin treats any existing
+// file as a completed download, so a partial one would be permanently
+// mistaken for a good plugin.
 func downloadFile(ctx context.Context, url, dest string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -88,12 +99,25 @@ func downloadFile(ctx context.Context, url, dest string) error {
 		return fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
 	}
 
-	f, err := os.Create(dest)
+	f, err := os.CreateTemp(filepath.Dir(dest), "."+filepath.Base(dest)+".*.part")
 	if err != nil {
 		return err
 	}
-	defer func() { _ = f.Close() }()
+	tmpPath := f.Name()
+	defer func() {
+		_ = f.Close()
+		_ = os.Remove(tmpPath) // no-op once the rename below succeeds
+	}()
 
-	_, err = io.Copy(f, resp.Body)
-	return err
+	if _, err := io.Copy(f, resp.Body); err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpPath, 0o644); err != nil {
+		return err
+	}
+
+	return os.Rename(tmpPath, dest)
 }

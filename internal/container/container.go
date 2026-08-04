@@ -161,13 +161,18 @@ func Exists(ctx context.Context, runner platform.CommandRunner, runtime, name st
 	return err == nil
 }
 
-// isConnectionError reports whether err looks like a broken or closed
-// network connection that warrants a reconnect attempt.
+// isConnectionError reports whether err looks like a broken, closed, or
+// unusable connection that warrants a reconnect attempt.
 func isConnectionError(err error) bool {
 	if err == nil {
 		return false
 	}
 	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	// A desynchronized stream is not recoverable in place — the client has
+	// already dropped the socket, so reconnecting is the only way forward.
+	if errors.Is(err, ErrDesynchronized) {
 		return true
 	}
 	var opErr *net.OpError

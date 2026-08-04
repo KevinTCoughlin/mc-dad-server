@@ -3,6 +3,7 @@ package platform
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -51,22 +52,45 @@ func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, outp
 	return nil
 }
 
+// javaVersionPattern matches the version number in the first line of both
+// `java --version` ("openjdk 21.0.2 2024-01-16") and the legacy quoted form
+// (`openjdk version "21.0.2"` / `java version "1.8.0_392"`).
+var javaVersionPattern = regexp.MustCompile(`(\d+)(?:\.(\d+))?(?:[._][\w.-]+)?`)
+
 func javaVersion(ctx context.Context, runner CommandRunner) (int, error) {
-	out, err := runner.RunWithOutput(ctx, "java", "-version")
+	// `java -version` writes to stderr, which RunWithOutput discards. The
+	// JDK 9+ `--version` form writes the same information to stdout.
+	out, err := runner.RunWithOutput(ctx, "java", "--version")
 	if err != nil {
 		return 0, err
 	}
-	// java -version outputs to stderr, but RunWithOutput captures stdout
-	// Some implementations capture both. Parse the version string.
-	line := strings.Split(string(out), "\n")[0]
-	// Look for quoted version string like "21.0.2"
-	parts := strings.Split(line, "\"")
-	if len(parts) < 2 {
-		return 0, fmt.Errorf("cannot parse java version: %s", line)
+	return parseJavaVersion(string(out))
+}
+
+// parseJavaVersion extracts the Java major version from `java --version` output.
+// Legacy 1.x version strings (e.g. "1.8.0_392") map to their second component.
+func parseJavaVersion(out string) (int, error) {
+	line := strings.TrimSpace(strings.Split(out, "\n")[0])
+	// Strip quotes so the legacy `java version "1.8.0_392"` form parses too.
+	line = strings.ReplaceAll(line, `"`, " ")
+
+	for _, field := range strings.Fields(line) {
+		m := javaVersionPattern.FindStringSubmatch(field)
+		if len(m) == 0 || m[0] != field {
+			continue
+		}
+		major, err := strconv.Atoi(m[1])
+		if err != nil {
+			continue
+		}
+		if major == 1 && m[2] != "" {
+			// "1.8.0_392" — the real major version is the second component.
+			return strconv.Atoi(m[2])
+		}
+		return major, nil
 	}
-	verStr := parts[1]
-	major := strings.Split(verStr, ".")[0]
-	return strconv.Atoi(major)
+
+	return 0, fmt.Errorf("cannot parse java version: %s", line)
 }
 
 func installJavaAPT(ctx context.Context, runner CommandRunner, output *ui.UI) error {

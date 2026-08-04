@@ -9,10 +9,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
+
+// httpClient is used for map downloads. http.DefaultClient has no timeout, so
+// an unresponsive host would hang setup indefinitely.
+var httpClient = &http.Client{Timeout: 15 * time.Minute}
 
 // MapEntry describes a parkour map to download.
 type MapEntry struct {
@@ -112,7 +117,7 @@ func downloadAndExtractMap(ctx context.Context, m MapEntry, serverDir string, sc
 	if err != nil {
 		return err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}

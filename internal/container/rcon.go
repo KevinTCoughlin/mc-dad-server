@@ -3,6 +3,7 @@ package container
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -26,6 +27,10 @@ const (
 	// maxRCONBodySize is the maximum size of an RCON response body in bytes.
 	maxRCONBodySize = 4096
 )
+
+// ErrDesynchronized reports that a response arrived for a different request
+// than the one just sent, leaving the connection unusable.
+var ErrDesynchronized = errors.New("rcon stream desynchronized")
 
 // RCONClient implements the Source RCON protocol for communicating with a
 // Minecraft server. It supports concurrent Command calls after Connect
@@ -144,10 +149,25 @@ func (r *RCONClient) Command(ctx context.Context, cmd string) (string, error) {
 		return "", fmt.Errorf("rcon command read: %w", err)
 	}
 	if respID != id {
-		return "", fmt.Errorf("rcon response ID mismatch: got %d, want %d", respID, id)
+		// The stream is out of step with the request sequence — a response
+		// for another request is still queued (Minecraft splits responses
+		// larger than 4 KiB across packets). Every later read on this
+		// connection would inherit the skew, so drop it: the caller's
+		// reconnect path recognises ErrDesynchronized and starts fresh.
+		r.closeLocked()
+		return "", fmt.Errorf("%w: got response ID %d, want %d", ErrDesynchronized, respID, id)
 	}
 
 	return body, nil
+}
+
+// closeLocked closes the connection. Must be called with r.mu held.
+func (r *RCONClient) closeLocked() {
+	if r.conn == nil {
+		return
+	}
+	_ = r.conn.Close()
+	r.conn = nil
 }
 
 // Close closes the underlying connection.

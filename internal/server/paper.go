@@ -36,37 +36,38 @@ type paperBuildResponse struct {
 	} `json:"downloads"`
 }
 
-// PaperDownloadURL resolves the download URL for a Paper server JAR.
-func PaperDownloadURL(ctx context.Context, version string) (string, error) {
-	return paperDownloadURL(ctx, version, defaultPaperAPIBase)
+// PaperArtifact resolves the download URL and published SHA-256 for a Paper
+// server JAR.
+func PaperArtifact(ctx context.Context, version string) (Artifact, error) {
+	return paperArtifact(ctx, version, defaultPaperAPIBase)
 }
 
-func paperDownloadURL(ctx context.Context, version, apiBase string) (string, error) {
+func paperArtifact(ctx context.Context, version, apiBase string) (Artifact, error) {
 	if version == "latest" {
 		var err error
 		version, err = paperLatestVersion(ctx, apiBase)
 		if err != nil {
-			return "", err
+			return Artifact{}, err
 		}
 	}
 
 	url := fmt.Sprintf("%s/projects/paper/versions/%s/builds/latest", apiBase, version)
 	body, err := httpGet(ctx, url)
 	if err != nil {
-		return "", fmt.Errorf("fetching Paper latest build: %w", err)
+		return Artifact{}, fmt.Errorf("fetching Paper latest build: %w", err)
 	}
 
 	var build paperBuildResponse
 	if err := json.Unmarshal(body, &build); err != nil {
-		return "", fmt.Errorf("parsing Paper latest build: %w", err)
+		return Artifact{}, fmt.Errorf("parsing Paper latest build: %w", err)
 	}
 
 	dl, ok := build.Downloads["server:default"]
 	if !ok || dl.URL == "" {
-		return "", fmt.Errorf("no download found for Paper %s latest build", version)
+		return Artifact{}, fmt.Errorf("no download found for Paper %s latest build", version)
 	}
 
-	return dl.URL, nil
+	return Artifact{URL: dl.URL, SHA256: dl.Checksums.SHA256}, nil
 }
 
 func paperLatestVersion(ctx context.Context, apiBase string) (string, error) {

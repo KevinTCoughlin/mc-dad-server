@@ -38,9 +38,11 @@ func SetupCronBackup(ctx context.Context, runner CommandRunner, serverDir string
 	}
 	crontab += "\n# mc-dad-server daily backup\n" + cronLine + "\n"
 
-	// Write via stdin
-	tmpFile := filepath.Join(os.TempDir(), "mc-dad-server-crontab")
-	if err := os.WriteFile(tmpFile, []byte(crontab), 0o600); err != nil {
+	// Staged in a private temp file: a predictable name under os.TempDir()
+	// could be pre-planted as a symlink by another local user, redirecting
+	// the write or letting them swap in their own crontab.
+	tmpFile, err := writePrivateTemp("mc-dad-server-crontab-*", []byte(crontab), 0o600)
+	if err != nil {
 		return fmt.Errorf("writing temp crontab: %w", err)
 	}
 	defer func() { _ = os.Remove(tmpFile) }()
