@@ -25,13 +25,23 @@ func Backup(ctx context.Context, serverDir string, maxBackups int, mgr ServerMan
 	timestamp := time.Now().Format("20060102_150405")
 	backupFile := filepath.Join(backupDir, fmt.Sprintf("world_%s.tar.gz", timestamp))
 
-	// Notify server and save
+	// Notify server and save. Auto-save is re-enabled from a defer so that a
+	// failed or aborted backup can never leave the live server with
+	// save-off still in effect.
 	if mgr.IsRunning(ctx) {
 		_ = mgr.SendCommand(ctx, "say Backup starting...")
 		_ = mgr.SendCommand(ctx, "save-all")
 		_ = Sleep(ctx, 3)
 		_ = mgr.SendCommand(ctx, "save-off")
 		_ = Sleep(ctx, 1)
+
+		defer func() {
+			// Use a fresh context: the caller's may already be cancelled,
+			// and re-enabling auto-save must still be attempted.
+			restoreCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			defer cancel()
+			_ = mgr.SendCommand(restoreCtx, "save-on")
+		}()
 	}
 
 	// Create backup
@@ -43,12 +53,13 @@ func Backup(ctx context.Context, serverDir string, maxBackups int, mgr ServerMan
 	}
 
 	if err := createTarGz(backupFile, serverDir, worlds); err != nil {
+		// Don't leave a half-written archive behind — a later run would
+		// otherwise rotate good backups out in favour of a corrupt one.
+		_ = os.Remove(backupFile)
 		return fmt.Errorf("creating backup archive: %w", err)
 	}
 
-	// Re-enable auto-save
 	if mgr.IsRunning(ctx) {
-		_ = mgr.SendCommand(ctx, "save-on")
 		_ = mgr.SendCommand(ctx, "say Backup complete!")
 	}
 
@@ -79,19 +90,41 @@ func findWorldDirs(serverDir string) []string {
 	return found
 }
 
-func createTarGz(dest, baseDir string, dirs []string) error {
+// createTarGz writes dirs (relative to baseDir) into a gzipped tar at dest.
+// The writers are closed explicitly so that a flush failure surfaces as an
+// error instead of silently producing a truncated archive.
+func createTarGz(dest, baseDir string, dirs []string) (err error) {
 	f, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = f.Close() }()
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("closing backup archive: %w", closeErr)
+		}
+	}()
 
 	gz := gzip.NewWriter(f)
-	defer func() { _ = gz.Close() }()
-
 	tw := tar.NewWriter(gz)
-	defer func() { _ = tw.Close() }()
 
+	if err := writeTarEntries(tw, baseDir, dirs); err != nil {
+		_ = tw.Close()
+		_ = gz.Close()
+		return err
+	}
+
+	if err := tw.Close(); err != nil {
+		_ = gz.Close()
+		return fmt.Errorf("finalizing tar: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("finalizing gzip: %w", err)
+	}
+
+	return nil
+}
+
+func writeTarEntries(tw *tar.Writer, baseDir string, dirs []string) error {
 	for _, dir := range dirs {
 		dirPath := filepath.Join(baseDir, dir)
 		err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {

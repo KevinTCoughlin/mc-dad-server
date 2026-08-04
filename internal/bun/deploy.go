@@ -95,14 +95,22 @@ func DeployScripts(cfg *config.ServerConfig) error {
 
 // InstallDependencies runs bun install in the bun-scripts directory.
 func InstallDependencies(ctx context.Context, runner platform.CommandRunner, serverDir string) error {
-	bunDir := filepath.Join(serverDir, "bun-scripts")
-	return runner.Run(ctx, "bash", "-c", fmt.Sprintf("cd %s && bun install", bunDir))
+	return runInBunDir(ctx, runner, serverDir, "bun install")
 }
 
 // CompileAdminBinary builds a standalone admin sidecar executable with Bun.
 func CompileAdminBinary(ctx context.Context, runner platform.CommandRunner, serverDir string) error {
+	return runInBunDir(ctx, runner, serverDir, "bun run build:admin")
+}
+
+// runInBunDir runs a shell command with bun-scripts as the working directory.
+// The path is passed as a positional argument and referenced as "$1" rather
+// than interpolated into the script, so a server directory containing spaces
+// or shell metacharacters is handled literally instead of being re-parsed by
+// the shell.
+func runInBunDir(ctx context.Context, runner platform.CommandRunner, serverDir, command string) error {
 	bunDir := filepath.Join(serverDir, "bun-scripts")
-	return runner.Run(ctx, "bash", "-c", fmt.Sprintf("cd %s && bun run build:admin", bunDir))
+	return runner.Run(ctx, "bash", "-c", `cd "$1" && `+command, "bash", bunDir)
 }
 
 // deployTemplate reads a Go template from the embedded FS, executes it with

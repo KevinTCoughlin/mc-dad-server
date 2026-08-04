@@ -17,7 +17,7 @@ func hangarLatestVersion(ctx context.Context, project string) (string, error) {
 		return "", err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("fetching Hangar version for %s: %w", project, err)
 	}

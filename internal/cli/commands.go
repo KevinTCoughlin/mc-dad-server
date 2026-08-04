@@ -3,16 +3,13 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
-	"github.com/KevinTCoughlin/mc-dad-server/internal/container"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/nag"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
+	"github.com/KevinTCoughlin/mc-dad-server/internal/serverctl"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/vote"
 )
@@ -24,15 +21,16 @@ type StartCmd struct{}
 func (cmd *StartCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
-	mgr := resolveManager(ctx, globals, runner, cfg, output)
+	res := resolveManager(ctx, globals, runner, output)
+	defer func() { _ = res.Close() }()
+	mgr := res.Manager
 
 	alreadyRunning, err := management.StartServer(ctx, mgr, runner, cfg.Port, cfg.SessionName, output)
 	if err != nil {
 		return err
 	}
 	if !alreadyRunning {
-		mode := resolveMode(ctx, globals, runner)
-		if mode == "container" {
+		if res.Mode == serverctl.ModeContainer {
 			output.Info("")
 			output.Info("  Check status: mc-dad-server --mode container status")
 			output.Info("  Stop server:  mc-dad-server stop")
@@ -58,7 +56,9 @@ type StopCmd struct{}
 func (cmd *StopCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
-	mgr := resolveManager(ctx, globals, runner, cfg, output)
+	res := resolveManager(ctx, globals, runner, output)
+	defer func() { _ = res.Close() }()
+	mgr := res.Manager
 
 	if err := management.StopServer(ctx, mgr, runner, cfg.Port, output); err != nil {
 		return err
@@ -75,10 +75,11 @@ type StatusCmd struct{}
 func (cmd *StatusCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
-	mgr := resolveManager(ctx, globals, runner, cfg, output)
+	res := resolveManager(ctx, globals, runner, output)
+	defer func() { _ = res.Close() }()
+	mgr := res.Manager
 
-	mode := resolveMode(ctx, globals, runner)
-	if mode == "container" {
+	if res.Mode == serverctl.ModeContainer {
 		printContainerStatus(ctx, mgr, cfg, output)
 	} else {
 		management.PrintStatus(ctx, mgr, runner, cfg.Port, cfg.SessionName, output)
@@ -128,7 +129,9 @@ type BackupCmd struct{}
 func (cmd *BackupCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
-	mgr := resolveManager(ctx, globals, runner, cfg, output)
+	res := resolveManager(ctx, globals, runner, output)
+	defer func() { _ = res.Close() }()
+	mgr := res.Manager
 	return management.Backup(ctx, cfg.Dir, cfg.MaxBackups, mgr, output)
 }
 
@@ -139,7 +142,9 @@ type SetupParkourCmd struct{}
 func (cmd *SetupParkourCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
-	mgr := resolveManager(ctx, globals, runner, cfg, output)
+	res := resolveManager(ctx, globals, runner, output)
+	defer func() { _ = res.Close() }()
+	mgr := res.Manager
 
 	if !management.IsServerRunning(ctx, mgr, runner, cfg.Port) {
 		return fmt.Errorf("server not running — start it first with: mc-dad-server start")
@@ -198,7 +203,9 @@ type RotateParkourCmd struct{}
 func (cmd *RotateParkourCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
-	mgr := resolveManager(ctx, globals, runner, cfg, output)
+	res := resolveManager(ctx, globals, runner, output)
+	defer func() { _ = res.Close() }()
+	mgr := res.Manager
 
 	if !management.IsServerRunning(ctx, mgr, runner, cfg.Port) {
 		output.Info("Server not running, skipping rotation")
@@ -218,7 +225,9 @@ type VoteMapCmd struct {
 func (cmd *VoteMapCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
 	ctx := context.Background()
 	cfg := globalsToConfig(globals)
-	mgr := resolveManager(ctx, globals, runner, cfg, output)
+	res := resolveManager(ctx, globals, runner, output)
+	defer func() { _ = res.Close() }()
+	mgr := res.Manager
 
 	if !management.IsServerRunning(ctx, mgr, runner, cfg.Port) {
 		return fmt.Errorf("server not running — start it first with: mc-dad-server start")
@@ -240,80 +249,22 @@ func (cmd *VoteMapCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 	return nil
 }
 
+// target builds a serverctl.Target from the global flags.
+func target(g *Globals) serverctl.Target {
+	return serverctl.Target{Mode: g.Mode, Dir: g.Dir, Session: g.Session}
+}
+
 // globalsToConfig creates a minimal ServerConfig from the global flags.
 func globalsToConfig(g *Globals) *config.ServerConfig {
-	cfg := config.DefaultConfig()
-	cfg.Dir = g.Dir
-	cfg.SessionName = g.Session
-	return cfg
+	return serverctl.Config(target(g))
 }
 
-// resolveManager returns a ServerManager based on the resolved mode.
-func resolveManager(ctx context.Context, globals *Globals, runner platform.CommandRunner, cfg *config.ServerConfig, output *ui.UI) management.ServerManager {
-	mode := resolveMode(ctx, globals, runner)
-	if mode == "container" {
-		rconPass := readRCONPassword(cfg.Dir)
-		if rconPass == "" {
-			output.Warn("RCON password not found — set RCON_PASSWORD env var or configure server.properties")
-		}
-		runtime := detectContainerRuntime(runner)
-		return container.NewManager(runner, runtime, cfg.SessionName, "127.0.0.1:25575", rconPass)
+// resolveManager returns a ServerManager based on the resolved mode. Callers
+// must Close the result to release the container backend's RCON connection.
+func resolveManager(ctx context.Context, globals *Globals, runner platform.CommandRunner, output *ui.UI) serverctl.Resolved {
+	res := serverctl.Resolve(ctx, target(globals), runner)
+	if res.MissingRCONPassword {
+		output.Warn("RCON password not found — set RCON_PASSWORD env var or configure server.properties")
 	}
-	return management.NewScreenManager(runner, cfg.SessionName, filepath.Join(cfg.Dir, "start.sh"))
-}
-
-// resolveMode determines the server mode from the --mode flag or auto-detection.
-func resolveMode(ctx context.Context, globals *Globals, runner platform.CommandRunner) string {
-	switch globals.Mode {
-	case "screen":
-		return "screen"
-	case "container":
-		return "container"
-	default:
-		return detectMode(ctx, globals, runner)
-	}
-}
-
-// detectMode auto-detects whether to use container or screen mode.
-// It selects container mode only when a container with the session name
-// is currently running; otherwise it defaults to screen mode.
-func detectMode(ctx context.Context, globals *Globals, runner platform.CommandRunner) string {
-	runtime := detectContainerRuntime(runner)
-	if runtime != "unknown" {
-		cm := container.NewManager(runner, runtime, globals.Session, "", "")
-		if cm.IsRunning(ctx) {
-			return "container"
-		}
-	}
-	return "screen"
-}
-
-// detectContainerRuntime detects available container runtime (podman or docker).
-// Prefers podman if both are available.
-func detectContainerRuntime(runner platform.CommandRunner) string {
-	if runner.CommandExists("podman") {
-		return "podman"
-	}
-	if runner.CommandExists("docker") {
-		return "docker"
-	}
-	return "unknown"
-}
-
-// readRCONPassword reads the RCON password, checking the RCON_PASSWORD env var
-// first, then falling back to server.properties in the server dir.
-func readRCONPassword(serverDir string) string {
-	if pass := os.Getenv("RCON_PASSWORD"); pass != "" {
-		return pass
-	}
-	data, err := os.ReadFile(filepath.Join(serverDir, "server.properties"))
-	if err != nil {
-		return ""
-	}
-	for line := range strings.SplitSeq(string(data), "\n") {
-		if after, ok := strings.CutPrefix(line, "rcon.password="); ok {
-			return strings.TrimSpace(after)
-		}
-	}
-	return ""
+	return res
 }

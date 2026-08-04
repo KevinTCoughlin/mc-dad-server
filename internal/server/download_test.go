@@ -40,13 +40,13 @@ func TestPaperDownloadURL_Latest(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	url, err := paperDownloadURL(context.Background(), "latest", srv.URL+"/v3")
+	art, err := paperArtifact(context.Background(), "latest", srv.URL+"/v3")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	expected := "https://fill-data.papermc.io/v1/objects/abc123/paper-1.21.4-42.jar"
-	if url != expected {
-		t.Fatalf("got %q, want %q", url, expected)
+	if art.URL != expected {
+		t.Fatalf("got %q, want %q", art.URL, expected)
 	}
 }
 
@@ -82,13 +82,13 @@ func TestPaperDownloadURL_LatestSkipsRCVersions(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	url, err := paperDownloadURL(context.Background(), "latest", srv.URL+"/v3")
+	art, err := paperArtifact(context.Background(), "latest", srv.URL+"/v3")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	expected := "https://fill-data.papermc.io/v1/objects/stable123/paper-1.21.8-1.jar"
-	if url != expected {
-		t.Fatalf("got %q, want %q", url, expected)
+	if art.URL != expected {
+		t.Fatalf("got %q, want %q", art.URL, expected)
 	}
 }
 
@@ -114,13 +114,13 @@ func TestPaperDownloadURL_SpecificVersion(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	url, err := paperDownloadURL(context.Background(), "1.20.4", srv.URL+"/v3")
+	art, err := paperArtifact(context.Background(), "1.20.4", srv.URL+"/v3")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	expected := "https://fill-data.papermc.io/v1/objects/def456/paper-1.20.4-10.jar"
-	if url != expected {
-		t.Fatalf("got %q, want %q", url, expected)
+	if art.URL != expected {
+		t.Fatalf("got %q, want %q", art.URL, expected)
 	}
 }
 
@@ -138,7 +138,7 @@ func TestPaperDownloadURL_NoVersions(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	_, err := paperDownloadURL(context.Background(), "latest", srv.URL+"/v3")
+	_, err := paperArtifact(context.Background(), "latest", srv.URL+"/v3")
 	if err == nil {
 		t.Fatal("expected error for empty versions")
 	}
@@ -164,7 +164,7 @@ func TestPaperDownloadURL_NoStableVersions(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	_, err := paperDownloadURL(context.Background(), "latest", srv.URL+"/v3")
+	_, err := paperArtifact(context.Background(), "latest", srv.URL+"/v3")
 	if err == nil {
 		t.Fatal("expected error for missing stable versions")
 	}
@@ -187,7 +187,7 @@ func TestPaperDownloadURL_NoDownload(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	_, err := paperDownloadURL(context.Background(), "1.21.4", srv.URL+"/v3")
+	_, err := paperArtifact(context.Background(), "1.21.4", srv.URL+"/v3")
 	if err == nil {
 		t.Fatal("expected error for missing download")
 	}
@@ -222,7 +222,7 @@ func TestPaperDownloadURL_UserAgent(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	_, err := paperDownloadURL(context.Background(), "1.21.4", srv.URL+"/v3")
+	_, err := paperArtifact(context.Background(), "1.21.4", srv.URL+"/v3")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -48,7 +48,7 @@ func Detect(ctx context.Context, runner CommandRunner) Platform {
 	}
 
 	// Detect container runtime (podman preferred over docker)
-	p.ContainerRuntime = detectContainerRuntime(runner)
+	p.ContainerRuntime = DetectContainerRuntime(runner)
 
 	return p
 }
@@ -92,9 +92,9 @@ func (p *Platform) IsLinux() bool {
 	return p.OS == "linux" || p.OS == "wsl"
 }
 
-// detectContainerRuntime detects available container runtime (podman or docker).
+// DetectContainerRuntime detects available container runtime (podman or docker).
 // Prefers podman if both are available.
-func detectContainerRuntime(runner CommandRunner) string {
+func DetectContainerRuntime(runner CommandRunner) string {
 	if runner.CommandExists("podman") {
 		return "podman"
 	}

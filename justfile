@@ -64,8 +64,11 @@ release:
     goreleaser release --snapshot --clean
 
 # Install dev tools (golangci-lint, gofumpt, goreleaser)
+# golangci-lint is pinned to the version CI runs, and built with this repo's
+# toolchain: a golangci-lint built by an older Go refuses to load a config
+# targeting a newer one.
 tools:
-    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    GOTOOLCHAIN=$(go version | cut -d' ' -f3) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
     go install mvdan.cc/gofumpt@latest
     go install github.com/goreleaser/goreleaser/v2@latest
 

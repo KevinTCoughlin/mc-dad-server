@@ -132,9 +132,9 @@ func TestDetectContainerRuntime(t *testing.T) {
 				m.ExistsMap["docker"] = true
 			}
 
-			got := detectContainerRuntime(m)
+			got := DetectContainerRuntime(m)
 			if got != tc.wantRuntime {
-				t.Errorf("detectContainerRuntime() = %q, want %q", got, tc.wantRuntime)
+				t.Errorf("DetectContainerRuntime() = %q, want %q", got, tc.wantRuntime)
 			}
 		})
 	}

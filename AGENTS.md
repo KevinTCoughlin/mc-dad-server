@@ -10,7 +10,7 @@ MC Dad Server — a single-binary CLI that installs and manages a Minecraft serv
 go build ./cmd/mc-dad-server/          # build
 go test -race ./...                    # test (all packages)
 go vet ./...                           # vet
-golangci-lint run                      # lint (install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
+golangci-lint run                      # lint (install: just tools — pins v2.12.2 and builds it with this repo's toolchain)
 gofumpt -w .                           # format (install: go install mvdan.cc/gofumpt@latest)
 ```
 
@@ -40,7 +40,8 @@ internal/
   parkour/                  Parkour map definitions and setup
   platform/                 OS detection, package install, Java, firewall, cron, services
   plugins/                  Plugin installation (Geyser, chat filter, Hangar, GitHub)
-  server/                   Server JAR download (Paper, Fabric, Vanilla)
+  server/                   Server JAR download (Paper, Fabric, Vanilla) + checksum verification
+  serverctl/                Shared mode resolution (screen vs container) and manager construction
   tunnel/                   playit.gg tunnel setup
   ui/                       Colored terminal output
   vote/                     In-game map vote system

@@ -81,8 +81,11 @@ WantedBy=multi-user.target
 `, u.Username, cfg.Dir, cfg.Dir, cfg.SessionName, cfg.Dir)
 
 	unitPath := "/etc/systemd/system/minecraft.service"
-	tmpFile := "/tmp/minecraft.service"
-	if err := os.WriteFile(tmpFile, []byte(unit), 0o644); err != nil {
+	// Staged in a private temp file rather than a predictable /tmp path: the
+	// file is handed to `sudo cp`, so a pre-planted symlink at a guessable
+	// name would let a local user steer what root installs.
+	tmpFile, err := writePrivateTemp("minecraft-*.service", []byte(unit), 0o644)
+	if err != nil {
 		return fmt.Errorf("writing temp service file: %w", err)
 	}
 	defer func() { _ = os.Remove(tmpFile) }()
