@@ -10,9 +10,9 @@ import (
 )
 
 // SetupChatFilter deploys the ChatSentry config and blocked words list.
-func SetupChatFilter(serverDir string, output *ui.UI) error {
+func SetupChatFilter(deployer *configs.Deployer, serverDir string, output *ui.UI) error {
 	// Deploy blocked words
-	if err := configs.DeployBlockedWords(serverDir); err != nil {
+	if err := deployer.DeployBlockedWords(serverDir); err != nil {
 		return fmt.Errorf("deploying blocked words: %w", err)
 	}
 	output.Success("Blocked words list deployed")
@@ -24,7 +24,7 @@ func SetupChatFilter(serverDir string, output *ui.UI) error {
 	}
 
 	// Deploy ChatSentry config
-	if err := configs.DeployChatSentryConfig(serverDir); err != nil {
+	if err := deployer.DeployChatSentryConfig(serverDir); err != nil {
 		return fmt.Errorf("deploying ChatSentry config: %w", err)
 	}
 	output.Success("ChatSentry configured with blocked words filter")

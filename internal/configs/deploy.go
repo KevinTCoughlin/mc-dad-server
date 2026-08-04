@@ -7,21 +7,36 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"unicode"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
 )
 
-func readEmbedded(name string) ([]byte, error) {
-	return fs.ReadFile(embeddedFS, name)
+// Deployer writes the embedded config files, templates, and unit files to
+// disk. It holds the embedded filesystem explicitly rather than through
+// package-level state, so callers pass it the same way they pass a
+// CommandRunner or a UI.
+type Deployer struct {
+	fsys fs.FS
+}
+
+// NewDeployer returns a Deployer reading from fsys, which must contain the
+// "embedded/" tree from cmd/mc-dad-server.
+func NewDeployer(fsys fs.FS) *Deployer {
+	return &Deployer{fsys: fsys}
+}
+
+func (d *Deployer) readEmbedded(name string) ([]byte, error) {
+	return fs.ReadFile(d.fsys, name)
 }
 
 // Deploy writes all embedded config files to the server directory,
 // performing template substitution on server.properties.
-func Deploy(cfg *config.ServerConfig) error {
+func (d *Deployer) Deploy(cfg *config.ServerConfig) error {
 	// Base configs (server root)
 	baseConfigs := []string{"server.properties", "bukkit.yml", "spigot.yml"}
 	for _, name := range baseConfigs {
-		data, err := readEmbedded("embedded/configs/" + name)
+		data, err := d.readEmbedded("embedded/configs/" + name)
 		if err != nil {
 			return fmt.Errorf("reading embedded %s: %w", name, err)
 		}
@@ -45,7 +60,7 @@ func Deploy(cfg *config.ServerConfig) error {
 
 	paperConfigs := []string{"paper-global.yml", "paper-world-defaults.yml"}
 	for _, name := range paperConfigs {
-		data, err := readEmbedded("embedded/configs/" + name)
+		data, err := d.readEmbedded("embedded/configs/" + name)
 		if err != nil {
 			return fmt.Errorf("reading embedded %s: %w", name, err)
 		}
@@ -61,7 +76,7 @@ func Deploy(cfg *config.ServerConfig) error {
 		if err := os.MkdirAll(parkourDir, 0o755); err != nil {
 			return fmt.Errorf("creating Parkour config dir: %w", err)
 		}
-		data, err := readEmbedded("embedded/configs/parkour-config.yml")
+		data, err := d.readEmbedded("embedded/configs/parkour-config.yml")
 		if err != nil {
 			return fmt.Errorf("reading embedded parkour config: %w", err)
 		}
@@ -77,19 +92,33 @@ func Deploy(cfg *config.ServerConfig) error {
 func substituteProperties(content string, cfg *config.ServerConfig) string {
 	replacer := strings.NewReplacer(
 		"%%MC_PORT%%", fmt.Sprintf("%d", cfg.Port),
-		"%%MC_MOTD%%", cfg.MOTD,
+		"%%MC_MOTD%%", propertyValue(cfg.MOTD),
 		"%%MC_DIFFICULTY%%", cfg.Difficulty,
 		"%%MC_GAMEMODE%%", cfg.GameMode,
 		"%%MC_MAX_PLAYERS%%", fmt.Sprintf("%d", cfg.MaxPlayers),
 		"%%MC_WHITELIST%%", fmt.Sprintf("%v", cfg.Whitelist),
-		"%%MC_RCON_PASSWORD%%", cfg.RCONPassword,
+		"%%MC_RCON_PASSWORD%%", propertyValue(cfg.RCONPassword),
 	)
 	return replacer.Replace(content)
 }
 
+// propertyValue makes a free-form string safe to place on the right-hand side
+// of a server.properties entry. A control character — a newline above all —
+// would end the entry early and let the remainder be read as further
+// properties. config.Validate rejects these up front; this is the backstop for
+// any caller that skips validation.
+func propertyValue(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, s)
+}
+
 // DeployBlockedWords writes the embedded blocked words list to the server directory.
-func DeployBlockedWords(serverDir string) error {
-	data, err := readEmbedded("embedded/blocked-words.txt")
+func (d *Deployer) DeployBlockedWords(serverDir string) error {
+	data, err := d.readEmbedded("embedded/blocked-words.txt")
 	if err != nil {
 		return fmt.Errorf("reading embedded blocked-words.txt: %w", err)
 	}
@@ -97,13 +126,13 @@ func DeployBlockedWords(serverDir string) error {
 }
 
 // DeployChatSentryConfig writes the ChatSentry config to the plugins directory.
-func DeployChatSentryConfig(serverDir string) error {
+func (d *Deployer) DeployChatSentryConfig(serverDir string) error {
 	sentryDir := filepath.Join(serverDir, "plugins", "ChatSentry")
 	if err := os.MkdirAll(sentryDir, 0o755); err != nil {
 		return err
 	}
 
-	data, err := readEmbedded("embedded/configs/chatsentry-config.yml")
+	data, err := d.readEmbedded("embedded/configs/chatsentry-config.yml")
 	if err != nil {
 		return fmt.Errorf("reading embedded chatsentry config: %w", err)
 	}
@@ -111,8 +140,8 @@ func DeployChatSentryConfig(serverDir string) error {
 }
 
 // DeployCompose renders and writes a compose.yml file for Docker / Podman Compose.
-func DeployCompose(cfg *config.ServerConfig, destDir string) error {
-	data, err := readEmbedded("embedded/templates/compose.yml.tmpl")
+func (d *Deployer) DeployCompose(cfg *config.ServerConfig, destDir string) error {
+	data, err := d.readEmbedded("embedded/templates/compose.yml.tmpl")
 	if err != nil {
 		return fmt.Errorf("reading compose.yml template: %w", err)
 	}
@@ -148,7 +177,7 @@ func DeployCompose(cfg *config.ServerConfig, destDir string) error {
 
 // DeployContainerConfigs writes server config files to a container config
 // directory (e.g., ~/.config/mc-dad-server/configs/) for Quadlet volume mounts.
-func DeployContainerConfigs(cfg *config.ServerConfig, destDir string) error {
+func (d *Deployer) DeployContainerConfigs(cfg *config.ServerConfig, destDir string) error {
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return fmt.Errorf("creating config dir: %w", err)
 	}
@@ -161,7 +190,7 @@ func DeployContainerConfigs(cfg *config.ServerConfig, destDir string) error {
 		"paper-world-defaults.yml",
 	}
 	for _, name := range allConfigs {
-		data, err := readEmbedded("embedded/configs/" + name)
+		data, err := d.readEmbedded("embedded/configs/" + name)
 		if err != nil {
 			return fmt.Errorf("reading embedded %s: %w", name, err)
 		}
@@ -178,12 +207,12 @@ func DeployContainerConfigs(cfg *config.ServerConfig, destDir string) error {
 }
 
 // DeployContainerEnv renders and writes the .env file for Quadlet.
-func DeployContainerEnv(cfg *config.ServerConfig, destDir string) error {
+func (d *Deployer) DeployContainerEnv(cfg *config.ServerConfig, destDir string) error {
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return fmt.Errorf("creating env dir: %w", err)
 	}
 
-	data, err := readEmbedded("embedded/templates/container.env.tmpl")
+	data, err := d.readEmbedded("embedded/templates/container.env.tmpl")
 	if err != nil {
 		return fmt.Errorf("reading container.env template: %w", err)
 	}
@@ -209,12 +238,12 @@ func DeployContainerEnv(cfg *config.ServerConfig, destDir string) error {
 }
 
 // DeployQuadlet renders and writes the Quadlet systemd unit file.
-func DeployQuadlet(cfg *config.ServerConfig, configDir, envFile, destDir string) error {
+func (d *Deployer) DeployQuadlet(cfg *config.ServerConfig, configDir, envFile, destDir string) error {
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return fmt.Errorf("creating quadlet dir: %w", err)
 	}
 
-	data, err := readEmbedded("embedded/templates/minecraft.container.tmpl")
+	data, err := d.readEmbedded("embedded/templates/minecraft.container.tmpl")
 	if err != nil {
 		return fmt.Errorf("reading quadlet template: %w", err)
 	}
@@ -268,8 +297,8 @@ func computeMemoryMax(memory string) string {
 }
 
 // DeployStartScript renders and writes the start.sh script.
-func DeployStartScript(cfg *config.ServerConfig) error {
-	data, err := readEmbedded("embedded/templates/start.sh.tmpl")
+func (d *Deployer) DeployStartScript(cfg *config.ServerConfig) error {
+	data, err := d.readEmbedded("embedded/templates/start.sh.tmpl")
 	if err != nil {
 		return fmt.Errorf("reading start.sh template: %w", err)
 	}

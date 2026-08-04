@@ -3,36 +3,57 @@ package plugins
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
+
+	"github.com/KevinTCoughlin/mc-dad-server/internal/verify"
 )
 
-// hangarLatestVersion fetches the latest release version string from Hangar.
-func hangarLatestVersion(ctx context.Context, project string) (string, error) {
-	url := fmt.Sprintf("https://hangar.papermc.io/api/v1/projects/%s/latestrelease", project)
+// hangarAPIBase is the Hangar API root. Overridden in tests.
+var hangarAPIBase = "https://hangar.papermc.io/api/v1"
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+// hangarVersion is the subset of the Hangar version response we need.
+type hangarVersion struct {
+	Downloads struct {
+		Paper struct {
+			FileInfo struct {
+				Name       string `json:"name"`
+				SizeBytes  int64  `json:"sizeBytes"`
+				SHA256Hash string `json:"sha256Hash"`
+			} `json:"fileInfo"`
+		} `json:"PAPER"`
+	} `json:"downloads"`
+}
+
+// hangarSource resolves the latest release of a Hangar project along with its
+// published SHA-256.
+func hangarSource(ctx context.Context, project string) (source, error) {
+	version, err := hangarLatestVersion(ctx, project)
 	if err != nil {
-		return "", err
+		return source{}, err
 	}
 
-	resp, err := httpClient.Do(req)
+	var meta hangarVersion
+	versionURL := fmt.Sprintf("%s/projects/%s/versions/%s", hangarAPIBase, project, version)
+	if err := getJSON(ctx, versionURL, &meta); err != nil {
+		return source{}, fmt.Errorf("fetching Hangar metadata for %s %s: %w", project, version, err)
+	}
+
+	return source{
+		url:      fmt.Sprintf("%s/projects/%s/versions/%s/PAPER/download", hangarAPIBase, project, version),
+		expected: verify.Expected{SHA256: meta.Downloads.Paper.FileInfo.SHA256Hash},
+	}, nil
+}
+
+// hangarLatestVersion fetches the latest release version string from Hangar.
+// The endpoint returns a bare JSON string, so the surrounding quotes have to
+// be stripped before the value can be used in a URL path.
+func hangarLatestVersion(ctx context.Context, project string) (string, error) {
+	body, err := get(ctx, fmt.Sprintf("%s/projects/%s/latestrelease", hangarAPIBase, project))
 	if err != nil {
 		return "", fmt.Errorf("fetching Hangar version for %s: %w", project, err)
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP %d from Hangar for %s", resp.StatusCode, project)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	version := strings.TrimSpace(string(body))
+	version := strings.Trim(strings.TrimSpace(string(body)), `"`)
 	if version == "" {
 		return "", fmt.Errorf("empty version for %s", project)
 	}

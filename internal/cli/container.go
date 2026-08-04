@@ -41,11 +41,14 @@ func (cmd *SetupContainerCmd) toConfig() *config.ServerConfig {
 		Whitelist:  cmd.Whitelist,
 		Version:    cmd.MCVersion,
 		MaxBackups: 5,
+		// The generated unit and compose file both name the container
+		// "minecraft"; Validate requires the field to be set.
+		SessionName: "minecraft",
 	}
 }
 
 // Run deploys container configs, .env, and Quadlet unit.
-func (cmd *SetupContainerCmd) Run(_ *Globals, runner platform.CommandRunner, output *ui.UI) error {
+func (cmd *SetupContainerCmd) Run(_ *Globals, runner platform.CommandRunner, output *ui.UI, deployer *configs.Deployer) error {
 	cfg := cmd.toConfig()
 	if err := cfg.Validate(); err != nil {
 		return err
@@ -66,21 +69,21 @@ func (cmd *SetupContainerCmd) Run(_ *Globals, runner platform.CommandRunner, out
 
 	// Deploy server configs
 	output.Step("Deploying server configs")
-	if err := configs.DeployContainerConfigs(cfg, configDir); err != nil {
+	if err := deployer.DeployContainerConfigs(cfg, configDir); err != nil {
 		return fmt.Errorf("deploying container configs: %w", err)
 	}
 	output.Success("Configs written to %s", configDir)
 
 	// Deploy .env file
 	output.Step("Creating .env file")
-	if err := configs.DeployContainerEnv(cfg, baseDir); err != nil {
+	if err := deployer.DeployContainerEnv(cfg, baseDir); err != nil {
 		return fmt.Errorf("deploying .env: %w", err)
 	}
 	output.Success(".env written to %s", envFile)
 
 	// Deploy Quadlet unit
 	output.Step("Installing Quadlet unit")
-	if err := configs.DeployQuadlet(cfg, configDir, envFile, quadletDir); err != nil {
+	if err := deployer.DeployQuadlet(cfg, configDir, envFile, quadletDir); err != nil {
 		return fmt.Errorf("deploying quadlet unit: %w", err)
 	}
 	output.Success("Quadlet unit written to %s", filepath.Join(quadletDir, "minecraft.container"))

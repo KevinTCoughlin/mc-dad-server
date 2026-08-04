@@ -40,17 +40,20 @@ func (cmd *GenerateComposeCmd) toConfig() *config.ServerConfig {
 		Whitelist:  cmd.Whitelist,
 		Version:    cmd.MCVersion,
 		MaxBackups: 5,
+		// The generated unit and compose file both name the container
+		// "minecraft"; Validate requires the field to be set.
+		SessionName: "minecraft",
 	}
 }
 
 // Run generates a compose.yml file.
-func (cmd *GenerateComposeCmd) Run(_ *Globals, runner platform.CommandRunner, output *ui.UI) error {
+func (cmd *GenerateComposeCmd) Run(_ *Globals, runner platform.CommandRunner, output *ui.UI, deployer *configs.Deployer) error {
 	cfg := cmd.toConfig()
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
 
-	if err := configs.DeployCompose(cfg, cmd.Output); err != nil {
+	if err := deployer.DeployCompose(cfg, cmd.Output); err != nil {
 		return fmt.Errorf("generating compose.yml: %w", err)
 	}
 

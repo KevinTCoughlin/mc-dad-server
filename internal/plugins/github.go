@@ -2,57 +2,45 @@ package plugins
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
+
+	"github.com/KevinTCoughlin/mc-dad-server/internal/verify"
 )
+
+// githubAPIBase is the GitHub REST API root. Overridden in tests.
+var githubAPIBase = "https://api.github.com"
 
 type githubRelease struct {
 	Assets []struct {
 		Name               string `json:"name"`
+		Size               int64  `json:"size"`
 		BrowserDownloadURL string `json:"browser_download_url"`
 	} `json:"assets"`
 }
 
-// githubLatestAssetURL returns the download URL for the first JAR asset of the
-// latest release. Releases commonly ship checksums, signatures, and source
-// archives alongside the plugin, so the asset list is filtered by extension
-// rather than taking whatever happens to be listed first.
-func githubLatestAssetURL(ctx context.Context, owner, repo string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("fetching GitHub release for %s/%s: %w", owner, repo, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP %d from GitHub for %s/%s", resp.StatusCode, owner, repo)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
+// githubSource resolves the first JAR asset of a repository's latest release.
+// Releases commonly ship checksums, signatures, and source archives alongside
+// the plugin, so the asset list is filtered by extension rather than taking
+// whatever happens to be listed first.
+//
+// GitHub publishes no digest for release assets, so the asset size is the only
+// integrity metadata available — the same weak check the Containerfile makes.
+func githubSource(ctx context.Context, owner, repo string) (source, error) {
 	var release githubRelease
-	if err := json.Unmarshal(body, &release); err != nil {
-		return "", fmt.Errorf("parsing GitHub release: %w", err)
+	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest", githubAPIBase, owner, repo)
+	if err := getJSON(ctx, url, &release); err != nil {
+		return source{}, fmt.Errorf("fetching GitHub release for %s/%s: %w", owner, repo, err)
 	}
 
 	for _, asset := range release.Assets {
 		if strings.HasSuffix(strings.ToLower(asset.Name), ".jar") && asset.BrowserDownloadURL != "" {
-			return asset.BrowserDownloadURL, nil
+			return source{
+				url:      asset.BrowserDownloadURL,
+				expected: verify.Expected{Size: asset.Size},
+			}, nil
 		}
 	}
 
-	return "", fmt.Errorf("no JAR asset found for %s/%s latest release", owner, repo)
+	return source{}, fmt.Errorf("no JAR asset found for %s/%s latest release", owner, repo)
 }

@@ -39,9 +39,10 @@ internal/
   nag/                      Shareware nag/grace-period logic
   parkour/                  Parkour map definitions and setup
   platform/                 OS detection, package install, Java, firewall, cron, services
-  plugins/                  Plugin installation (Geyser, chat filter, Hangar, GitHub)
+  plugins/                  Plugin installation (Geyser, chat filter, Hangar, GitHub) + checksum verification
   server/                   Server JAR download (Paper, Fabric, Vanilla) + checksum verification
   serverctl/                Shared mode resolution (screen vs container) and manager construction
+  verify/                   Checksum/size verification of downloaded artifacts
   tunnel/                   playit.gg tunnel setup
   ui/                       Colored terminal output
   vote/                     In-game map vote system
@@ -56,7 +57,7 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 - **CLI framework**: Kong (struct tags + dependency injection, no globals)
 - **Dependency injection**: `main.go` creates `runner` (CommandRunner) and `output` (UI), passes them to each command's `Run()` method via Kong bindings
 - **Config**: `config.ServerConfig` is framework-agnostic — built from Kong flags in `InstallCmd.toConfig()`, validated via `cfg.Validate()`
-- **Embedded assets**: `//go:embed all:embedded` in main.go — configs, templates, blocked-words list
+- **Embedded assets**: `//go:embed all:embedded` in main.go — configs, templates, blocked-words list. The FS is wrapped in `configs.NewDeployer` / `bun.NewDeployer` and injected via Kong, not stored in package state
 - **Version**: Set via ldflags (`-X main.version=... -X main.commit=...`) by goreleaser
 - **Server modes**: `--mode auto|screen|container` — `ServerManager` interface (`management/manager.go`) with `ScreenManager` and `container.Manager` backends. Auto-detection checks for running container first, falls back to screen.
 - **Container**: Eclipse Temurin 25 JRE on Alpine Linux (builder stays on Debian Trixie slim). FIFO-based stdin (`entrypoint.sh`), RCON for remote commands (`container/rcon.go`), graceful 30s shutdown countdown.
@@ -64,7 +65,7 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 
 ## Key Conventions
 
-- No package-level mutable state — all dependencies passed explicitly
+- No package-level mutable state — all dependencies passed explicitly (embedded FS included: see the `Deployer` types)
 - `platform.CommandRunner` interface for all shell-outs (testable via `MockRunner`)
 - `ui.UI` for all user-facing output (color auto-detected); `ui.NewWriter(w, color)` to capture output into a buffer
 - Helpers in install.go take explicit `cfg`, `runner`, `output` params

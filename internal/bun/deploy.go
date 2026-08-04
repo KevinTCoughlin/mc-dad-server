@@ -14,10 +14,22 @@ import (
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
 
+// Deployer writes the Bun scripting sidecar to disk. It holds the embedded
+// filesystem explicitly rather than through package-level state.
+type Deployer struct {
+	fsys fs.FS
+}
+
+// NewDeployer returns a Deployer reading from fsys, which must contain the
+// "embedded/" tree from cmd/mc-dad-server.
+func NewDeployer(fsys fs.FS) *Deployer {
+	return &Deployer{fsys: fsys}
+}
+
 // DeployScripts writes the Bun scripting sidecar files to the server directory.
 // Runtime files are always overwritten (framework updates). User scripts in
 // scripts/ are preserved across re-installs.
-func DeployScripts(cfg *config.ServerConfig) error {
+func (d *Deployer) DeployScripts(cfg *config.ServerConfig) error {
 	bunDir := filepath.Join(cfg.Dir, "bun-scripts")
 
 	// Always deploy runtime/ (framework files)
@@ -44,7 +56,7 @@ func DeployScripts(cfg *config.ServerConfig) error {
 	}
 
 	for _, name := range runtimeFiles {
-		data, err := fs.ReadFile(embeddedFS, "embedded/bun/"+name)
+		data, err := fs.ReadFile(d.fsys, "embedded/bun/"+name)
 		if err != nil {
 			return fmt.Errorf("reading embedded %s: %w", name, err)
 		}
@@ -61,7 +73,7 @@ func DeployScripts(cfg *config.ServerConfig) error {
 	}
 
 	if dirEmpty(scriptsDir) {
-		data, err := fs.ReadFile(embeddedFS, "embedded/bun/scripts/example.ts")
+		data, err := fs.ReadFile(d.fsys, "embedded/bun/scripts/example.ts")
 		if err != nil {
 			return fmt.Errorf("reading embedded example.ts: %w", err)
 		}
@@ -72,7 +84,7 @@ func DeployScripts(cfg *config.ServerConfig) error {
 	}
 
 	// Deploy tsconfig.json (static)
-	data, err := fs.ReadFile(embeddedFS, "embedded/bun/tsconfig.json")
+	data, err := fs.ReadFile(d.fsys, "embedded/bun/tsconfig.json")
 	if err != nil {
 		return fmt.Errorf("reading embedded tsconfig.json: %w", err)
 	}
@@ -81,12 +93,12 @@ func DeployScripts(cfg *config.ServerConfig) error {
 	}
 
 	// Deploy .env from template
-	if err := deployTemplate(cfg, "embedded/bun/env.tmpl", filepath.Join(bunDir, ".env")); err != nil {
+	if err := d.deployTemplate(cfg, "embedded/bun/env.tmpl", filepath.Join(bunDir, ".env")); err != nil {
 		return fmt.Errorf("deploying .env: %w", err)
 	}
 
 	// Deploy package.json from template
-	if err := deployTemplate(cfg, "embedded/bun/package.json.tmpl", filepath.Join(bunDir, "package.json")); err != nil {
+	if err := d.deployTemplate(cfg, "embedded/bun/package.json.tmpl", filepath.Join(bunDir, "package.json")); err != nil {
 		return fmt.Errorf("deploying package.json: %w", err)
 	}
 
@@ -115,8 +127,8 @@ func runInBunDir(ctx context.Context, runner platform.CommandRunner, serverDir, 
 
 // deployTemplate reads a Go template from the embedded FS, executes it with
 // config data, and writes the result to dest.
-func deployTemplate(cfg *config.ServerConfig, tmplPath, dest string) error {
-	data, err := fs.ReadFile(embeddedFS, tmplPath)
+func (d *Deployer) deployTemplate(cfg *config.ServerConfig, tmplPath, dest string) error {
+	data, err := fs.ReadFile(d.fsys, tmplPath)
 	if err != nil {
 		return fmt.Errorf("reading template %s: %w", tmplPath, err)
 	}

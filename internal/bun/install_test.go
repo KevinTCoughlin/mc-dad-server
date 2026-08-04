@@ -82,7 +82,7 @@ func TestInstallBun_NotInstalled(t *testing.T) {
 	}
 }
 
-func setupTestEmbedFS(t *testing.T) {
+func setupTestEmbedFS(t *testing.T) *Deployer {
 	t.Helper()
 
 	projRoot := findProjectRoot(t)
@@ -106,7 +106,7 @@ func setupTestEmbedFS(t *testing.T) {
 		t.Fatalf("walking embedded dir: %v", err)
 	}
 
-	embeddedFS = fs
+	return NewDeployer(fs)
 }
 
 func findProjectRoot(t *testing.T) string {
@@ -125,7 +125,7 @@ func findProjectRoot(t *testing.T) string {
 }
 
 func TestDeployScripts(t *testing.T) {
-	setupTestEmbedFS(t)
+	d := setupTestEmbedFS(t)
 
 	tmpDir := t.TempDir()
 	cfg := &config.ServerConfig{
@@ -133,7 +133,7 @@ func TestDeployScripts(t *testing.T) {
 		RCONPassword: "testpass123",
 	}
 
-	err := DeployScripts(cfg)
+	err := d.DeployScripts(cfg)
 	if err != nil {
 		t.Fatalf("DeployScripts failed: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestDeployScripts(t *testing.T) {
 }
 
 func TestDeployScripts_PreservesExistingScripts(t *testing.T) {
-	setupTestEmbedFS(t)
+	d := setupTestEmbedFS(t)
 
 	tmpDir := t.TempDir()
 	cfg := &config.ServerConfig{
@@ -210,7 +210,7 @@ func TestDeployScripts_PreservesExistingScripts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := DeployScripts(cfg)
+	err := d.DeployScripts(cfg)
 	if err != nil {
 		t.Fatalf("DeployScripts failed: %v", err)
 	}
