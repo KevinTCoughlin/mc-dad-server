@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
+	"unicode"
 )
 
 // BedrockPort is the default Geyser/Bedrock cross-play port.
@@ -67,6 +69,22 @@ var (
 	validGCTypes      = map[string]bool{"g1gc": true, "zgc": true}
 )
 
+// memoryPattern matches a JVM heap size such as "2G" or "2048M". The suffix is
+// required because computeMemoryMax derives the container memory limit from it.
+var memoryPattern = regexp.MustCompile(`^\d+[MmGg]$`)
+
+// sessionNamePattern restricts the screen session / container name to
+// characters that are safe to embed in the generated systemd unit, which puts
+// the name inside a shell command.
+var sessionNamePattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+
+// hasControlChars reports whether s contains any control character. Values
+// carrying one can break out of their line in server.properties, a systemd
+// unit, or a shell assignment in the generated start script.
+func hasControlChars(s string) bool {
+	return strings.ContainsFunc(s, unicode.IsControl)
+}
+
 // Validate checks that all config values are valid.
 func (c *ServerConfig) Validate() error {
 	if !validEditions[c.Edition] {
@@ -99,5 +117,25 @@ func (c *ServerConfig) Validate() error {
 	if c.Dir == "" {
 		return fmt.Errorf("server directory must be set")
 	}
+
+	// Free-form values below are interpolated into server.properties, the
+	// generated start script, and the systemd/Quadlet units. Reject anything
+	// that could terminate the line or argument it lands in.
+	if hasControlChars(c.Dir) {
+		return fmt.Errorf("server directory must not contain control characters")
+	}
+	if hasControlChars(c.MOTD) {
+		return fmt.Errorf("motd must not contain control characters (newlines would inject server.properties entries)")
+	}
+	if !memoryPattern.MatchString(c.Memory) {
+		return fmt.Errorf("invalid memory %q: must be a number followed by M or G (e.g. 2G, 2048M)", c.Memory)
+	}
+	if c.SessionName == "" {
+		return fmt.Errorf("session name must be set")
+	}
+	if !sessionNamePattern.MatchString(c.SessionName) {
+		return fmt.Errorf("invalid session name %q: use only letters, digits, dot, dash, or underscore", c.SessionName)
+	}
+
 	return nil
 }

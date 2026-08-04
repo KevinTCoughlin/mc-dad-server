@@ -176,13 +176,33 @@ func downloadAndExtractMap(ctx context.Context, m MapEntry, serverDir string, sc
 	return nil
 }
 
+// Extraction limits. Minecraft worlds are large but bounded; these caps exist
+// so a malicious or corrupt archive cannot fill the disk. The archive's own
+// declared sizes are not trusted — the limit is enforced against bytes
+// actually written.
+const (
+	maxExtractedBytes = 4 << 30 // 4 GiB across the whole archive
+	maxExtractedFiles = 200_000
+)
+
 func unzip(src, dest string) error {
+	return unzipWithLimit(src, dest, maxExtractedBytes)
+}
+
+// unzipWithLimit extracts src into dest, refusing to write more than maxBytes
+// in total across the archive.
+func unzipWithLimit(src, dest string, maxBytes int64) error {
 	r, err := zip.OpenReader(src)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = r.Close() }()
 
+	if len(r.File) > maxExtractedFiles {
+		return fmt.Errorf("archive has %d entries, refusing to extract more than %d", len(r.File), maxExtractedFiles)
+	}
+
+	var written int64
 	for _, f := range r.File {
 		path := filepath.Join(dest, f.Name)
 
@@ -198,29 +218,53 @@ func unzip(src, dest string) error {
 			continue
 		}
 
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return err
+		remaining := maxBytes - written
+		// Cheap rejection using the declared size before decompressing
+		// anything. The write loop below is what actually enforces the cap,
+		// since a crafted archive can understate its own sizes.
+		if f.UncompressedSize64 > uint64(remaining) {
+			return fmt.Errorf("archive declares more than the %d byte extraction limit", maxBytes)
 		}
 
-		outFile, err := os.Create(path)
-		if err != nil {
-			return err
-		}
-
-		rc, err := f.Open()
-		if err != nil {
-			_ = outFile.Close()
-			return err
-		}
-
-		_, err = io.Copy(outFile, rc)
-		_ = rc.Close()
-		_ = outFile.Close()
+		n, err := extractFile(f, path, remaining)
+		written += n
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// extractFile writes one archive entry to path, refusing to write more than
+// limit bytes, and returns how many bytes it wrote.
+func extractFile(f *zip.File, path string, limit int64) (int64, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return 0, err
+	}
+
+	outFile, err := os.Create(path)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = outFile.Close() }()
+
+	rc, err := f.Open()
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = rc.Close() }()
+
+	// Read one byte past the limit so an over-long entry is detected rather
+	// than silently truncated.
+	n, err := io.Copy(outFile, io.LimitReader(rc, limit+1))
+	if err != nil {
+		return n, err
+	}
+	if n > limit {
+		return n, fmt.Errorf("archive expands beyond the extraction limit")
+	}
+
+	return n, outFile.Close()
 }
 
 func findLevelDat(dir string) (string, error) {

@@ -22,12 +22,11 @@ var (
 )
 
 func main() {
-	configs.SetEmbeddedFS(embeddedFS)
-	bunpkg.SetEmbeddedFS(embeddedFS)
-
 	var app cli.CLI
 	var runner platform.CommandRunner = platform.NewOSCommandRunner()
 	output := ui.Default()
+	deployer := configs.NewDeployer(embeddedFS)
+	bunDeployer := bunpkg.NewDeployer(embeddedFS)
 
 	ctx := kong.Parse(&app,
 		kong.Name("mc-dad-server"),
@@ -40,6 +39,7 @@ func main() {
 	)
 
 	ctx.BindTo(runner, (*platform.CommandRunner)(nil))
+	ctx.Bind(deployer, bunDeployer)
 	err := ctx.Run(&app.Globals, output)
 	ctx.FatalIfErrorf(err)
 	os.Exit(0)

@@ -62,7 +62,7 @@ func (cmd *InstallCmd) toConfig(globals *Globals) *config.ServerConfig {
 }
 
 // Run installs and configures a Minecraft server.
-func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI) error {
+func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI, deployer *configs.Deployer, bunDeployer *bunpkg.Deployer) error {
 	ctx := context.Background()
 	cfg := cmd.toConfig(globals)
 
@@ -96,7 +96,7 @@ func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 
 	// Generate RCON password and deploy configs
 	cfg.RCONPassword = generateRCONPassword()
-	if err := configs.Deploy(cfg); err != nil {
+	if err := deployer.Deploy(cfg); err != nil {
 		return fmt.Errorf("deploying configs: %w", err)
 	}
 	output.Success("Configs deployed with tuned PaperMC defaults")
@@ -104,7 +104,7 @@ func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 
 	// Chat filter
 	if cfg.ChatFilter && cfg.ServerType == "paper" {
-		if err := plugins.SetupChatFilter(cfg.Dir, output); err != nil {
+		if err := plugins.SetupChatFilter(deployer, cfg.Dir, output); err != nil {
 			output.Warn("Chat filter setup failed: %v", err)
 		}
 	}
@@ -118,7 +118,7 @@ func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 
 	// Bun scripting sidecar
 	if cfg.EnableBun {
-		if err := bunpkg.DeployScripts(cfg); err != nil {
+		if err := bunDeployer.DeployScripts(cfg); err != nil {
 			return fmt.Errorf("deploying bun scripts: %w", err)
 		}
 		if err := bunpkg.InstallDependencies(ctx, runner, cfg.Dir); err != nil {
@@ -134,7 +134,7 @@ func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 	nag.RecordInstall(cfg.Dir)
 
 	// Create start script
-	if err := configs.DeployStartScript(cfg); err != nil {
+	if err := deployer.DeployStartScript(cfg); err != nil {
 		return fmt.Errorf("creating start script: %w", err)
 	}
 	output.Success("Start script created")

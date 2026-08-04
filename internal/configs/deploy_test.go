@@ -10,7 +10,7 @@ import (
 	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
 )
 
-func setupTestFS(t *testing.T) {
+func setupTestFS(t *testing.T) *Deployer {
 	t.Helper()
 
 	// Create a test embed.FS-compatible filesystem using the real files.
@@ -38,7 +38,7 @@ func setupTestFS(t *testing.T) {
 		t.Fatalf("walking embedded dir: %v", err)
 	}
 
-	embeddedFS = fs
+	return NewDeployer(fs)
 }
 
 func findProjectRoot(t *testing.T) string {
@@ -57,7 +57,7 @@ func findProjectRoot(t *testing.T) string {
 }
 
 func TestDeploy(t *testing.T) {
-	setupTestFS(t)
+	d := setupTestFS(t)
 
 	dir := t.TempDir()
 	cfg := config.DefaultConfig()
@@ -70,8 +70,8 @@ func TestDeploy(t *testing.T) {
 	cfg.Whitelist = true
 	cfg.RCONPassword = "testpass123"
 
-	if err := Deploy(cfg); err != nil {
-		t.Fatalf("Deploy() error: %v", err)
+	if err := d.Deploy(cfg); err != nil {
+		t.Fatalf("d.Deploy() error: %v", err)
 	}
 
 	// Check server.properties was written with substitutions
@@ -116,7 +116,7 @@ func TestDeploy(t *testing.T) {
 }
 
 func TestDeployStartScript(t *testing.T) {
-	setupTestFS(t)
+	d := setupTestFS(t)
 
 	dir := t.TempDir()
 	cfg := config.DefaultConfig()
@@ -124,8 +124,8 @@ func TestDeployStartScript(t *testing.T) {
 	cfg.Memory = "4G"
 	cfg.GCType = "zgc"
 
-	if err := DeployStartScript(cfg); err != nil {
-		t.Fatalf("DeployStartScript() error: %v", err)
+	if err := d.DeployStartScript(cfg); err != nil {
+		t.Fatalf("d.DeployStartScript() error: %v", err)
 	}
 
 	data, err := os.ReadFile(filepath.Join(dir, "start.sh"))
@@ -140,7 +140,7 @@ func TestDeployStartScript(t *testing.T) {
 }
 
 func TestDeployCompose(t *testing.T) {
-	setupTestFS(t)
+	d := setupTestFS(t)
 
 	dir := t.TempDir()
 	cfg := config.DefaultConfig()
@@ -156,8 +156,8 @@ func TestDeployCompose(t *testing.T) {
 	cfg.Whitelist = true
 	cfg.Version = "latest"
 
-	if err := DeployCompose(cfg, dir); err != nil {
-		t.Fatalf("DeployCompose() error: %v", err)
+	if err := d.DeployCompose(cfg, dir); err != nil {
+		t.Fatalf("d.DeployCompose() error: %v", err)
 	}
 
 	data, err := os.ReadFile(filepath.Join(dir, "compose.yml"))
@@ -192,15 +192,15 @@ func TestDeployCompose(t *testing.T) {
 }
 
 func TestDeployComposeZGC(t *testing.T) {
-	setupTestFS(t)
+	d := setupTestFS(t)
 
 	dir := t.TempDir()
 	cfg := config.DefaultConfig()
 	cfg.Dir = dir
 	cfg.GCType = "zgc"
 
-	if err := DeployCompose(cfg, dir); err != nil {
-		t.Fatalf("DeployCompose() error: %v", err)
+	if err := d.DeployCompose(cfg, dir); err != nil {
+		t.Fatalf("d.DeployCompose() error: %v", err)
 	}
 
 	data, err := os.ReadFile(filepath.Join(dir, "compose.yml"))
@@ -215,7 +215,7 @@ func TestDeployComposeZGC(t *testing.T) {
 }
 
 func TestDeployContainerConfigs(t *testing.T) {
-	setupTestFS(t)
+	d := setupTestFS(t)
 
 	dir := t.TempDir()
 	cfg := config.DefaultConfig()
@@ -228,8 +228,8 @@ func TestDeployContainerConfigs(t *testing.T) {
 	cfg.Whitelist = false
 	cfg.RCONPassword = "containerpass"
 
-	if err := DeployContainerConfigs(cfg, dir); err != nil {
-		t.Fatalf("DeployContainerConfigs() error: %v", err)
+	if err := d.DeployContainerConfigs(cfg, dir); err != nil {
+		t.Fatalf("d.DeployContainerConfigs() error: %v", err)
 	}
 
 	// All five config files should be in a flat directory
@@ -263,7 +263,7 @@ func TestDeployContainerConfigs(t *testing.T) {
 }
 
 func TestDeployContainerEnv(t *testing.T) {
-	setupTestFS(t)
+	d := setupTestFS(t)
 
 	dir := t.TempDir()
 	cfg := config.DefaultConfig()
@@ -272,8 +272,8 @@ func TestDeployContainerEnv(t *testing.T) {
 	cfg.RCONPassword = "secret123"
 	cfg.Version = "1.21.4"
 
-	if err := DeployContainerEnv(cfg, dir); err != nil {
-		t.Fatalf("DeployContainerEnv() error: %v", err)
+	if err := d.DeployContainerEnv(cfg, dir); err != nil {
+		t.Fatalf("d.DeployContainerEnv() error: %v", err)
 	}
 
 	data, err := os.ReadFile(filepath.Join(dir, ".env"))
@@ -304,7 +304,7 @@ func TestDeployContainerEnv(t *testing.T) {
 }
 
 func TestDeployQuadlet(t *testing.T) {
-	setupTestFS(t)
+	d := setupTestFS(t)
 
 	dir := t.TempDir()
 	cfg := config.DefaultConfig()
@@ -316,8 +316,8 @@ func TestDeployQuadlet(t *testing.T) {
 	configDir := "/home/user/.config/mc-dad-server/configs"
 	envFile := "/home/user/.config/mc-dad-server/.env"
 
-	if err := DeployQuadlet(cfg, configDir, envFile, dir); err != nil {
-		t.Fatalf("DeployQuadlet() error: %v", err)
+	if err := d.DeployQuadlet(cfg, configDir, envFile, dir); err != nil {
+		t.Fatalf("d.DeployQuadlet() error: %v", err)
 	}
 
 	data, err := os.ReadFile(filepath.Join(dir, "minecraft.container"))
@@ -365,5 +365,34 @@ func TestComputeMemoryMax(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("computeMemoryMax(%q) = %q, want %q", tt.input, got, tt.want)
 		}
+	}
+}
+
+func TestSubstitutePropertiesNeutralizesControlChars(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config.ServerConfig{
+		Port:         25565,
+		MOTD:         "Welcome\nrcon.password=hacked\nop-permission-level=4",
+		Difficulty:   "normal",
+		GameMode:     "survival",
+		MaxPlayers:   20,
+		RCONPassword: "secret",
+	}
+
+	got := substituteProperties("motd=%%MC_MOTD%%\nrcon.password=%%MC_RCON_PASSWORD%%\n", cfg)
+
+	// The injected text must stay on the motd line rather than becoming its
+	// own property entries.
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(line, "rcon.password=") && line != "rcon.password=secret" {
+			t.Fatalf("MOTD injected a property line: %q", line)
+		}
+		if strings.HasPrefix(line, "op-permission-level=") {
+			t.Fatalf("MOTD injected a property line: %q", line)
+		}
+	}
+	if !strings.Contains(got, "motd=Welcome rcon.password=hacked op-permission-level=4") {
+		t.Fatalf("unexpected motd line in:\n%s", got)
 	}
 }
