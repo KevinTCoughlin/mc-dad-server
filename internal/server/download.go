@@ -84,13 +84,6 @@ func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.U
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("closing %s: %w", tmpPath, err)
 	}
-	// Remove the placeholder file created above; it only reserved a unique
-	// name. downloadFileOnce() renames its own temp file into tmpPath, which
-	// fails on platforms (notably Windows) that cannot rename over an
-	// existing file.
-	if err := os.Remove(tmpPath); err != nil {
-		return fmt.Errorf("removing placeholder %s: %w", tmpPath, err)
-	}
 	defer func() { _ = os.Remove(tmpPath) }()
 
 	if err := downloadFile(ctx, art.URL, tmpPath); err != nil {
@@ -195,14 +188,31 @@ func downloadFileOnce(ctx context.Context, url, dest string) error {
 	return nil
 }
 
-// renameOverwrite renames oldpath to newpath, first removing newpath if it
+// renameOverwrite renames oldpath to newpath, overwriting newpath if it
 // already exists. os.Rename silently overwrites an existing file on POSIX
-// systems but fails with an "already exists" error on Windows.
+// systems but fails with an "already exists" error on Windows, so newpath is
+// first moved aside and only removed once oldpath has been renamed
+// successfully; on failure the original newpath is restored.
 func renameOverwrite(oldpath, newpath string) error {
-	if err := os.Remove(newpath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("removing existing %s: %w", newpath, err)
+	backupPath := newpath + ".bak-rename"
+	hasBackup := false
+	if err := os.Rename(newpath, backupPath); err == nil {
+		hasBackup = true
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("backing up existing %s: %w", newpath, err)
 	}
-	return os.Rename(oldpath, newpath)
+
+	if err := os.Rename(oldpath, newpath); err != nil {
+		if hasBackup {
+			_ = os.Rename(backupPath, newpath)
+		}
+		return err
+	}
+
+	if hasBackup {
+		_ = os.Remove(backupPath)
+	}
+	return nil
 }
 
 type retryableError struct {
