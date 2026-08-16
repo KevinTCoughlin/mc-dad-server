@@ -5,8 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
 func TestPaperDownloadURL_Latest(t *testing.T) {
@@ -225,5 +229,80 @@ func TestPaperDownloadURL_UserAgent(t *testing.T) {
 	_, err := paperArtifact(context.Background(), "1.21.4", srv.URL+"/v3")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestFetchAndVerifyPreservesExistingJAROnChecksumFailure(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("corrupt"))
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "server.jar")
+	if err := os.WriteFile(dest, []byte("existing"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	art := Artifact{URL: srv.URL, SHA256: helloSHA256}
+	if err := fetchAndVerify(t.Context(), art, dest, ui.New(false)); err == nil {
+		t.Fatal("expected checksum failure")
+	}
+
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "existing" {
+		t.Fatalf("server.jar = %q, want existing contents", got)
+	}
+	if _, err := os.Stat(dest + ".bak"); !os.IsNotExist(err) {
+		t.Fatalf("unexpected backup after failed download: %v", err)
+	}
+}
+
+func TestFetchAndVerifyAtomicallyReplacesExistingJAR(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("hello\n"))
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "server.jar")
+	if err := os.WriteFile(dest, []byte("existing"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	art := Artifact{URL: srv.URL, SHA256: helloSHA256}
+	if err := fetchAndVerify(t.Context(), art, dest, ui.New(false)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "hello\n" {
+		t.Fatalf("server.jar = %q, want downloaded contents", got)
+	}
+
+	backup, err := os.ReadFile(dest + ".bak")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(backup) != "existing" {
+		t.Fatalf("server.jar.bak = %q, want previous contents", backup)
+	}
+
+	parts, err := filepath.Glob(filepath.Join(dir, ".server.jar.*.part"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parts) != 0 {
+		t.Fatalf("temporary downloads left behind: %v", parts)
 	}
 }

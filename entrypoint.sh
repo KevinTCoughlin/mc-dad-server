@@ -8,23 +8,63 @@ MEMORY="${MEMORY:-2G}"
 GC_TYPE="${GC_TYPE:-g1gc}"
 PORT="${PORT:-25565}"
 RCON_PORT="${RCON_PORT:-25575}"
-RCON_PASSWORD="${RCON_PASSWORD:-changeme}"
+RCON_PASSWORD="${RCON_PASSWORD:?RCON_PASSWORD must be set}"
+
+escape_sed_replacement() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//&/\\&}"
+    value="${value//|/\\|}"
+    printf '%s' "${value}"
+}
+
+escape_property_replacement() {
+    local value="${1//\\/\\\\}"
+    escape_sed_replacement "${value}"
+}
+
+configure_server_properties() {
+    local value difficulty gamemode max_players motd port rcon_port rcon_password whitelist
+
+    for value in "${DIFFICULTY:-normal}" "${GAMEMODE:-survival}" "${MAX_PLAYERS:-20}" \
+        "${MOTD:-Dads Minecraft Server}" "${PORT}" "${RCON_PASSWORD}" "${WHITELIST:-true}" "${RCON_PORT}"; do
+        if [[ "${value}" == *$'\n'* || "${value}" == *$'\r'* ]]; then
+            echo "[entrypoint] Configuration values must not contain newlines" >&2
+            return 1
+        fi
+    done
+
+    difficulty="$(escape_sed_replacement "${DIFFICULTY:-normal}")"
+    gamemode="$(escape_sed_replacement "${GAMEMODE:-survival}")"
+    max_players="$(escape_sed_replacement "${MAX_PLAYERS:-20}")"
+    motd="$(escape_property_replacement "${MOTD:-Dads Minecraft Server}")"
+    port="$(escape_sed_replacement "${PORT}")"
+    rcon_port="$(escape_sed_replacement "${RCON_PORT}")"
+    rcon_password="$(escape_property_replacement "${RCON_PASSWORD}")"
+    whitelist="$(escape_sed_replacement "${WHITELIST:-true}")"
+
+    if [[ -f server.properties ]] && [[ -w server.properties ]]; then
+        sed -i \
+            -e "s|%%MC_DIFFICULTY%%|${difficulty}|" \
+            -e "s|%%MC_GAMEMODE%%|${gamemode}|" \
+            -e "s|%%MC_MAX_PLAYERS%%|${max_players}|" \
+            -e "s|%%MC_MOTD%%|${motd}|" \
+            -e "s|%%MC_PORT%%|${port}|g" \
+            -e "s|%%MC_RCON_PASSWORD%%|${rcon_password}|" \
+            -e "s|%%MC_WHITELIST%%|${whitelist}|" \
+            -e "s/^enable-rcon=.*/enable-rcon=true/" \
+            -e "s|^rcon\\.port=.*|rcon.port=${rcon_port}|" \
+            -e "s|^rcon\\.password=.*|rcon.password=${rcon_password}|" \
+            server.properties
+    fi
+}
+
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    return 0
+fi
 
 # --- Substitute template variables and configure RCON in server.properties ---
-if [[ -f server.properties ]] && [[ -w server.properties ]]; then
-    sed -i \
-        -e "s/%%MC_DIFFICULTY%%/${DIFFICULTY:-normal}/" \
-        -e "s/%%MC_GAMEMODE%%/${GAMEMODE:-survival}/" \
-        -e "s/%%MC_MAX_PLAYERS%%/${MAX_PLAYERS:-20}/" \
-        -e "s|%%MC_MOTD%%|${MOTD:-Dads Minecraft Server}|" \
-        -e "s/%%MC_PORT%%/${PORT}/g" \
-        -e "s/%%MC_RCON_PASSWORD%%/${RCON_PASSWORD}/" \
-        -e "s/%%MC_WHITELIST%%/${WHITELIST:-true}/" \
-        -e "s/^enable-rcon=.*/enable-rcon=true/" \
-        -e "s/^rcon\\.port=.*/rcon.port=${RCON_PORT}/" \
-        -e "s/^rcon\\.password=.*/rcon.password=${RCON_PASSWORD}/" \
-        server.properties
-fi
+configure_server_properties
 
 # --- Build JVM flags ---
 JVM_FLAGS=(
