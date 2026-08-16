@@ -211,7 +211,9 @@ func renameOverwrite(oldpath, newpath string) error {
 
 	if err := os.Rename(oldpath, newpath); err != nil {
 		if hasBackup {
-			_ = os.Rename(backupPath, newpath)
+			if restoreErr := os.Rename(backupPath, newpath); restoreErr != nil {
+				return errors.Join(err, fmt.Errorf("restoring %s from backup %s: %w", newpath, backupPath, restoreErr))
+			}
 		}
 		return err
 	}
