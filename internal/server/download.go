@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -66,17 +67,34 @@ func Download(ctx context.Context, serverType, version, destDir string, runner p
 // an unresponsive mirror would hang the installer indefinitely.
 var httpClient = &http.Client{Timeout: 10 * time.Minute}
 
+const downloadAttempts = 3
+
+var downloadRetryDelay = 500 * time.Millisecond
+
 // fetchAndVerify downloads the artifact to dest and checks it against the
 // checksum published by the upstream API, removing the file if it fails.
 func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.UI) error {
 	output.Info("Downloading from: %s", art.URL)
-	if err := downloadFile(ctx, art.URL, dest); err != nil {
+	f, err := os.CreateTemp(filepath.Dir(dest), "."+filepath.Base(dest)+".*.verified")
+	if err != nil {
+		return fmt.Errorf("creating temporary file for %s: %w", dest, err)
+	}
+	tmpPath := f.Name()
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("closing %s: %w", tmpPath, err)
+	}
+	defer func() { _ = os.Remove(tmpPath) }()
+
+	if err := downloadFile(ctx, art.URL, tmpPath); err != nil {
 		return err
 	}
 
-	if err := art.Verify(dest); err != nil {
-		_ = os.Remove(dest)
+	if err := art.Verify(tmpPath); err != nil {
 		return fmt.Errorf("verifying server JAR: %w", err)
+	}
+	if err := os.Rename(tmpPath, dest); err != nil {
+		return fmt.Errorf("installing %s: %w", dest, err)
 	}
 
 	if art.SHA256 == "" && art.SHA1 == "" {
@@ -88,30 +106,100 @@ func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.U
 }
 
 func downloadFile(ctx context.Context, url, dest string) error {
+	var lastErr error
+	for attempt := 1; attempt <= downloadAttempts; attempt++ {
+		if err := downloadFileOnce(ctx, url, dest); err != nil {
+			lastErr = err
+			if attempt == downloadAttempts || !isRetryableDownloadError(err) {
+				break
+			}
+			if err := sleepForRetry(ctx); err != nil {
+				return err
+			}
+			continue
+		}
+		return nil
+	}
+	return lastErr
+}
+
+func sleepForRetry(ctx context.Context) error {
+	if downloadRetryDelay <= 0 {
+		return nil
+	}
+	timer := time.NewTimer(downloadRetryDelay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func downloadFileOnce(ctx context.Context, url, dest string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return err
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("downloading %s: %w", url, err)
+		return retryableError{err: fmt.Errorf("downloading %s: %w", url, err)}
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP %d downloading %s", resp.StatusCode, url)
+		err := fmt.Errorf("HTTP %d downloading %s", resp.StatusCode, url)
+		if isRetryableStatus(resp.StatusCode) {
+			return retryableError{err: err}
+		}
+		return err
 	}
 
-	f, err := os.Create(dest)
+	f, err := os.CreateTemp(filepath.Dir(dest), "."+filepath.Base(dest)+".*.part")
 	if err != nil {
-		return fmt.Errorf("creating %s: %w", dest, err)
+		return fmt.Errorf("creating temporary file for %s: %w", dest, err)
 	}
-	defer func() { _ = f.Close() }()
+	tmpPath := f.Name()
+	defer func() {
+		_ = f.Close()
+		_ = os.Remove(tmpPath)
+	}()
 
 	if _, err := io.Copy(f, resp.Body); err != nil {
-		_ = os.Remove(dest)
-		return fmt.Errorf("writing %s: %w", dest, err)
+		return retryableError{err: fmt.Errorf("writing %s: %w", tmpPath, err)}
+	}
+	if err := f.Close(); err != nil {
+		return retryableError{err: fmt.Errorf("closing %s: %w", tmpPath, err)}
+	}
+	if err := os.Chmod(tmpPath, 0o644); err != nil {
+		return fmt.Errorf("setting permissions on %s: %w", tmpPath, err)
+	}
+	if err := os.Rename(tmpPath, dest); err != nil {
+		return fmt.Errorf("installing %s: %w", dest, err)
 	}
 
 	return nil
+}
+
+type retryableError struct {
+	err error
+}
+
+func (e retryableError) Error() string {
+	return e.err.Error()
+}
+
+func (e retryableError) Unwrap() error {
+	return e.err
+}
+
+func isRetryableDownloadError(err error) bool {
+	var retryable retryableError
+	return errors.As(err, &retryable)
+}
+
+func isRetryableStatus(status int) bool {
+	return status == http.StatusTooManyRequests || status >= 500
 }

@@ -1,12 +1,19 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
 func TestPaperDownloadURL_Latest(t *testing.T) {
@@ -226,4 +233,74 @@ func TestPaperDownloadURL_UserAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+func TestFetchAndVerifyRetriesTransientHTTPFailure(t *testing.T) {
+	setDownloadRetryDelay(t, 0)
+
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if attempts.Add(1) < downloadAttempts {
+			http.Error(w, "temporary outage", http.StatusBadGateway)
+			return
+		}
+		_, _ = w.Write([]byte("hello\n"))
+	}))
+	defer srv.Close()
+
+	dest := filepath.Join(t.TempDir(), "server.jar")
+	art := Artifact{URL: srv.URL, SHA256: helloSHA256}
+	if err := fetchAndVerify(context.Background(), art, dest, ui.NewWriter(&bytes.Buffer{}, false)); err != nil {
+		t.Fatalf("fetchAndVerify() error = %v", err)
+	}
+	if attempts.Load() != downloadAttempts {
+		t.Fatalf("attempts = %d, want %d", attempts.Load(), downloadAttempts)
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("reading dest: %v", err)
+	}
+	if string(got) != "hello\n" {
+		t.Fatalf("dest = %q, want hello fixture", got)
+	}
+}
+
+func TestFetchAndVerifyKeepsExistingJarOnChecksumFailure(t *testing.T) {
+	setDownloadRetryDelay(t, 0)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("corrupt\n"))
+	}))
+	defer srv.Close()
+
+	dest := filepath.Join(t.TempDir(), "server.jar")
+	if err := os.WriteFile(dest, []byte("existing\n"), 0o644); err != nil {
+		t.Fatalf("writing existing jar: %v", err)
+	}
+
+	art := Artifact{URL: srv.URL, SHA256: helloSHA256}
+	err := fetchAndVerify(context.Background(), art, dest, ui.NewWriter(&bytes.Buffer{}, false))
+	if err == nil {
+		t.Fatal("expected checksum failure")
+	}
+	if !strings.Contains(err.Error(), "verifying server JAR") {
+		t.Fatalf("error = %v, want verifying server JAR", err)
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("reading dest: %v", err)
+	}
+	if string(got) != "existing\n" {
+		t.Fatalf("dest = %q, want existing jar to remain", got)
+	}
+}
+
+func setDownloadRetryDelay(t *testing.T, delay time.Duration) {
+	t.Helper()
+
+	old := downloadRetryDelay
+	downloadRetryDelay = delay
+	t.Cleanup(func() {
+		downloadRetryDelay = old
+	})
 }
