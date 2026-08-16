@@ -84,6 +84,13 @@ func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.U
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("closing %s: %w", tmpPath, err)
 	}
+	// Remove the placeholder file created above; it only reserved a unique
+	// name. downloadFileOnce() renames its own temp file into tmpPath, which
+	// fails on platforms (notably Windows) that cannot rename over an
+	// existing file.
+	if err := os.Remove(tmpPath); err != nil {
+		return fmt.Errorf("removing placeholder %s: %w", tmpPath, err)
+	}
 	defer func() { _ = os.Remove(tmpPath) }()
 
 	if err := downloadFile(ctx, art.URL, tmpPath); err != nil {
@@ -93,7 +100,7 @@ func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.U
 	if err := art.Verify(tmpPath); err != nil {
 		return fmt.Errorf("verifying server JAR: %w", err)
 	}
-	if err := os.Rename(tmpPath, dest); err != nil {
+	if err := renameOverwrite(tmpPath, dest); err != nil {
 		return fmt.Errorf("installing %s: %w", dest, err)
 	}
 
@@ -163,7 +170,11 @@ func downloadFileOnce(ctx context.Context, url, dest string) error {
 		return fmt.Errorf("creating temporary file for %s: %w", dest, err)
 	}
 	tmpPath := f.Name()
+	closed := false
 	defer func() {
+		if !closed {
+			_ = f.Close()
+		}
 		_ = os.Remove(tmpPath)
 	}()
 
@@ -173,14 +184,25 @@ func downloadFileOnce(ctx context.Context, url, dest string) error {
 	if err := f.Close(); err != nil {
 		return retryableError{err: fmt.Errorf("closing %s: %w", tmpPath, err)}
 	}
+	closed = true
 	if err := os.Chmod(tmpPath, 0o644); err != nil {
 		return fmt.Errorf("setting permissions on %s: %w", tmpPath, err)
 	}
-	if err := os.Rename(tmpPath, dest); err != nil {
+	if err := renameOverwrite(tmpPath, dest); err != nil {
 		return fmt.Errorf("installing %s: %w", dest, err)
 	}
 
 	return nil
+}
+
+// renameOverwrite renames oldpath to newpath, first removing newpath if it
+// already exists. os.Rename silently overwrites an existing file on POSIX
+// systems but fails with an "already exists" error on Windows.
+func renameOverwrite(oldpath, newpath string) error {
+	if err := os.Remove(newpath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing existing %s: %w", newpath, err)
+	}
+	return os.Rename(oldpath, newpath)
 }
 
 type retryableError struct {
