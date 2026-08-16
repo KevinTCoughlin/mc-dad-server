@@ -108,17 +108,18 @@ func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.U
 func downloadFile(ctx context.Context, url, dest string) error {
 	var lastErr error
 	for attempt := 1; attempt <= downloadAttempts; attempt++ {
-		if err := downloadFileOnce(ctx, url, dest); err != nil {
-			lastErr = err
-			if attempt == downloadAttempts || !isRetryableDownloadError(err) {
-				break
-			}
-			if err := sleepForRetry(ctx); err != nil {
-				return err
-			}
-			continue
+		err := downloadFileOnce(ctx, url, dest)
+		if err == nil {
+			return nil
 		}
-		return nil
+
+		lastErr = err
+		if attempt == downloadAttempts || !isRetryableDownloadError(err) {
+			break
+		}
+		if err := sleepForRetry(ctx); err != nil {
+			return err
+		}
 	}
 	return lastErr
 }
@@ -163,7 +164,6 @@ func downloadFileOnce(ctx context.Context, url, dest string) error {
 	}
 	tmpPath := f.Name()
 	defer func() {
-		_ = f.Close()
 		_ = os.Remove(tmpPath)
 	}()
 
