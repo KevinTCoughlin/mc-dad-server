@@ -195,6 +195,13 @@ func downloadFileOnce(ctx context.Context, url, dest string) error {
 // successfully; on failure the original newpath is restored.
 func renameOverwrite(oldpath, newpath string) error {
 	backupPath := newpath + ".bak-rename"
+	// Clear out any stale backup left behind by a previous crashed run;
+	// os.Rename below would otherwise fail on Windows if backupPath already
+	// exists.
+	if err := os.Remove(backupPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing stale backup %s: %w", backupPath, err)
+	}
+
 	hasBackup := false
 	if err := os.Rename(newpath, backupPath); err == nil {
 		hasBackup = true
