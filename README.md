@@ -47,7 +47,7 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 
 ## What It Does
 
-- Installs Adoptium Temurin Java 25 (open-source, no Oracle)
+- Installs Adoptium Temurin Java 21+ (open-source, no Oracle)
 - Downloads Paper MC (optimized, fast, plugin-ready)
 - Deploys tuned server configs from a battle-tested PaperMC server
 - Downloads and installs plugins (Geyser, Parkour, WorldEdit, Multiverse, ChatSentry)
@@ -158,7 +158,7 @@ podman logs -f minecraft          # follow server logs
 | `GC_TYPE` | `g1gc` | `g1gc` (Aikar's flags) or `zgc` |
 | `PORT` | `25565` | Minecraft server port |
 | `RCON_PORT` | `25575` | RCON port (localhost only) |
-| `RCON_PASSWORD` | `changeme` | RCON password |
+| `RCON_PASSWORD` | required | RCON password (generate one with `openssl rand -base64 24`) |
 | `MC_VERSION` | `latest` | Minecraft version to download |
 
 ### Systemd Integration (Quadlet)
@@ -303,7 +303,7 @@ Yes! Use `podman compose up -d` (or `docker compose up -d`). The CLI auto-detect
 Systemd will auto-restart it. Backups run daily at 4 AM. In container mode, Podman/Docker restarts the container automatically.
 
 **Q: What Java does it install?**
-Adoptium Temurin 25 — open source, production-ready, no Oracle licensing nonsense.
+Adoptium Temurin 21+ for bare-metal installs; the container image uses Temurin 25.
 
 ## Uninstall
 

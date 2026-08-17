@@ -18,17 +18,6 @@ import (
 func Download(ctx context.Context, serverType, version, destDir string, runner platform.CommandRunner, output *ui.UI) error {
 	jarPath := filepath.Join(destDir, "server.jar")
 
-	// Backup existing JAR
-	if _, err := os.Stat(jarPath); err == nil {
-		output.Warn("server.jar already exists. Backing up to server.jar.bak")
-		data, err := os.ReadFile(jarPath)
-		if err == nil {
-			if writeErr := os.WriteFile(jarPath+".bak", data, 0o644); writeErr != nil {
-				output.Warn("Failed to write backup: %v", writeErr)
-			}
-		}
-	}
-
 	switch serverType {
 	case "paper":
 		output.Info("Fetching Paper MC server...")
@@ -52,7 +41,12 @@ func Download(ctx context.Context, serverType, version, destDir string, runner p
 
 	case "fabric":
 		output.Info("Fetching Fabric MC server...")
+		restore, err := backupExistingJAR(jarPath, output)
+		if err != nil {
+			return err
+		}
 		if err := FabricDownload(ctx, version, destDir, runner, output); err != nil {
+			restore()
 			return err
 		}
 
@@ -75,7 +69,7 @@ var downloadRetryDelay = 500 * time.Millisecond
 // checksum published by the upstream API, removing the file if it fails.
 func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.UI) error {
 	output.Info("Downloading from: %s", art.URL)
-	f, err := os.CreateTemp(filepath.Dir(dest), "."+filepath.Base(dest)+".*.verified")
+	f, err := os.CreateTemp(filepath.Dir(dest), "."+filepath.Base(dest)+".*.download")
 	if err != nil {
 		return fmt.Errorf("creating temporary file for %s: %w", dest, err)
 	}
@@ -83,6 +77,10 @@ func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.U
 	if err := f.Close(); err != nil {
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("closing %s: %w", tmpPath, err)
+	}
+	if err := os.Chmod(tmpPath, 0o644); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("setting temporary download permissions: %w", err)
 	}
 	defer func() { _ = os.Remove(tmpPath) }()
 
@@ -103,6 +101,33 @@ func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.U
 	}
 	output.Success("Server JAR downloaded and checksum verified")
 	return nil
+}
+
+func backupExistingJAR(path string, output *ui.UI) (func(), error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return func() {}, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("checking existing server JAR: %w", err)
+	}
+
+	backupPath := path + ".bak"
+	output.Warn("server.jar already exists. Backing up to server.jar.bak")
+	if err := os.Remove(backupPath); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("removing old server JAR backup: %w", err)
+	}
+	if err := os.Rename(path, backupPath); err != nil {
+		return nil, fmt.Errorf("backing up existing server JAR: %w", err)
+	}
+
+	return func() {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			output.Warn("Failed to remove incomplete server.jar: %v", err)
+			return
+		}
+		if err := os.Rename(backupPath, path); err != nil {
+			output.Warn("Failed to restore server.jar backup: %v", err)
+		}
+	}, nil
 }
 
 func downloadFile(ctx context.Context, url, dest string) error {

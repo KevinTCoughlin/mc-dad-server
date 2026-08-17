@@ -22,10 +22,7 @@ jobs:
       - name: Check go.sum is tidy
         run: |
           go mod tidy
-          if ! git diff --quiet go.mod go.sum; then
-            echo "::warning::go.mod or go.sum is not tidy — run 'go mod tidy'"
-            git diff go.mod go.sum
-          fi
+          git diff --exit-code go.mod go.sum
 
       - name: List outdated direct dependencies
         run: |

@@ -27,12 +27,15 @@ jobs:
               - 'go.mod'
               - 'go.sum'
               - '.golangci.yml'
-              - '.github/workflows/ci.yml'
+              - '.goreleaser.yml'
+              - 'justfile'
+              - '.github/workflows/**'
               - 'internal/configs/**'
               - 'embedded/**'
             container:
               - 'Containerfile'
               - 'entrypoint.sh'
+              - 'tests/entrypoint_test.sh'
               - 'compose.yml'
 
   checks:
@@ -123,4 +126,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: ShellCheck entrypoint.sh
-        run: shellcheck entrypoint.sh
+        run: shellcheck entrypoint.sh tests/entrypoint_test.sh
+      - name: Test entrypoint configuration
+        run: bash tests/entrypoint_test.sh

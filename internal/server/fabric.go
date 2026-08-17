@@ -14,9 +14,11 @@ type fabricInstaller struct {
 	URL string `json:"url"`
 }
 
+var fabricInstallerVersionsURL = "https://meta.fabricmc.net/v2/versions/installer"
+
 // FabricDownload downloads and runs the Fabric installer.
 func FabricDownload(ctx context.Context, version, destDir string, runner platform.CommandRunner, output *ui.UI) error {
-	body, err := httpGet(ctx, "https://meta.fabricmc.net/v2/versions/installer")
+	body, err := httpGet(ctx, fabricInstallerVersionsURL)
 	if err != nil {
 		return fmt.Errorf("fetching Fabric installer versions: %w", err)
 	}
@@ -55,7 +57,7 @@ func FabricDownload(ctx context.Context, version, destDir string, runner platfor
 	src := filepath.Join(destDir, "fabric-server-launch.jar")
 	dst := filepath.Join(destDir, "server.jar")
 	if err := runner.Run(ctx, "mv", src, dst); err != nil {
-		output.Warn("Could not rename fabric-server-launch.jar to server.jar")
+		return fmt.Errorf("renaming Fabric server launcher: %w", err)
 	}
 
 	// Cleanup installer

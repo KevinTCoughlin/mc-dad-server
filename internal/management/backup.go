@@ -155,10 +155,13 @@ func writeTarEntries(tw *tar.Writer, baseDir string, dirs []string) error {
 			if err != nil {
 				return err
 			}
-			defer func() { _ = file.Close() }()
 
-			_, err = io.Copy(tw, file)
-			return err
+			_, copyErr := io.Copy(tw, file)
+			closeErr := file.Close()
+			if copyErr != nil {
+				return copyErr
+			}
+			return closeErr
 		})
 		if err != nil {
 			return err
