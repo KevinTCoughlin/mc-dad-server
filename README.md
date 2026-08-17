@@ -174,6 +174,8 @@ systemctl --user start minecraft
 
 See `compose.yml` for volume mounts, port mappings, and security hardening (cap_drop, no-new-privileges, memory limits).
 
+For release and smoke-test readiness, see the [operational quality checklist](docs/operational-quality.md).
+
 ## Bedrock Cross-Play (iPad, Switch, Phone)
 
 Your kids on Bedrock Edition connect to the same server as Java players. No extra accounts, no extra servers.

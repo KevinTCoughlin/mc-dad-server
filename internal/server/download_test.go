@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -8,7 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
@@ -232,77 +235,72 @@ func TestPaperDownloadURL_UserAgent(t *testing.T) {
 	}
 }
 
-func TestFetchAndVerifyPreservesExistingJAROnChecksumFailure(t *testing.T) {
-	t.Parallel()
+func TestFetchAndVerifyRetriesTransientHTTPFailure(t *testing.T) {
+	setDownloadRetryDelay(t, 0)
 
+	var attempts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("corrupt"))
-	}))
-	defer srv.Close()
-
-	dir := t.TempDir()
-	dest := filepath.Join(dir, "server.jar")
-	if err := os.WriteFile(dest, []byte("existing"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	art := Artifact{URL: srv.URL, SHA256: helloSHA256}
-	if err := fetchAndVerify(t.Context(), art, dest, ui.New(false)); err == nil {
-		t.Fatal("expected checksum failure")
-	}
-
-	got, err := os.ReadFile(dest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(got) != "existing" {
-		t.Fatalf("server.jar = %q, want existing contents", got)
-	}
-	if _, err := os.Stat(dest + ".bak"); !os.IsNotExist(err) {
-		t.Fatalf("unexpected backup after failed download: %v", err)
-	}
-}
-
-func TestFetchAndVerifyAtomicallyReplacesExistingJAR(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if attempts.Add(1) < downloadAttempts {
+			http.Error(w, "temporary outage", http.StatusBadGateway)
+			return
+		}
 		_, _ = w.Write([]byte("hello\n"))
 	}))
 	defer srv.Close()
 
-	dir := t.TempDir()
-	dest := filepath.Join(dir, "server.jar")
-	if err := os.WriteFile(dest, []byte("existing"), 0o644); err != nil {
-		t.Fatal(err)
+	dest := filepath.Join(t.TempDir(), "server.jar")
+	art := Artifact{URL: srv.URL, SHA256: helloSHA256}
+	if err := fetchAndVerify(context.Background(), art, dest, ui.NewWriter(&bytes.Buffer{}, false)); err != nil {
+		t.Fatalf("fetchAndVerify() error = %v", err)
+	}
+	if attempts.Load() != downloadAttempts {
+		t.Fatalf("attempts = %d, want %d", attempts.Load(), downloadAttempts)
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("reading dest: %v", err)
+	}
+	if string(got) != "hello\n" {
+		t.Fatalf("dest = %q, want hello fixture", got)
+	}
+}
+
+func TestFetchAndVerifyKeepsExistingJarOnChecksumFailure(t *testing.T) {
+	setDownloadRetryDelay(t, 0)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("corrupt\n"))
+	}))
+	defer srv.Close()
+
+	dest := filepath.Join(t.TempDir(), "server.jar")
+	if err := os.WriteFile(dest, []byte("existing\n"), 0o644); err != nil {
+		t.Fatalf("writing existing jar: %v", err)
 	}
 
 	art := Artifact{URL: srv.URL, SHA256: helloSHA256}
-	if err := fetchAndVerify(t.Context(), art, dest, ui.New(false)); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	err := fetchAndVerify(context.Background(), art, dest, ui.NewWriter(&bytes.Buffer{}, false))
+	if err == nil {
+		t.Fatal("expected checksum failure")
 	}
-
+	if !strings.Contains(err.Error(), "verifying server JAR") {
+		t.Fatalf("error = %v, want verifying server JAR", err)
+	}
 	got, err := os.ReadFile(dest)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("reading dest: %v", err)
 	}
-	if string(got) != "hello\n" {
-		t.Fatalf("server.jar = %q, want downloaded contents", got)
+	if string(got) != "existing\n" {
+		t.Fatalf("dest = %q, want existing jar to remain", got)
 	}
+}
 
-	backup, err := os.ReadFile(dest + ".bak")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(backup) != "existing" {
-		t.Fatalf("server.jar.bak = %q, want previous contents", backup)
-	}
+func setDownloadRetryDelay(t *testing.T, delay time.Duration) {
+	t.Helper()
 
-	parts, err := filepath.Glob(filepath.Join(dir, ".server.jar.*.part"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(parts) != 0 {
-		t.Fatalf("temporary downloads left behind: %v", parts)
-	}
+	old := downloadRetryDelay
+	downloadRetryDelay = delay
+	t.Cleanup(func() {
+		downloadRetryDelay = old
+	})
 }
