@@ -78,6 +78,10 @@ func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.U
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("closing %s: %w", tmpPath, err)
 	}
+	if err := os.Chmod(tmpPath, 0o644); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("setting temporary download permissions: %w", err)
+	}
 	defer func() { _ = os.Remove(tmpPath) }()
 
 	if err := downloadFile(ctx, art.URL, tmpPath); err != nil {
