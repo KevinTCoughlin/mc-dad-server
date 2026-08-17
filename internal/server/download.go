@@ -69,7 +69,7 @@ var downloadRetryDelay = 500 * time.Millisecond
 // checksum published by the upstream API, removing the file if it fails.
 func fetchAndVerify(ctx context.Context, art Artifact, dest string, output *ui.UI) error {
 	output.Info("Downloading from: %s", art.URL)
-	f, err := os.CreateTemp(filepath.Dir(dest), "."+filepath.Base(dest)+".*.verified")
+	f, err := os.CreateTemp(filepath.Dir(dest), "."+filepath.Base(dest)+".*.download")
 	if err != nil {
 		return fmt.Errorf("creating temporary file for %s: %w", dest, err)
 	}
