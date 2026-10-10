@@ -132,7 +132,7 @@ mc-dad-server backup
 
 ## Container Deployment
 
-Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Eclipse Temurin 25 JRE on Alpine Linux and includes Geyser, Floodgate, Parkour, Multiverse, and WorldEdit.
+Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Eclipse Temurin 25 JRE on Alpine Linux and includes Geyser, Floodgate, Parkour, Multiverse, and WorldEdit. Container builds pin plugin releases and default to Paper 26.2, the newest Minecraft version supported by WorldEdit 7.4.5. Override `MC_VERSION` at build time only after checking plugin compatibility.
 
 ```bash
 # Build and start with Podman Compose

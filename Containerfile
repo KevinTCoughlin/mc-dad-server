@@ -4,7 +4,8 @@
 # https://github.com/KevinTCoughlin/mc-dad-server
 
 # Pinned versions — update these to bump components
-ARG MC_VERSION=latest
+# WorldEdit 7.4.5 supports up to 26.2; 26.3 fails during plugin startup.
+ARG MC_VERSION=26.2
 
 # ---------------------------------------------------------------------------
 # Stage 1: Builder — Downloads Paper JAR + plugins
@@ -23,6 +24,15 @@ RUN apt-get update && \
 
 WORKDIR /minecraft
 
+# Plugin pins also invalidate the download layer when upstream releases change.
+ARG GEYSER_VERSION=2.11.3
+ARG GEYSER_BUILD=1251
+ARG FLOODGATE_VERSION=2.2.5
+ARG FLOODGATE_BUILD=141
+ARG PARKOUR_RELEASE_TAG=Parkour-7.2.8-RELEASE.136
+ARG MULTIVERSE_VERSION=5.8.1
+ARG WORLDEDIT_VERSION=7.4.5
+
 # Download plugins sequentially with SHA-256 verification where available.
 # GeyserMC/Floodgate hashes come from their builds API; Hangar provides SHA-256
 # via fileInfo; GitHub (Parkour) has no hash so we verify file size instead.
@@ -36,26 +46,24 @@ RUN validate_sha256() { \
             { echo "Invalid SHA-256 for $2: $1"; exit 1; }; \
     } && \
     set -e && mkdir -p plugins && \
-    # Geyser — download latest build; build number is logged for diagnostics.
-    GEYSER_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest") && \
+    # Geyser — metadata and JAR use the same pinned build.
+    GEYSER_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/geyser/versions/${GEYSER_VERSION}/builds/${GEYSER_BUILD}") && \
     GEYSER_SHA256=$(echo "$GEYSER_META" | jq -r '.downloads.spigot.sha256') && \
-    GEYSER_BUILD=$(echo "$GEYSER_META" | jq -r '.build') && \
     echo "Downloading Geyser build ${GEYSER_BUILD}" && \
     validate_sha256 "$GEYSER_SHA256" "Geyser" && \
     curl -fsSL -o plugins/Geyser-Spigot.jar \
-      "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot" && \
+      "https://download.geysermc.org/v2/projects/geyser/versions/${GEYSER_VERSION}/builds/${GEYSER_BUILD}/downloads/spigot" && \
     echo "${GEYSER_SHA256}  plugins/Geyser-Spigot.jar" | sha256sum -c - && \
-    # Floodgate — download latest build; build number is logged for diagnostics.
-    FLOODGATE_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest") && \
+    # Floodgate — metadata and JAR use the same pinned build.
+    FLOODGATE_META=$(curl -fsSL "https://download.geysermc.org/v2/projects/floodgate/versions/${FLOODGATE_VERSION}/builds/${FLOODGATE_BUILD}") && \
     FLOODGATE_SHA256=$(echo "$FLOODGATE_META" | jq -r '.downloads.spigot.sha256') && \
-    FLOODGATE_BUILD=$(echo "$FLOODGATE_META" | jq -r '.build') && \
     echo "Downloading Floodgate build ${FLOODGATE_BUILD}" && \
     validate_sha256 "$FLOODGATE_SHA256" "Floodgate" && \
     curl -fsSL -o plugins/Floodgate-Spigot.jar \
-      "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot" && \
+      "https://download.geysermc.org/v2/projects/floodgate/versions/${FLOODGATE_VERSION}/builds/${FLOODGATE_BUILD}/downloads/spigot" && \
     echo "${FLOODGATE_SHA256}  plugins/Floodgate-Spigot.jar" | sha256sum -c - && \
     # Parkour — GitHub releases API does not provide SHA-256; verify file size
-    PARKOUR_RELEASE=$(curl -fsSL "https://api.github.com/repos/A5H73Y/Parkour/releases/latest") && \
+    PARKOUR_RELEASE=$(curl -fsSL "https://api.github.com/repos/A5H73Y/Parkour/releases/tags/${PARKOUR_RELEASE_TAG}") && \
     PARKOUR_URL=$(echo "$PARKOUR_RELEASE" | jq -r '[.assets[] | select(.name | endswith(".jar"))][0].browser_download_url') && \
     PARKOUR_EXPECTED_SIZE=$(echo "$PARKOUR_RELEASE" | jq -r '[.assets[] | select(.name | endswith(".jar"))][0].size') && \
     if [ -z "$PARKOUR_URL" ] || [ "$PARKOUR_URL" = "null" ] || \
@@ -68,22 +76,18 @@ RUN validate_sha256() { \
         { echo "Parkour size mismatch: expected ${PARKOUR_EXPECTED_SIZE}, got ${PARKOUR_ACTUAL_SIZE}"; exit 1; } && \
     echo "Parkour SHA-256: $(sha256sum plugins/Parkour.jar)" && \
     # Multiverse-Core — SHA-256 from Hangar API
-    MV_VERSION=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/latestrelease" \
-      | tr -d '"') && \
-    MV_SHA256=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MV_VERSION}" \
+    MV_SHA256=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MULTIVERSE_VERSION}" \
       | jq -r '.downloads.PAPER.fileInfo.sha256Hash') && \
     validate_sha256 "$MV_SHA256" "Multiverse-Core" && \
     curl -fsSL -o plugins/Multiverse-Core.jar \
-      "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MV_VERSION}/PAPER/download" && \
+      "https://hangar.papermc.io/api/v1/projects/Multiverse-Core/versions/${MULTIVERSE_VERSION}/PAPER/download" && \
     echo "${MV_SHA256}  plugins/Multiverse-Core.jar" | sha256sum -c - && \
     # WorldEdit — SHA-256 from Hangar API
-    WE_VERSION=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/WorldEdit/latestrelease" \
-      | tr -d '"') && \
-    WE_SHA256=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WE_VERSION}" \
+    WE_SHA256=$(curl -fsSL "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WORLDEDIT_VERSION}" \
       | jq -r '.downloads.PAPER.fileInfo.sha256Hash') && \
     validate_sha256 "$WE_SHA256" "WorldEdit" && \
     curl -fsSL -o plugins/WorldEdit.jar \
-      "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WE_VERSION}/PAPER/download" && \
+      "https://hangar.papermc.io/api/v1/projects/WorldEdit/versions/${WORLDEDIT_VERSION}/PAPER/download" && \
     echo "${WE_SHA256}  plugins/WorldEdit.jar" | sha256sum -c - && \
     ls -la plugins/*.jar && \
     echo "All plugins downloaded and verified"
@@ -182,7 +186,7 @@ RUN cp -a plugins plugins.pristine && \
             -Xms512M -Xmx512M -XX:+UseG1GC \
             -jar server.jar nogui & \
         PID=$! && \
-        until grep -q "Done" logs/latest.log 2>/dev/null; do \
+        until grep -qE "INFO\]: Done \([0-9.]+s\)!" logs/latest.log 2>/dev/null; do \
             kill -0 $PID 2>/dev/null || { echo "Server process died during AppCDS training"; break; }; \
             sleep 2; \
         done && \
