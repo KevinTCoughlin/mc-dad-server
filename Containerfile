@@ -136,8 +136,8 @@ RUN apk add --no-cache bash && \
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Non-root user
-RUN addgroup -S minecraft && \
-    adduser -D -S -G minecraft -s /sbin/nologin minecraft
+RUN addgroup -g 1000 -S minecraft && \
+    adduser -u 1000 -D -S -G minecraft -s /sbin/nologin minecraft
 
 # Copy server files from builder
 COPY --from=builder --chown=minecraft:minecraft /minecraft /minecraft
@@ -159,7 +159,7 @@ LABEL org.opencontainers.image.title="MC Dad Server" \
 # Remove setuid/setgid bits after all COPY steps to cover files from builder stage
 RUN find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true
 
-USER minecraft
+USER 1000:1000
 WORKDIR /minecraft
 
 # ---------------------------------------------------------------------------
@@ -205,6 +205,6 @@ RUN cp -a plugins plugins.pristine && \
 EXPOSE 25565/tcp 19132/udp 25575/tcp
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
-    CMD cat /proc/*/cmdline 2>/dev/null | tr '\0' '\n' | grep -q server.jar || exit 1
+    CMD ["bash", "-c", "cat /proc/*/cmdline 2>/dev/null | tr '\\0' '\\n' | grep -q server.jar || exit 1"]
 
 ENTRYPOINT ["/entrypoint.sh"]
