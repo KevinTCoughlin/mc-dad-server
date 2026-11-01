@@ -1,0 +1,46 @@
+version: 2
+# Keeps Go modules, pinned GitHub Actions SHAs, and container base-image
+# digests current. CI (including the Go 1.25 compatibility matrix) gates
+# every update.
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
+    groups:
+      # golang.org/x/* periodically raise their minimum Go version; keep them
+      # in their own PR so a Go 1.25 compat break never blocks other updates.
+      golang-x:
+        patterns: ["golang.org/x/*"]
+      go-dependencies:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Containerfile builder/runtime base images (pinned by digest).
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
+    groups:
+      container-images:
+        patterns: ["*"]
+
+  - package-ecosystem: devcontainers
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore
