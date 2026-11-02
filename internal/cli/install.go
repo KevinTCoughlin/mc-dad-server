@@ -34,7 +34,7 @@ type InstallCmd struct {
 	ChatFilter bool   `help:"Install chat filter plugin" default:"true" name:"chat-filter" negatable:""`
 	Playit     bool   `help:"Set up playit.gg tunnel" default:"true" negatable:""`
 	Bun        bool   `help:"[Experimental] Enable Bun scripting sidecar" default:"false" name:"experimental-bun"`
-	MCVersion  string `help:"Minecraft version" default:"latest" name:"mc-version"`
+	MCVersion  string `help:"Minecraft version. 'latest' is the newest stable Paper release at or below 26.3; 26.4 is refused." default:"26.3" name:"mc-version"`
 }
 
 func (cmd *InstallCmd) toConfig(globals *Globals) *config.ServerConfig {

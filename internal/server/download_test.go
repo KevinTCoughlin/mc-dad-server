@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,8 +14,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
+
+func TestDefaultConfigUsesSupportedPaper(t *testing.T) {
+	t.Parallel()
+
+	if got := config.DefaultConfig().Version; got != SupportedPaperVersion {
+		t.Fatalf("default version = %q, want %s", got, SupportedPaperVersion)
+	}
+}
 
 func TestPaperDownloadURL_Latest(t *testing.T) {
 	t.Parallel()
@@ -201,6 +211,205 @@ func TestPaperDownloadURL_NoDownload(t *testing.T) {
 	if !strings.Contains(err.Error(), "no download found") {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+func TestPaperDownloadURL_LatestCapsAtSupportedRelease(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v3/projects/paper/versions", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"versions": []map[string]any{
+				{"version": map[string]any{"id": "26.4"}},
+				{"version": map[string]any{"id": "26.4-snapshot-5"}},
+				{"version": map[string]any{"id": "26.3"}},
+				{"version": map[string]any{"id": "26.2"}},
+			},
+		})
+	})
+	mux.HandleFunc("/v3/projects/paper/versions/26.3/builds/latest", func(w http.ResponseWriter, _ *http.Request) {
+		writePaperBuild(w, 236, "https://fill-data.papermc.io/v1/objects/paper263/paper-26.3-236.jar")
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	art, err := paperArtifact(context.Background(), "latest", srv.URL+"/v3")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expected := "https://fill-data.papermc.io/v1/objects/paper263/paper-26.3-236.jar"
+	if art.URL != expected {
+		t.Fatalf("got %q, want %q", art.URL, expected)
+	}
+}
+
+func TestPaperDownloadURL_RejectsNewerRelease(t *testing.T) {
+	t.Parallel()
+
+	_, err := paperArtifact(context.Background(), "26.4", "http://paper.invalid")
+	if err == nil {
+		t.Fatal("expected 26.4 to be refused")
+	}
+	if !strings.Contains(err.Error(), "newest supported release is 26.3") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPaperDownloadURL_RejectsSnapshot(t *testing.T) {
+	t.Parallel()
+
+	_, err := paperArtifact(context.Background(), "26.4-snapshot-5", "http://paper.invalid")
+	if err == nil {
+		t.Fatal("expected snapshot to be refused")
+	}
+	if !strings.Contains(err.Error(), "snapshots") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPaperDownloadURL_RejectsBuildBeforeFixes(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v3/projects/paper/versions/26.3/builds/latest", func(w http.ResponseWriter, _ *http.Request) {
+		writePaperBuild(w, 232, "https://fill-data.papermc.io/v1/objects/old/paper-26.3-232.jar")
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	_, err := paperArtifact(context.Background(), "26.3", srv.URL+"/v3")
+	if err == nil {
+		t.Fatal("expected build 232 to be refused")
+	}
+	if !strings.Contains(err.Error(), "need build 233") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPaperDownloadURL_AcceptsMinimumFixedBuild(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v3/projects/paper/versions/26.3/builds/latest", func(w http.ResponseWriter, _ *http.Request) {
+		writePaperBuild(w, MinPaperBuild, "https://fill-data.papermc.io/v1/objects/min/paper-26.3-233.jar")
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	rel, err := resolvePaperRelease(context.Background(), SupportedPaperVersion, srv.URL+"/v3")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expected := "https://fill-data.papermc.io/v1/objects/min/paper-26.3-233.jar"
+	if rel.Artifact.URL != expected {
+		t.Fatalf("got %q, want %q", rel.Artifact.URL, expected)
+	}
+	if rel.Version != SupportedPaperVersion || rel.Build != MinPaperBuild {
+		t.Fatalf("release = %+v", rel)
+	}
+}
+
+func TestPaperDownloadURL_NoSupportedVersion(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v3/projects/paper/versions", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"versions": []map[string]any{
+				{"version": map[string]any{"id": "26.4"}},
+				{"version": map[string]any{"id": "26.4-snapshot-5"}},
+			},
+		})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	_, err := paperArtifact(context.Background(), "latest", srv.URL+"/v3")
+	if err == nil {
+		t.Fatal("expected error when every version is newer than 26.3")
+	}
+	if !strings.Contains(err.Error(), "no Paper version at or below 26.3") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestComparePaperVersions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		a, b string
+		want int
+	}{
+		{"26.3", "26.3", 0},
+		{"26.3", "26.3.0", 0},
+		{"26.2", "26.3", -1},
+		{"26.4", "26.3", 1},
+		{"26.10", "26.3", 1},
+		{"1.21.11", "26.3", -1},
+		{"26.3.1", "26.3", 1},
+	}
+	for _, tt := range tests {
+		got, ok := comparePaperVersions(tt.a, tt.b)
+		if !ok {
+			t.Fatalf("comparePaperVersions(%q, %q) did not parse", tt.a, tt.b)
+		}
+		if got != tt.want {
+			t.Fatalf("comparePaperVersions(%q, %q) = %d, want %d", tt.a, tt.b, got, tt.want)
+		}
+	}
+	if _, ok := comparePaperVersions("26.4-snapshot-5", "26.3"); ok {
+		t.Fatal("snapshot version should not compare as stable")
+	}
+}
+
+func TestContainerPinsMatchSupportedPaper(t *testing.T) {
+	t.Parallel()
+
+	root := filepath.Join("..", "..")
+	container, err := os.ReadFile(filepath.Join(root, "Containerfile"))
+	if err != nil {
+		t.Fatalf("reading Containerfile: %v", err)
+	}
+	compose, err := os.ReadFile(filepath.Join(root, "compose.yml"))
+	if err != nil {
+		t.Fatalf("reading compose.yml: %v", err)
+	}
+	text := string(container)
+	for _, want := range []string{
+		"ARG MC_VERSION=" + SupportedPaperVersion,
+		fmt.Sprintf("ARG PAPER_MIN_BUILD=%d", MinPaperBuild),
+		"ARG GEYSER_VERSION=2.12.1",
+		"ARG GEYSER_BUILD=1280",
+		"ARG MULTIVERSE_VERSION=5.8.2",
+		"ARG WORLDEDIT_VERSION=7.4.6",
+		"FROM eclipse-temurin:25-jre-alpine@",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("Containerfile missing %q", want)
+		}
+	}
+	if !strings.Contains(string(compose), "MC_VERSION: \"${MC_VERSION:-"+SupportedPaperVersion+"}\"") {
+		t.Errorf("compose.yml default MC_VERSION is not %s", SupportedPaperVersion)
+	}
+}
+
+func writePaperBuild(w http.ResponseWriter, id int, url string) {
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"id": id,
+		"downloads": map[string]any{
+			"server:default": map[string]any{
+				"name": "paper.jar",
+				"url":  url,
+				"checksums": map[string]any{
+					"sha256": "abc",
+				},
+			},
+		},
+	})
 }
 
 func TestPaperDownloadURL_UserAgent(t *testing.T) {

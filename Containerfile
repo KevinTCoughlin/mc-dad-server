@@ -3,9 +3,12 @@
 # Runtime: Eclipse Temurin 25 JRE on Alpine Linux
 # https://github.com/KevinTCoughlin/mc-dad-server
 
-# Pinned versions — update these to bump components
-# WorldEdit 7.4.5 supports up to 26.2; 26.3 fails during plugin startup.
-ARG MC_VERSION=26.2
+# Pinned versions — update these to bump components.
+# Paper stays on 26.3. Minecraft 26.4 snapshot 5 changed the login protocol
+# and is not selected, even when MC_VERSION=latest.
+# WorldEdit 7.4.6, Multiverse-Core 5.8.2, and Geyser 2.12.1 support Paper 26.3.
+# WorldEdit 7.4.5 and Geyser 2.11.3 do not start on that line.
+ARG MC_VERSION=26.3
 
 # ---------------------------------------------------------------------------
 # Stage 1: Builder — Downloads Paper JAR + plugins
@@ -25,13 +28,13 @@ RUN apt-get update && \
 WORKDIR /minecraft
 
 # Plugin pins also invalidate the download layer when upstream releases change.
-ARG GEYSER_VERSION=2.11.3
-ARG GEYSER_BUILD=1251
+ARG GEYSER_VERSION=2.12.1
+ARG GEYSER_BUILD=1280
 ARG FLOODGATE_VERSION=2.2.5
 ARG FLOODGATE_BUILD=141
 ARG PARKOUR_RELEASE_TAG=Parkour-7.2.8-RELEASE.136
-ARG MULTIVERSE_VERSION=5.8.1
-ARG WORLDEDIT_VERSION=7.4.5
+ARG MULTIVERSE_VERSION=5.8.2
+ARG WORLDEDIT_VERSION=7.4.6
 
 # Download plugins sequentially with SHA-256 verification where available.
 # GeyserMC/Floodgate hashes come from their builds API; Hangar provides SHA-256
@@ -92,25 +95,73 @@ RUN validate_sha256() { \
     ls -la plugins/*.jar && \
     echo "All plugins downloaded and verified"
 
-# ARG placed here so MC_VERSION changes only bust the Paper download layer
+# ARG placed here so MC_VERSION changes only bust the Paper download layer.
+# PAPER_MIN_BUILD is the first 26.3 build that contains the fire, splash, and
+# respawn fixes (builds 228, 229, and 233). Keep this in sync with
+# server.MinPaperBuild.
 ARG MC_VERSION
+ARG PAPER_MIN_BUILD=233
 
 # Download Paper server JAR via PaperMC Fill v3 API with SHA-256 verification.
-# When MC_VERSION=latest, prefer the newest stable Paper version and skip
-# release candidates / previews so bundled plugins stay on a compatible line.
-# Fill v3 requires a descriptive User-Agent header on every request.
-RUN set -e && \
+# "latest" means the newest stable release at or below 26.3. Numeric 26.4 ids,
+# snapshots, previews, and release candidates are refused. 26.3 builds older
+# than PAPER_MIN_BUILD are refused. Fill v3 requires a User-Agent header.
+# hadolint ignore=SC2016
+# pipefail comes from the SHELL instruction above. set -o pipefail is not POSIX
+# and Hadolint flags it (SC3040) even though this RUN is bash.
+RUN set -eu && \
     UA="mc-dad-server (https://github.com/KevinTCoughlin/mc-dad-server)" && \
+    SUPPORTED="26.3" && \
+    MIN_BUILD="${PAPER_MIN_BUILD}" && \
+    version_newer() { \
+        awk -v a="$1" -v b="$2" 'BEGIN { \
+            n = split(a, aa, "."); \
+            m = split(b, bb, "."); \
+            if (m > n) n = m; \
+            for (i = 1; i <= n; i++) { \
+                av = aa[i] + 0; bv = bb[i] + 0; \
+                if (av > bv) exit 0; \
+                if (av < bv) exit 1; \
+            } \
+            exit 1; \
+        }'; \
+    } && \
     MC_VER="${MC_VERSION}" && \
     if [ "$MC_VER" = "latest" ] || [ -z "$MC_VER" ]; then \
-        MC_VER=$(curl -fsSL -H "User-Agent: ${UA}" \
-            "https://fill.papermc.io/v3/projects/paper/versions" \
-            | jq -r '[.versions[].version.id | select(test("^[0-9]+(\\.[0-9]+){1,2}$"))][0]'); \
-        [ -n "$MC_VER" ] && [ "$MC_VER" != "null" ] || \
-            { echo "Failed to resolve latest stable Paper version"; exit 1; }; \
+        VERSIONS=$(curl -fsSL -H "User-Agent: ${UA}" \
+            "https://fill.papermc.io/v3/projects/paper/versions") && \
+        printf '%s\n' "$VERSIONS" | jq -r '.versions[].version.id | select(test("^[0-9]+(\\.[0-9]+){1,2}$"))' > /tmp/paper-versions && \
+        MC_VER="" && \
+        while IFS= read -r candidate; do \
+            [ -n "$candidate" ] || continue; \
+            if version_newer "$candidate" "$SUPPORTED"; then continue; fi; \
+            if [ -z "$MC_VER" ] || version_newer "$candidate" "$MC_VER"; then \
+                MC_VER="$candidate"; \
+            fi; \
+        done < /tmp/paper-versions && \
+        [ -n "$MC_VER" ] || { echo "No stable Paper version at or below ${SUPPORTED}"; exit 1; }; \
+    fi && \
+    printf '%s\n' "$MC_VER" | grep -qE '^[0-9]+(\.[0-9]+){1,2}$' || { \
+        echo "Refusing Paper version ${MC_VER}: snapshots, previews, and release candidates are not installed"; \
+        exit 1; \
+    } && \
+    if version_newer "$MC_VER" "$SUPPORTED"; then \
+        echo "Refusing Paper ${MC_VER}: newest supported release is ${SUPPORTED}"; \
+        exit 1; \
     fi && \
     BUILD_JSON=$(curl -fsSL -H "User-Agent: ${UA}" \
         "https://fill.papermc.io/v3/projects/paper/versions/${MC_VER}/builds/latest") && \
+    BUILD_ID=$(echo "$BUILD_JSON" | jq -r '.id') && \
+    case "$MC_VER" in \
+        26.3|26.3.0) \
+            printf '%s\n' "$BUILD_ID" | grep -qE '^[0-9]+$' || { \
+                echo "Paper ${MC_VER} response has no build id"; exit 1; \
+            }; \
+            if [ "$BUILD_ID" -lt "$MIN_BUILD" ]; then \
+                echo "Refusing Paper ${MC_VER} build ${BUILD_ID}: need build ${MIN_BUILD} or newer"; \
+                exit 1; \
+            fi ;; \
+    esac && \
     JAR_NAME=$(echo "$BUILD_JSON" | jq -r '.downloads["server:default"].name') && \
     EXPECTED_SHA256=$(echo "$BUILD_JSON" | jq -r '.downloads["server:default"].checksums.sha256') && \
     DOWNLOAD_URL=$(echo "$BUILD_JSON" | jq -r '.downloads["server:default"].url') && \
@@ -118,13 +169,14 @@ RUN set -e && \
         { echo "Invalid SHA-256 for Paper: ${EXPECTED_SHA256}"; exit 1; } && \
     curl -fsSL -H "User-Agent: ${UA}" -o server.jar "$DOWNLOAD_URL" && \
     echo "${EXPECTED_SHA256}  server.jar" | sha256sum -c - && \
-    echo "Downloaded and verified Paper ${MC_VER}: ${JAR_NAME}"
+    echo "Downloaded and verified Paper ${MC_VER} build ${BUILD_ID}: ${JAR_NAME}"
 
 # Accept EULA
 RUN echo "eula=true" > eula.txt
 
 # ---------------------------------------------------------------------------
-# Stage 2: Runtime — Eclipse Temurin 25 JRE on Alpine Linux
+# Stage 2: Runtime — Eclipse Temurin 25 JRE on Alpine Linux.
+# Paper 26.3 requires Java 25. Do not switch this base to Java 21.
 # ---------------------------------------------------------------------------
 FROM eclipse-temurin:25-jre-alpine@sha256:28db6fdf60e38945e43d840c0333aeaec66c15943070104f7586fd3c9d1665b0 AS runtime
 
@@ -151,7 +203,8 @@ COPY --chown=minecraft:minecraft configs/paper-global.yml /minecraft/config/pape
 COPY --chown=minecraft:minecraft configs/paper-world-defaults.yml /minecraft/config/paper-world-defaults.yml
 
 LABEL org.opencontainers.image.title="MC Dad Server" \
-      org.opencontainers.image.description="Containerized Minecraft Paper server with Geyser cross-play, Parkour, and tuned configs" \
+      org.opencontainers.image.description="Containerized Minecraft Paper 26.3 server on Eclipse Temurin 25, with Geyser cross-play, Parkour, and tuned configs" \
+      org.opencontainers.image.base.name="eclipse-temurin:25-jre-alpine" \
       org.opencontainers.image.source="https://github.com/KevinTCoughlin/mc-dad-server" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.vendor="KevinTCoughlin"

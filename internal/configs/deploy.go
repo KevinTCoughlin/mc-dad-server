@@ -165,6 +165,7 @@ func (d *Deployer) DeployCompose(cfg *config.ServerConfig, destDir string) error
 		"BedrockPort":   config.BedrockPort,
 		"ServerType":    serverType,
 		"Version":       cfg.Version,
+		"PaperBuild":    cfg.PaperBuild,
 		"Memory":        cfg.Memory,
 		"MOTD":          cfg.MOTD,
 		"MaxPlayers":    cfg.MaxPlayers,

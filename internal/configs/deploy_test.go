@@ -154,7 +154,8 @@ func TestDeployCompose(t *testing.T) {
 	cfg.GameMode = "creative"
 	cfg.GCType = "g1gc"
 	cfg.Whitelist = true
-	cfg.Version = "latest"
+	cfg.Version = "26.3"
+	cfg.PaperBuild = 237
 
 	if err := d.DeployCompose(cfg, dir); err != nil {
 		t.Fatalf("d.DeployCompose() error: %v", err)
@@ -183,6 +184,8 @@ func TestDeployCompose(t *testing.T) {
 		{"volume mount", "minecraft_data:/data"},
 		{"volume definition", "minecraft_data:"},
 		{"restart policy", "restart: unless-stopped"},
+		{"paper version", `VERSION: "26.3"`},
+		{"paper build", `PAPER_BUILD: "237"`},
 	}
 	for _, c := range checks {
 		if !strings.Contains(content, c.want) {

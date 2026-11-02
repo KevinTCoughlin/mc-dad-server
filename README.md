@@ -11,6 +11,14 @@
 
 One binary, zero fuss. Run `mc-dad-server install` for a bare-metal server, or use the included Containerfile for Docker/Podman — with Bedrock cross-play, Parkour courses, and tuned configs out of the box.
 
+## Requirements
+
+This release runs **Paper 26.3** on **Java 25** (Eclipse Temurin). The installer reads `java --version`. When Java is missing or older than 25, it says so and installs Temurin 25.
+
+Java 21 and Minecraft 1.21 stay on the previous release, [v0.2.0](https://github.com/KevinTCoughlin/mc-dad-server/releases/tag/v0.2.0). That release installs Temurin 21. It does not run Paper 26.3.
+
+The container image is `eclipse-temurin:25-jre-alpine`. There is no Java 21 server image.
+
 ## Quick Start
 
 ```bash
@@ -47,8 +55,8 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 
 ## What It Does
 
-- Installs Adoptium Temurin Java 21+ (open-source, no Oracle)
-- Downloads Paper MC (optimized, fast, plugin-ready)
+- Installs Adoptium Temurin Java 25+ (required by Paper 26.3)
+- Downloads Paper 26.3, build 233 or newer (optimized, fast, plugin-ready)
 - Deploys tuned server configs from a battle-tested PaperMC server
 - Downloads and installs plugins (Geyser, Parkour, WorldEdit, Multiverse, ChatSentry)
 - Sets up start script with GC selection (G1GC or ZGC)
@@ -99,7 +107,7 @@ mc-dad-server install \
 | `--motd` | `Dads Minecraft Server` | Message of the day |
 | `--playit` | `true` | Set up playit.gg tunnel (`--no-playit` to skip) |
 | `--chat-filter` | `true` | Install chat filter plugin (`--no-chat-filter` to skip) |
-| `--mc-version` | `latest` | Minecraft version |
+| `--mc-version` | `26.3` | Minecraft version. `latest` stays on the newest stable release at or below 26.3. `26.4` and snapshots are refused. |
 | `--experimental-bun` | `false` | Enable [TypeScript/JS scripting sidecar](docs/scripting.md) |
 
 ### Global Flags
@@ -132,7 +140,7 @@ mc-dad-server backup
 
 ## Container Deployment
 
-Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Eclipse Temurin 25 JRE on Alpine Linux and includes Geyser, Floodgate, Parkour, Multiverse, and WorldEdit. Container builds pin plugin releases and default to Paper 26.2, the newest Minecraft version supported by WorldEdit 7.4.5. Override `MC_VERSION` at build time only after checking plugin compatibility.
+Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Eclipse Temurin 25 JRE on Alpine Linux and includes Geyser 2.12.1, Floodgate 2.2.5, Parkour 7.2.8, Multiverse-Core 5.8.2, and WorldEdit 7.4.6. Container builds pin those plugin releases and Paper 26.3 (build 233 or newer). `MC_VERSION=latest` does not follow a newer Paper line. Override `MC_VERSION` at build time only after checking [plugin compatibility](docs/paper-compatibility.md).
 
 ```bash
 # Build and start with Podman Compose
@@ -159,7 +167,7 @@ podman logs -f minecraft          # follow server logs
 | `PORT` | `25565` | Minecraft server port |
 | `RCON_PORT` | `25575` | RCON port (localhost only) |
 | `RCON_PASSWORD` | required | RCON password (generate one with `openssl rand -base64 24`) |
-| `MC_VERSION` | `latest` | Minecraft version to download |
+| `MC_VERSION` | `26.3` | Minecraft version to download. Snapshots and 26.4 are refused. |
 
 ### Systemd Integration (Quadlet)
 
@@ -253,9 +261,9 @@ No port forwarding. No exposing your home IP. Easy.
 
 ## Building from Source
 
-**Quickest path:** Open in [GitHub Codespaces](https://github.com/codespaces) — the dev container includes Go 1.26, Java 21, Kotlin, and all dev tools pre-configured. The repo prefers `go1.26.5` and remains compatible with `go1.25.12`.
+**Quickest path:** Open in [GitHub Codespaces](https://github.com/codespaces) — the dev container includes Go 1.26, Eclipse Temurin 25, Kotlin, and all dev tools pre-configured. The repo prefers `go1.26.5` and remains compatible with `go1.25.12`.
 
-**Local prerequisites:** Go `1.25.12+` with `go1.26.5` recommended, [just](https://github.com/casey/just#installation), and optionally Java 21+ and Kotlin for plugin work. Run `just tools` to install the Go dev tools (golangci-lint, gofumpt, goreleaser).
+**Local prerequisites:** Go `1.25.12+` with `go1.26.5` recommended, [just](https://github.com/casey/just#installation), and optionally Eclipse Temurin 25 and Kotlin for plugin work. This repo has no Gradle or Maven module; the devcontainer Java feature is Temurin 25, which is the toolchain any plugin code would compile with. Run `just tools` to install the Go dev tools (golangci-lint, gofumpt, goreleaser).
 
 ```bash
 git clone https://github.com/KevinTCoughlin/mc-dad-server.git
@@ -279,7 +287,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 2GB is fine for 2-5 players. 4GB for 5-10. 8GB if the kids go crazy with mods.
 
 **Q: G1GC or ZGC?**
-G1GC (default) is battle-tested with Aikar's flags. ZGC is newer, lower latency, great for Java 21+ servers with 8GB+ RAM. Try `--gc zgc` if you want to experiment.
+G1GC (default) is battle-tested with Aikar's flags. ZGC is newer and lower latency on this Java 25 runtime when the machine has 8GB or more. Try `--gc zgc` if you want to experiment.
 
 **Q: Can my kids on iPad/Switch join?**
 Yes! Geyser + Floodgate is installed by default. Bedrock players connect on port 19132. No Java account needed.
@@ -303,7 +311,7 @@ Yes! Use `podman compose up -d` (or `docker compose up -d`). The CLI auto-detect
 Systemd will auto-restart it. Backups run daily at 4 AM. In container mode, Podman/Docker restarts the container automatically.
 
 **Q: What Java does it install?**
-Adoptium Temurin 21+ for bare-metal installs; the container image uses Temurin 25.
+Eclipse Temurin 25. Paper 26.3 requires it, on bare metal and in the `eclipse-temurin:25-jre-alpine` image. If `java --version` is missing or older than 25, the installer explains that and installs Temurin 25. To stay on Java 21 and Minecraft 1.21, use [v0.2.0](https://github.com/KevinTCoughlin/mc-dad-server/releases/tag/v0.2.0).
 
 ## Uninstall
 

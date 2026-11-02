@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Containerfile
       args:
-        MC_VERSION: "${MC_VERSION:-latest}"
+        MC_VERSION: "${MC_VERSION:-26.3}"
     image: localhost/mc-dad-server:latest
     container_name: minecraft
     ports:

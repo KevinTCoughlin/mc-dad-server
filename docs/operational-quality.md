@@ -22,6 +22,8 @@ Use this checklist before cutting a release or validating a change that affects 
 - Confirm a failed server JAR download does not replace an existing `server.jar`.
 - Confirm a checksum mismatch removes only the failed temporary download.
 - Confirm generated configs include the selected port, memory, game mode, difficulty, MOTD, whitelist, and RCON settings.
+- For the Paper 26.3 pin, Java 25 requirement, bundled plugin versions, and the live login checklist, see [Paper compatibility](paper-compatibility.md).
+- Confirm CI installed Eclipse Temurin 25 and `TestSystemJavaMeetsPaperRequirement` ran with `REQUIRE_JAVA25=1`.
 
 ## Server management smoke test
 
