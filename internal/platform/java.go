@@ -125,7 +125,7 @@ func parseJavaVersion(out string) (int, error) {
 	return 0, fmt.Errorf("cannot parse java version: %s", line)
 }
 
-var osReleaseCodename = regexp.MustCompile(`(?m)^VERSION_CODENAME=(?:"|')?([A-Za-z0-9._-]+)(?:"|')?\s*$`)
+var osReleaseCodename = regexp.MustCompile(`(?m)^VERSION_CODENAME=["']?([A-Za-z0-9._-]+)["']?\s*$`)
 
 func installJavaAPT(ctx context.Context, runner CommandRunner, output *ui.UI) error {
 	output.Info("Adding the Adoptium APT repository...")

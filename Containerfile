@@ -112,19 +112,17 @@ RUN set -euo pipefail && \
     SUPPORTED="26.3" && \
     MIN_BUILD="${PAPER_MIN_BUILD}" && \
     version_newer() { \
-        local a="$1" b="$2" i n av bv; \
-        local -a aa bb; \
-        IFS='.' read -r -a aa <<< "$a"; \
-        IFS='.' read -r -a bb <<< "$b"; \
-        n=${#aa[@]}; \
-        if [ "${#bb[@]}" -gt "$n" ]; then n=${#bb[@]}; fi; \
-        for ((i = 0; i < n; i++)); do \
-            av=${aa[i]:-0}; \
-            bv=${bb[i]:-0}; \
-            if [ "$av" -gt "$bv" ]; then return 0; fi; \
-            if [ "$av" -lt "$bv" ]; then return 1; fi; \
-        done; \
-        return 1; \
+        awk -v a="$1" -v b="$2" 'BEGIN { \
+            n = split(a, aa, "."); \
+            m = split(b, bb, "."); \
+            if (m > n) n = m; \
+            for (i = 1; i <= n; i++) { \
+                av = aa[i] + 0; bv = bb[i] + 0; \
+                if (av > bv) exit 0; \
+                if (av < bv) exit 1; \
+            } \
+            exit 1; \
+        }'; \
     } && \
     MC_VER="${MC_VERSION}" && \
     if [ "$MC_VER" = "latest" ] || [ -z "$MC_VER" ]; then \
