@@ -13,7 +13,7 @@ ARG MC_VERSION=26.3
 # ---------------------------------------------------------------------------
 # Stage 1: Builder — Downloads Paper JAR + plugins
 # ---------------------------------------------------------------------------
-FROM debian:trixie-slim@sha256:020c0d20b9880058cbe785a9db107156c3c75c2ac944a6aa7ab59f2add76a7bd AS builder
+FROM debian:trixie-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4 AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -178,7 +178,7 @@ RUN echo "eula=true" > eula.txt
 # Stage 2: Runtime — Eclipse Temurin 25 JRE on Alpine Linux.
 # Paper 26.3 requires Java 25. Do not switch this base to Java 21.
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:25-jre-alpine@sha256:28db6fdf60e38945e43d840c0333aeaec66c15943070104f7586fd3c9d1665b0 AS runtime
+FROM eclipse-temurin:25-jre-alpine@sha256:56f273059de6b13a6b49fe0ded691ed2d0399bbee76156a8f2d385f7524a3d43 AS runtime
 
 # Install bash (required by entrypoint.sh for arrays and parameter expansion)
 # hadolint ignore=DL3018
