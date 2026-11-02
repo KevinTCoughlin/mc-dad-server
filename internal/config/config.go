@@ -27,6 +27,7 @@ type ServerConfig struct {
 	EnablePlayit bool   `json:"enable_playit"`
 	EnableBun    bool   `json:"enable_bun"`
 	Version      string `json:"version"`
+	PaperBuild   int    `json:"paper_build,omitempty"`
 	SessionName  string `json:"session_name"`
 	MaxBackups   int    `json:"max_backups"`
 	VoteDuration int    `json:"vote_duration"`

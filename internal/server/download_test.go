@@ -299,13 +299,16 @@ func TestPaperDownloadURL_AcceptsMinimumFixedBuild(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	art, err := paperArtifact(context.Background(), SupportedPaperVersion, srv.URL+"/v3")
+	rel, err := resolvePaperRelease(context.Background(), SupportedPaperVersion, srv.URL+"/v3")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	expected := "https://fill-data.papermc.io/v1/objects/min/paper-26.3-233.jar"
-	if art.URL != expected {
-		t.Fatalf("got %q, want %q", art.URL, expected)
+	if rel.Artifact.URL != expected {
+		t.Fatalf("got %q, want %q", rel.Artifact.URL, expected)
+	}
+	if rel.Version != SupportedPaperVersion || rel.Build != MinPaperBuild {
+		t.Fatalf("release = %+v", rel)
 	}
 }
 

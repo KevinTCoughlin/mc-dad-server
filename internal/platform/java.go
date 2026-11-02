@@ -125,24 +125,55 @@ func parseJavaVersion(out string) (int, error) {
 	return 0, fmt.Errorf("cannot parse java version: %s", line)
 }
 
+var osReleaseCodename = regexp.MustCompile(`(?m)^VERSION_CODENAME=(?:"|')?([A-Za-z0-9._-]+)(?:"|')?\s*$`)
+
 func installJavaAPT(ctx context.Context, runner CommandRunner, output *ui.UI) error {
-	// Try Adoptium repo first
-	output.Info("Adding Adoptium APT repository...")
-	err := runner.RunSudo(ctx, "apt-get", "update", "-qq")
-	if err != nil {
+	output.Info("Adding the Adoptium APT repository...")
+	if err := runner.RunSudo(ctx, "apt-get", "update", "-qq"); err != nil {
 		return err
 	}
-	err = runner.RunSudo(ctx, "apt-get", "install", "-y", "-qq", "wget", "apt-transport-https", "gpg")
-	if err != nil {
+	if err := runner.RunSudo(ctx, "apt-get", "install", "-y", "-qq", "wget", "ca-certificates", "gpg"); err != nil {
 		return err
 	}
 
-	if err := runner.RunSudo(ctx, "apt-get", "install", "-y", "-qq", "temurin-25-jdk"); err != nil {
-		output.Warn("Adoptium repo unavailable, falling back to distro OpenJDK")
+	codename, err := debianCodename(ctx, runner)
+	if err != nil {
+		output.Warn("Could not read the Debian codename (%v); falling back to distro OpenJDK 25", err)
+		return runner.RunSudo(ctx, "apt-get", "install", "-y", "-qq", "openjdk-25-jre-headless")
+	}
+
+	// The signed Adoptium repo is required on Debian 12: temurin-25-jdk is not
+	// in the default archives, and OpenJDK 25 is not either.
+	if err := runner.RunSudo(ctx, "bash", "-c", adoptiumAptScript(codename)); err != nil {
+		output.Warn("Adoptium repository install failed (%v); falling back to distro OpenJDK 25", err)
 		return runner.RunSudo(ctx, "apt-get", "install", "-y", "-qq", "openjdk-25-jre-headless")
 	}
 	output.Success("Adoptium Temurin 25 installed via APT")
 	return nil
+}
+
+func debianCodename(ctx context.Context, runner CommandRunner) (string, error) {
+	out, err := runner.RunWithOutput(ctx, "cat", "/etc/os-release")
+	if err != nil {
+		return "", err
+	}
+	m := osReleaseCodename.FindSubmatch(out)
+	if m == nil {
+		return "", fmt.Errorf("VERSION_CODENAME missing from /etc/os-release")
+	}
+	return string(m[1]), nil
+}
+
+// adoptiumAptScript adds the signed Adoptium repository and installs Temurin 25.
+// codename must already be restricted to a single release token.
+func adoptiumAptScript(codename string) string {
+	return fmt.Sprintf(`set -euo pipefail
+rm -f /etc/apt/trusted.gpg.d/adoptium.gpg
+wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /etc/apt/trusted.gpg.d/adoptium.gpg
+printf 'deb https://packages.adoptium.net/artifactory/deb %s main\n' > /etc/apt/sources.list.d/adoptium.list
+apt-get update -qq
+apt-get install -y -qq temurin-25-jdk
+`, codename)
 }
 
 func installJavaDNF(ctx context.Context, runner CommandRunner, output *ui.UI) error {

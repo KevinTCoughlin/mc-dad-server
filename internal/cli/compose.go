@@ -1,12 +1,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/configs"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
+	"github.com/KevinTCoughlin/mc-dad-server/internal/server"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
@@ -48,9 +50,22 @@ func (cmd *GenerateComposeCmd) toConfig() *config.ServerConfig {
 
 // Run generates a compose.yml file.
 func (cmd *GenerateComposeCmd) Run(_ *Globals, runner platform.CommandRunner, output *ui.UI, deployer *configs.Deployer) error {
+	ctx := context.Background()
 	cfg := cmd.toConfig()
 	if err := cfg.Validate(); err != nil {
 		return err
+	}
+	if strings.EqualFold(cfg.ServerType, "paper") {
+		// itzg/minecraft-server downloads Paper itself. Resolve the same
+		// version ceiling and build floor as the installer before writing
+		// VERSION and PAPER_BUILD into the compose file.
+		rel, err := server.ResolvePaperRelease(ctx, cfg.Version)
+		if err != nil {
+			return fmt.Errorf("resolving Paper version: %w", err)
+		}
+		cfg.Version = rel.Version
+		cfg.PaperBuild = rel.Build
+		output.Info("Paper %s build %d", rel.Version, rel.Build)
 	}
 
 	if err := deployer.DeployCompose(cfg, cmd.Output); err != nil {

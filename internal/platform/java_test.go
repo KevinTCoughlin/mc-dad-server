@@ -147,6 +147,7 @@ func TestInstallJavaReplacesJava21(t *testing.T) {
 		},
 	}
 	runner.ExistsMap["java"] = true
+	runner.OutputMap[runner.key("cat", "/etc/os-release")] = []byte("VERSION_CODENAME=bookworm\n")
 	var buf bytes.Buffer
 	err := InstallJava(t.Context(), runner, &Platform{PkgMgr: "apt"}, ui.NewWriter(&buf, false))
 	if err != nil {
@@ -158,8 +159,27 @@ func TestInstallJavaReplacesJava21(t *testing.T) {
 			t.Errorf("output missing %q:\n%s", want, out)
 		}
 	}
-	if !sawCommand(runner.Commands, "apt-get", "temurin-25-jdk") {
-		t.Fatalf("expected temurin-25-jdk install, commands: %+v", runner.Commands)
+	script := bashScript(runner.Commands)
+	for _, want := range []string{
+		"https://packages.adoptium.net/artifactory/api/gpg/key/public",
+		"deb https://packages.adoptium.net/artifactory/deb bookworm main",
+		"temurin-25-jdk",
+	} {
+		if !strings.Contains(script, want) {
+			t.Errorf("Adoptium script missing %q:\n%s", want, script)
+		}
+	}
+}
+
+func TestAdoptiumAptScriptUsesCodename(t *testing.T) {
+	t.Parallel()
+
+	script := adoptiumAptScript("bookworm")
+	if !strings.Contains(script, "deb https://packages.adoptium.net/artifactory/deb bookworm main") {
+		t.Fatalf("script = %s", script)
+	}
+	if strings.Contains(adoptiumAptScript("noble"), "bookworm") {
+		t.Fatal("codename leaked into another script")
 	}
 }
 
@@ -266,6 +286,19 @@ func (v *versionedRunner) RunWithOutput(ctx context.Context, name string, args .
 		return []byte(out), nil
 	}
 	return v.MockRunner.RunWithOutput(ctx, name, args...)
+}
+
+func bashScript(cmds []MockCommand) string {
+	for _, cmd := range cmds {
+		if cmd.Name == "bash" {
+			for _, arg := range cmd.Args {
+				if strings.Contains(arg, "adoptium") {
+					return arg
+				}
+			}
+		}
+	}
+	return ""
 }
 
 func sawCommand(cmds []MockCommand, name, arg string) bool {

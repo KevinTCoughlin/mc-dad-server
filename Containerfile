@@ -130,6 +130,7 @@ RUN set -euo pipefail && \
     if [ "$MC_VER" = "latest" ] || [ -z "$MC_VER" ]; then \
         VERSIONS=$(curl -fsSL -H "User-Agent: ${UA}" \
             "https://fill.papermc.io/v3/projects/paper/versions") && \
+        printf '%s\n' "$VERSIONS" | jq -r '.versions[].version.id | select(test("^[0-9]+(\\.[0-9]+){1,2}$"))' > /tmp/paper-versions && \
         MC_VER="" && \
         while IFS= read -r candidate; do \
             [ -n "$candidate" ] || continue; \
@@ -137,7 +138,7 @@ RUN set -euo pipefail && \
             if [ -z "$MC_VER" ] || version_newer "$candidate" "$MC_VER"; then \
                 MC_VER="$candidate"; \
             fi; \
-        done < <(printf '%s\n' "$VERSIONS" | jq -r '.versions[].version.id | select(test("^[0-9]+(\\.[0-9]+){1,2}$"))'); \
+        done < /tmp/paper-versions && \
         [ -n "$MC_VER" ] || { echo "No stable Paper version at or below ${SUPPORTED}"; exit 1; }; \
     fi && \
     printf '%s\n' "$MC_VER" | grep -qE '^[0-9]+(\.[0-9]+){1,2}$' || { \

@@ -50,44 +50,77 @@ type paperBuildResponse struct {
 	} `json:"downloads"`
 }
 
+// PaperRelease is a Paper server JAR that passed the supported-version and
+// build-floor checks.
+type PaperRelease struct {
+	Version  string
+	Build    int
+	Artifact Artifact
+}
+
 // PaperArtifact resolves the download URL and published SHA-256 for a Paper
 // server JAR.
 func PaperArtifact(ctx context.Context, version string) (Artifact, error) {
-	return paperArtifact(ctx, version, defaultPaperAPIBase)
+	rel, err := ResolvePaperRelease(ctx, version)
+	if err != nil {
+		return Artifact{}, err
+	}
+	return rel.Artifact, nil
+}
+
+// ResolvePaperRelease selects the Paper version and build a new install may use.
+// "latest" is the newest stable release at or below SupportedPaperVersion.
+func ResolvePaperRelease(ctx context.Context, version string) (PaperRelease, error) {
+	return resolvePaperRelease(ctx, version, defaultPaperAPIBase)
 }
 
 func paperArtifact(ctx context.Context, version, apiBase string) (Artifact, error) {
+	rel, err := resolvePaperRelease(ctx, version, apiBase)
+	if err != nil {
+		return Artifact{}, err
+	}
+	return rel.Artifact, nil
+}
+
+func resolvePaperRelease(ctx context.Context, version, apiBase string) (PaperRelease, error) {
 	if version == "latest" || version == "" {
 		var err error
 		version, err = paperLatestVersion(ctx, apiBase)
 		if err != nil {
-			return Artifact{}, err
+			return PaperRelease{}, err
 		}
 	} else if err := validateRequestedPaperVersion(version); err != nil {
-		return Artifact{}, err
+		return PaperRelease{}, err
 	}
 
 	url := fmt.Sprintf("%s/projects/paper/versions/%s/builds/latest", apiBase, version)
 	body, err := httpGet(ctx, url)
 	if err != nil {
-		return Artifact{}, fmt.Errorf("fetching Paper latest build: %w", err)
+		return PaperRelease{}, fmt.Errorf("fetching Paper latest build: %w", err)
 	}
 
 	var build paperBuildResponse
 	if err := json.Unmarshal(body, &build); err != nil {
-		return Artifact{}, fmt.Errorf("parsing Paper latest build: %w", err)
+		return PaperRelease{}, fmt.Errorf("parsing Paper latest build: %w", err)
 	}
 
 	if err := validatePaperBuild(version, build.ID); err != nil {
-		return Artifact{}, err
+		return PaperRelease{}, err
 	}
 
 	dl, ok := build.Downloads["server:default"]
 	if !ok || dl.URL == "" {
-		return Artifact{}, fmt.Errorf("no download found for Paper %s latest build", version)
+		return PaperRelease{}, fmt.Errorf("no download found for Paper %s latest build", version)
 	}
 
-	return Artifact{URL: dl.URL, SHA256: dl.Checksums.SHA256}, nil
+	return PaperRelease{
+		Version: version,
+		Build:   build.ID,
+		Artifact: Artifact{
+			URL:    dl.URL,
+			SHA256: dl.Checksums.SHA256,
+		},
+	}, nil
 }
 
 // validateRequestedPaperVersion rejects snapshots and anything newer than

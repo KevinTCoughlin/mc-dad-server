@@ -28,7 +28,7 @@ func TestMCVersionDefaultsToSupportedPaper(t *testing.T) {
 			if _, err := parser.Parse(args); err != nil {
 				t.Fatalf("parse %v: %v", args, err)
 			}
-			got := mcVersion(cmd, args[0])
+			got := mcVersion(&cmd, args[0])
 			if got != server.SupportedPaperVersion {
 				t.Fatalf("%s default = %q, want %s", args[0], got, server.SupportedPaperVersion)
 			}
@@ -36,7 +36,7 @@ func TestMCVersionDefaultsToSupportedPaper(t *testing.T) {
 	}
 }
 
-func mcVersion(cmd CLI, name string) string {
+func mcVersion(cmd *CLI, name string) string {
 	switch name {
 	case "install":
 		return cmd.Install.MCVersion
