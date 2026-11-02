@@ -107,7 +107,9 @@ ARG PAPER_MIN_BUILD=233
 # snapshots, previews, and release candidates are refused. 26.3 builds older
 # than PAPER_MIN_BUILD are refused. Fill v3 requires a User-Agent header.
 # hadolint ignore=SC2016
-RUN set -euo pipefail && \
+# pipefail comes from the SHELL instruction above. set -o pipefail is not POSIX
+# and Hadolint flags it (SC3040) even though this RUN is bash.
+RUN set -eu && \
     UA="mc-dad-server (https://github.com/KevinTCoughlin/mc-dad-server)" && \
     SUPPORTED="26.3" && \
     MIN_BUILD="${PAPER_MIN_BUILD}" && \
