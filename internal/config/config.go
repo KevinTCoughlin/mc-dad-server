@@ -53,7 +53,7 @@ func DefaultConfig() *ServerConfig {
 		ChatFilter:   true,
 		EnablePlayit: true,
 		EnableBun:    false,
-		Version:      "latest",
+		Version:      "26.3",
 		SessionName:  "minecraft",
 		MaxBackups:   5,
 		VoteDuration: 30,

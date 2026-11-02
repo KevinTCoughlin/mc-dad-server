@@ -47,8 +47,8 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 
 ## What It Does
 
-- Installs Adoptium Temurin Java 21+ (open-source, no Oracle)
-- Downloads Paper MC (optimized, fast, plugin-ready)
+- Installs Adoptium Temurin Java 25+ (required by Paper 26.3)
+- Downloads Paper 26.3, build 233 or newer (optimized, fast, plugin-ready)
 - Deploys tuned server configs from a battle-tested PaperMC server
 - Downloads and installs plugins (Geyser, Parkour, WorldEdit, Multiverse, ChatSentry)
 - Sets up start script with GC selection (G1GC or ZGC)
@@ -99,7 +99,7 @@ mc-dad-server install \
 | `--motd` | `Dads Minecraft Server` | Message of the day |
 | `--playit` | `true` | Set up playit.gg tunnel (`--no-playit` to skip) |
 | `--chat-filter` | `true` | Install chat filter plugin (`--no-chat-filter` to skip) |
-| `--mc-version` | `latest` | Minecraft version |
+| `--mc-version` | `26.3` | Minecraft version. `latest` stays on the newest stable release at or below 26.3. `26.4` and snapshots are refused. |
 | `--experimental-bun` | `false` | Enable [TypeScript/JS scripting sidecar](docs/scripting.md) |
 
 ### Global Flags
@@ -132,7 +132,7 @@ mc-dad-server backup
 
 ## Container Deployment
 
-Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Eclipse Temurin 25 JRE on Alpine Linux and includes Geyser, Floodgate, Parkour, Multiverse, and WorldEdit. Container builds pin plugin releases and default to Paper 26.2, the newest Minecraft version supported by WorldEdit 7.4.5. Override `MC_VERSION` at build time only after checking plugin compatibility.
+Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Eclipse Temurin 25 JRE on Alpine Linux and includes Geyser 2.12.1, Floodgate 2.2.5, Parkour 7.2.8, Multiverse-Core 5.8.2, and WorldEdit 7.4.6. Container builds pin those plugin releases and Paper 26.3 (build 233 or newer). `MC_VERSION=latest` does not follow a newer Paper line. Override `MC_VERSION` at build time only after checking [plugin compatibility](docs/paper-compatibility.md).
 
 ```bash
 # Build and start with Podman Compose
@@ -159,7 +159,7 @@ podman logs -f minecraft          # follow server logs
 | `PORT` | `25565` | Minecraft server port |
 | `RCON_PORT` | `25575` | RCON port (localhost only) |
 | `RCON_PASSWORD` | required | RCON password (generate one with `openssl rand -base64 24`) |
-| `MC_VERSION` | `latest` | Minecraft version to download |
+| `MC_VERSION` | `26.3` | Minecraft version to download. Snapshots and 26.4 are refused. |
 
 ### Systemd Integration (Quadlet)
 
@@ -303,7 +303,7 @@ Yes! Use `podman compose up -d` (or `docker compose up -d`). The CLI auto-detect
 Systemd will auto-restart it. Backups run daily at 4 AM. In container mode, Podman/Docker restarts the container automatically.
 
 **Q: What Java does it install?**
-Adoptium Temurin 21+ for bare-metal installs; the container image uses Temurin 25.
+Adoptium Temurin 25+ for bare-metal installs. The container image uses Temurin 25. Paper 26.3 does not start on Java 21.
 
 ## Uninstall
 

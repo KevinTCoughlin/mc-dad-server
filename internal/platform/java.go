@@ -10,22 +10,26 @@ import (
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
-// InstallJava ensures Java 21+ is available, installing if necessary.
+// minJavaVersion is the runtime Paper 26.3 requires. Older Minecraft lines
+// this installer can still download also run on Java 25.
+const minJavaVersion = 25
+
+// InstallJava ensures Java 25+ is available, installing if necessary.
 func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, output *ui.UI) error {
 	output.Step("Installing Java (Adoptium Temurin)")
 
 	if runner.CommandExists("java") {
 		ver, err := javaVersion(ctx, runner)
-		if err == nil && ver >= 21 {
+		if err == nil && ver >= minJavaVersion {
 			output.Success("Java %d already installed", ver)
 			return nil
 		}
 		if err == nil {
-			output.Warn("Java %d found, but 21+ required", ver)
+			output.Warn("Java %d found, but %d+ required", ver, minJavaVersion)
 		}
 	}
 
-	output.Info("Installing Adoptium Temurin JDK 21...")
+	output.Info("Installing Adoptium Temurin JDK %d...", minJavaVersion)
 	var err error
 	switch plat.PkgMgr {
 	case "apt":
@@ -35,7 +39,7 @@ func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, outp
 	case "pacman":
 		err = runner.RunSudo(ctx, "pacman", "-S", "--noconfirm", "jre-openjdk-headless")
 	case "brew":
-		err = runner.Run(ctx, "brew", "install", "--cask", "temurin@21")
+		err = runner.Run(ctx, "brew", "install", "--cask", "temurin@25")
 	default:
 		err = installJavaSDKMAN(ctx, runner, output)
 	}
@@ -45,7 +49,7 @@ func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, outp
 
 	// Verify
 	ver, verErr := javaVersion(ctx, runner)
-	if verErr != nil || ver < 21 {
+	if verErr != nil || ver < minJavaVersion {
 		return fmt.Errorf("java installation verification failed")
 	}
 	output.Success("Java %d installed successfully", ver)
@@ -105,27 +109,27 @@ func installJavaAPT(ctx context.Context, runner CommandRunner, output *ui.UI) er
 		return err
 	}
 
-	if err := runner.RunSudo(ctx, "apt-get", "install", "-y", "-qq", "temurin-21-jdk"); err != nil {
+	if err := runner.RunSudo(ctx, "apt-get", "install", "-y", "-qq", "temurin-25-jdk"); err != nil {
 		output.Warn("Adoptium repo unavailable, falling back to distro OpenJDK")
-		return runner.RunSudo(ctx, "apt-get", "install", "-y", "-qq", "openjdk-21-jre-headless")
+		return runner.RunSudo(ctx, "apt-get", "install", "-y", "-qq", "openjdk-25-jre-headless")
 	}
-	output.Success("Adoptium Temurin 21 installed via APT")
+	output.Success("Adoptium Temurin 25 installed via APT")
 	return nil
 }
 
 func installJavaDNF(ctx context.Context, runner CommandRunner, output *ui.UI) error {
-	if err := runner.RunSudo(ctx, "dnf", "install", "-y", "-q", "temurin-21-jdk"); err != nil {
+	if err := runner.RunSudo(ctx, "dnf", "install", "-y", "-q", "temurin-25-jdk"); err != nil {
 		output.Warn("Adoptium repo unavailable, falling back to distro OpenJDK")
-		return runner.RunSudo(ctx, "dnf", "install", "-y", "-q", "java-21-openjdk-headless")
+		return runner.RunSudo(ctx, "dnf", "install", "-y", "-q", "java-25-openjdk-headless")
 	}
-	output.Success("Adoptium Temurin 21 installed via DNF")
+	output.Success("Adoptium Temurin 25 installed via DNF")
 	return nil
 }
 
 func installJavaSDKMAN(ctx context.Context, runner CommandRunner, output *ui.UI) error {
 	output.Warn("Using SDKMAN to install Temurin Java...")
 	if err := runner.Run(ctx, "bash", "-c",
-		`curl -fsSL "https://get.sdkman.io" | bash && source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk install java 21.0.2-tem`); err != nil {
+		`curl -fsSL "https://get.sdkman.io" | bash && source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk install java 25.0.5-tem`); err != nil {
 		return fmt.Errorf("SDKMAN install failed: %w", err)
 	}
 	return nil

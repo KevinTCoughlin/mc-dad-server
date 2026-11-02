@@ -14,7 +14,7 @@ Click **Code → Codespaces → New codespace** on the repo page. The dev contai
 |------|---------|---------|
 | [Go](https://go.dev/dl/) | 1.25.12+ (`go1.26.5` recommended) | Build the CLI binary |
 | [just](https://github.com/casey/just#installation) | latest | Task runner (replaces Make) |
-| [Java (Temurin)](https://adoptium.net/) | 21+ | Minecraft server runtime |
+| [Java (Temurin)](https://adoptium.net/) | 25+ | Minecraft server runtime (Paper 26.3) |
 | [Kotlin](https://kotlinlang.org/docs/command-line.html) | latest | Plugin development |
 | [golangci-lint](https://golangci-lint.run/welcome/install/) | latest | Go linter |
 | [gofumpt](https://github.com/mvdan/gofumpt) | latest | Go formatter |

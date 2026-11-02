@@ -22,6 +22,7 @@ Use this checklist before cutting a release or validating a change that affects 
 - Confirm a failed server JAR download does not replace an existing `server.jar`.
 - Confirm a checksum mismatch removes only the failed temporary download.
 - Confirm generated configs include the selected port, memory, game mode, difficulty, MOTD, whitelist, and RCON settings.
+- For the Paper 26.3 pin, bundled plugin versions, and the live login checklist, see [Paper compatibility](paper-compatibility.md).
 
 ## Server management smoke test
 

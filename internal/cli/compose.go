@@ -21,7 +21,7 @@ type GenerateComposeCmd struct {
 	Gamemode   string `help:"Game mode" default:"survival" enum:"survival,creative,adventure" name:"gamemode"`
 	GC         string `help:"Garbage collector" default:"g1gc" enum:"g1gc,zgc,G1GC,ZGC" name:"gc"`
 	Whitelist  bool   `help:"Enable whitelist" default:"true" negatable:""`
-	MCVersion  string `help:"Minecraft version" default:"latest" name:"mc-version"`
+	MCVersion  string `help:"Minecraft version. 'latest' is the newest stable Paper release at or below 26.3; 26.4 is refused." default:"26.3" name:"mc-version"`
 	Output     string `help:"Output directory for compose.yml" default:"." name:"output"`
 }
 
