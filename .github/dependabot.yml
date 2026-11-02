@@ -1,7 +1,6 @@
 version: 2
 # Keeps Go modules, pinned GitHub Actions SHAs, and container base-image
-# digests current. CI (including the Go 1.25 compatibility matrix) gates
-# every update.
+# digests current. CI on Go 1.26 gates every update.
 updates:
   - package-ecosystem: gomod
     directory: /
@@ -11,7 +10,7 @@ updates:
       prefix: deps
     groups:
       # golang.org/x/* periodically raise their minimum Go version; keep them
-      # in their own PR so a Go 1.25 compat break never blocks other updates.
+      # in their own PR so a toolchain bump never blocks other updates.
       golang-x:
         patterns: ["golang.org/x/*"]
       go-dependencies:
