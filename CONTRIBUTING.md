@@ -4,7 +4,7 @@ PRs welcome! This is for dads, by dads. Keep it simple.
 
 ## Quick Start (GitHub Codespaces)
 
-Click **Code → Codespaces → New codespace** on the repo page. The dev container comes pre-configured with Go 1.26, Java 21, Kotlin, and all required tooling — zero local setup. The repo prefers `go1.26.5` and remains compatible with `go1.25.12`.
+Click **Code → Codespaces → New codespace** on the repo page. The dev container comes pre-configured with Go 1.26, Eclipse Temurin 25, Kotlin, and all required tooling — zero local setup. The repo prefers `go1.26.5` and remains compatible with `go1.25.12`. There is no Gradle, Maven, or Kotlin source module; the devcontainer Java feature (`version` 25, `jdkDistro` `tem`) is the toolchain for any plugin work.
 
 ## Local Development
 

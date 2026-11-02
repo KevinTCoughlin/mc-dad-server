@@ -1,6 +1,10 @@
 # Paper compatibility
 
-New installs use Paper **26.3**, and they refuse a 26.3 build older than **233**. `latest` means the newest stable Paper release that is not newer than 26.3. Snapshots, previews, release candidates, and Minecraft 26.4 are refused by the CLI and by the Containerfile. This project does not migrate to 26.4.
+New installs use Paper **26.3** on **Java 25** (Eclipse Temurin), and they refuse a 26.3 build older than **233**. `latest` means the newest stable Paper release that is not newer than 26.3. Snapshots, previews, release candidates, and Minecraft 26.4 are refused by the CLI and by the Containerfile. This project does not migrate to 26.4.
+
+The installer reads `java --version`. Java missing or older than 25 produces a message that names Temurin 25, links to the Adoptium 25 builds, and points Java 21 / Minecraft 1.21 users at the previous release, [v0.2.0](https://github.com/KevinTCoughlin/mc-dad-server/releases/tag/v0.2.0). That release installs Temurin 21. The server image is `eclipse-temurin:25-jre-alpine`. There is no Java 21 image.
+
+There is no Gradle, Maven, or Kotlin source in this repo, so there is no build file whose toolchain can be set. The devcontainer Java feature installs Temurin 25 (`jdkDistro: tem`) for any plugin work. CI installs Temurin 25 and runs `go test -race ./...` with `REQUIRE_JAVA25=1`, which checks the real `java --version`.
 
 Checked against the PaperMC Fill v3 builds API (`https://fill.papermc.io/v3/projects/paper/versions/26.3/builds`). On 1 November 2026 the newest 26.3 build was 236. On 2 November 2026 `builds/latest` resolved to `paper-26.3-237.jar`. Both are above the floor of 233, so both include the three fixes below. The installer keeps taking the newest build on the 26.3 line.
 

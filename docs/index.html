@@ -535,7 +535,7 @@
         RPi <span class="arch">ARMv7</span>
       </a>
     </div>
-    <p class="note">One binary, zero dependencies. <a href="https://github.com/KevinTCoughlin/mc-dad-server/releases">All releases</a></p>
+    <p class="note">Requires Java 25 and Paper 26.3. The installer installs Eclipse Temurin 25 when Java is missing or older. On Java 21 or Minecraft 1.21, use <a href="https://github.com/KevinTCoughlin/mc-dad-server/releases/tag/v0.2.0">release v0.2.0</a>. <a href="https://github.com/KevinTCoughlin/mc-dad-server/releases">All releases</a></p>
   </header>
 
   <!-- Batteries Included -->
@@ -579,12 +579,12 @@
       <p class="section-sub reveal">Production-ready from the first run.</p>
       <ul class="features reveal">
         <li>
-          <strong>☕ Adoptium Temurin Java 25</strong>
-          <span>Open-source, production-ready Java. No Oracle licensing nonsense.</span>
+          <strong>☕ Eclipse Temurin Java 25</strong>
+          <span>Required. Paper 26.3 does not start on Java 21. The installer installs Temurin 25 when your Java is older.</span>
         </li>
         <li>
-          <strong>🚀 Paper MC</strong>
-          <span>Optimized Minecraft server — same game, better performance, plugin-ready.</span>
+          <strong>🚀 Paper 26.3</strong>
+          <span>Required Minecraft server line, build 233 or newer. Same game, better performance, plugin-ready.</span>
         </li>
         <li>
           <strong>🛡️ Kid-Safe Defaults</strong>
@@ -604,7 +604,7 @@
         </li>
         <li>
           <strong>🐳 Docker / Podman</strong>
-          <span>Containerfile included. Debian Trixie slim, health checks, graceful shutdown, Quadlet systemd integration.</span>
+          <span>Image base is eclipse-temurin:25-jre-alpine. Health checks, graceful shutdown, Quadlet systemd integration.</span>
         </li>
       </ul>
     </div>
@@ -649,7 +649,7 @@
             <tr><td><code>--motd</code></td><td>Dads Minecraft Server</td><td>Message of the day</td></tr>
             <tr><td><code>--playit</code></td><td>true</td><td>Set up playit.gg tunnel</td></tr>
             <tr><td><code>--chat-filter</code></td><td>true</td><td>Install chat filter plugin</td></tr>
-            <tr><td><code>--mc-version</code></td><td>latest</td><td>Minecraft version</td></tr>
+            <tr><td><code>--mc-version</code></td><td>26.3</td><td>Minecraft version. latest stays at or below 26.3. 26.4 and snapshots are refused.</td></tr>
             <tr><td><code>--mode</code></td><td>auto</td><td>auto, screen, or container</td></tr>
           </tbody>
         </table>
@@ -680,7 +680,11 @@
         </details>
         <details class="faq-item">
           <summary>G1GC or ZGC?</summary>
-          <div class="faq-answer">G1GC (default) is battle-tested with Aikar's flags. ZGC is newer, lower latency, great for Java 21+ servers with 8GB+ RAM.</div>
+          <div class="faq-answer">G1GC (default) is battle-tested with Aikar's flags. ZGC is newer and lower latency on Java 25 when the machine has 8 GB or more.</div>
+        </details>
+        <details class="faq-item">
+          <summary>What Java and Minecraft versions are required?</summary>
+          <div class="faq-answer">This release requires Eclipse Temurin 25 and Paper 26.3. The container image is eclipse-temurin:25-jre-alpine. If you need Java 21 or Minecraft 1.21, install <a href="https://github.com/KevinTCoughlin/mc-dad-server/releases/tag/v0.2.0">release v0.2.0</a>, which still installs Temurin 21.</div>
         </details>
         <details class="faq-item">
           <summary>Is this safe?</summary>

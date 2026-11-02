@@ -3,7 +3,8 @@
   "image": "mcr.microsoft.com/devcontainers/go:1-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
-      "version": "21",
+      "version": "25",
+      "jdkDistro": "tem",
       "installGradle": "true",
       "installMaven": "true"
     },

@@ -10,23 +10,46 @@ import (
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
-// minJavaVersion is the runtime Paper 26.3 requires. Older Minecraft lines
-// this installer can still download also run on Java 25.
+// minJavaVersion is the runtime Paper 26.3 requires.
 const minJavaVersion = 25
 
-// InstallJava ensures Java 25+ is available, installing if necessary.
+// temurin25URL is the manual install page named in the installer message.
+const temurin25URL = "https://adoptium.net/temurin/releases/?version=25"
+
+// previousJavaReleaseURL is the last published release that installs Java 21
+// for Minecraft 1.21-era servers. Paper 26.3 does not run on that JDK.
+const previousJavaReleaseURL = "https://github.com/KevinTCoughlin/mc-dad-server/releases/tag/v0.2.0"
+
+// paperJavaRequirement explains why Java 25 is required and how to stay on
+// the previous release. foundOK is false when java is missing or unreadable.
+func paperJavaRequirement(found int, foundOK bool) string {
+	have := "Java was not found on PATH."
+	if foundOK {
+		have = fmt.Sprintf("This machine has Java %d.", found)
+	}
+	return fmt.Sprintf(
+		"Paper 26.3 requires Java %d (Eclipse Temurin). %s The installer will install Temurin %d from %s. To stay on Java 21 and Minecraft 1.21, use the previous release v0.2.0: %s",
+		minJavaVersion, have, minJavaVersion, temurin25URL, previousJavaReleaseURL,
+	)
+}
+
+// InstallJava ensures Java 25+ is available, installing Temurin 25 when it is not.
 func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, output *ui.UI) error {
 	output.Step("Installing Java (Adoptium Temurin)")
 
+	found, foundOK := 0, false
 	if runner.CommandExists("java") {
 		ver, err := javaVersion(ctx, runner)
 		if err == nil && ver >= minJavaVersion {
-			output.Success("Java %d already installed", ver)
+			output.Success("Java %d already installed (Paper 26.3 requires Eclipse Temurin %d+)", ver, minJavaVersion)
 			return nil
 		}
 		if err == nil {
-			output.Warn("Java %d found, but %d+ required", ver, minJavaVersion)
+			found, foundOK = ver, true
 		}
+		output.Warn("%s", paperJavaRequirement(found, foundOK))
+	} else {
+		output.Warn("%s", paperJavaRequirement(0, false))
 	}
 
 	output.Info("Installing Adoptium Temurin JDK %d...", minJavaVersion)
@@ -44,13 +67,18 @@ func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, outp
 		err = installJavaSDKMAN(ctx, runner, output)
 	}
 	if err != nil {
-		return fmt.Errorf("installing Java: %w", err)
+		return fmt.Errorf("%s: %w", paperJavaRequirement(found, foundOK), err)
 	}
 
-	// Verify
+	// Verify the JDK that is now first on PATH. A leftover Java 21 install
+	// must not be treated as success.
 	ver, verErr := javaVersion(ctx, runner)
 	if verErr != nil || ver < minJavaVersion {
-		return fmt.Errorf("java installation verification failed")
+		got := "an unreadable java version"
+		if verErr == nil {
+			got = fmt.Sprintf("Java %d", ver)
+		}
+		return fmt.Errorf("java installation verification failed: Paper 26.3 requires Java %d (Eclipse Temurin) but found %s. Install Temurin %d from %s, or stay on Java 21 and Minecraft 1.21 with v0.2.0: %s", minJavaVersion, got, minJavaVersion, temurin25URL, previousJavaReleaseURL)
 	}
 	output.Success("Java %d installed successfully", ver)
 	return nil

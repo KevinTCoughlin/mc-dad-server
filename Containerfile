@@ -174,7 +174,8 @@ RUN set -euo pipefail && \
 RUN echo "eula=true" > eula.txt
 
 # ---------------------------------------------------------------------------
-# Stage 2: Runtime — Eclipse Temurin 25 JRE on Alpine Linux
+# Stage 2: Runtime — Eclipse Temurin 25 JRE on Alpine Linux.
+# Paper 26.3 requires Java 25. Do not switch this base to Java 21.
 # ---------------------------------------------------------------------------
 FROM eclipse-temurin:25-jre-alpine@sha256:28db6fdf60e38945e43d840c0333aeaec66c15943070104f7586fd3c9d1665b0 AS runtime
 
@@ -201,7 +202,8 @@ COPY --chown=minecraft:minecraft configs/paper-global.yml /minecraft/config/pape
 COPY --chown=minecraft:minecraft configs/paper-world-defaults.yml /minecraft/config/paper-world-defaults.yml
 
 LABEL org.opencontainers.image.title="MC Dad Server" \
-      org.opencontainers.image.description="Containerized Minecraft Paper server with Geyser cross-play, Parkour, and tuned configs" \
+      org.opencontainers.image.description="Containerized Minecraft Paper 26.3 server on Eclipse Temurin 25, with Geyser cross-play, Parkour, and tuned configs" \
+      org.opencontainers.image.base.name="eclipse-temurin:25-jre-alpine" \
       org.opencontainers.image.source="https://github.com/KevinTCoughlin/mc-dad-server" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.vendor="KevinTCoughlin"

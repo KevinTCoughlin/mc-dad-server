@@ -383,6 +383,7 @@ func TestContainerPinsMatchSupportedPaper(t *testing.T) {
 		"ARG GEYSER_BUILD=1280",
 		"ARG MULTIVERSE_VERSION=5.8.2",
 		"ARG WORLDEDIT_VERSION=7.4.6",
+		"FROM eclipse-temurin:25-jre-alpine@",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("Containerfile missing %q", want)
