@@ -279,6 +279,19 @@ just container-build   # build container image
 just container-up      # start with Podman Compose
 ```
 
+Paper 26 stores all dimensions under the persistent `world` directory. Do not
+mount `world_nether` or `world_the_end` separately: Paper's legacy migration
+must be able to remove those directories, which fails for volume mount points.
+Before updating an older deployment, stop the server and back up all three
+world volumes. If the legacy dimension volumes contain data, migrate their
+contents using Paper's supported migration procedure before removing their
+mounts. Keep the original volumes and backup until the migrated dimensions
+have been verified; do not run `compose down -v`.
+
+The entrypoint exits if Java fails, and the container health check tests the
+Java listener rather than matching its own process arguments. AppCDS training
+settings are replaced with the configuration template before the image is used.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 
 ## FAQ

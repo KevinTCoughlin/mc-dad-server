@@ -15,9 +15,8 @@ services:
       - "127.0.0.1:25575:25575/tcp"         # RCON (localhost only)
     volumes:
       # Persistent data (survives rebuilds)
+      # Paper 26 stores all dimensions beneath world; legacy roots must not be mount points.
       - minecraft-worlds:/minecraft/world:Z
-      - minecraft-worlds-nether:/minecraft/world_nether:Z
-      - minecraft-worlds-end:/minecraft/world_the_end:Z
       - minecraft-plugins:/minecraft/plugins:Z
       - minecraft-logs:/minecraft/logs:Z
       - minecraft-backups:/minecraft/backups:Z
@@ -41,8 +40,6 @@ services:
 
 volumes:
   minecraft-worlds:
-  minecraft-worlds-nether:
-  minecraft-worlds-end:
   minecraft-plugins:
   minecraft-logs:
   minecraft-backups:
