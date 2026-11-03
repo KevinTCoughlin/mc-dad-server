@@ -13,7 +13,7 @@ PublishPort=25565:25565/tcp
 PublishPort=19132:19132/udp
 PublishPort=127.0.0.1:25575:25575/tcp
 
-Volume=minecraft-worlds:/minecraft/world:Z
+Volume=minecraft-worlds:/minecraft/worlds:Z
 Volume=minecraft-plugins:/minecraft/plugins:Z
 Volume=minecraft-logs:/minecraft/logs:Z
 Volume=minecraft-backups:/minecraft/backups:Z

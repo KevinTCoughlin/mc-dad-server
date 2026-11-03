@@ -59,12 +59,43 @@ configure_server_properties() {
     fi
 }
 
+# Paper renames whole world directories during format upgrades, so the worlds
+# volume is mounted at a parent directory and passed as --world-container.
+# Earlier images mounted the volume at /minecraft/world, which left the world at
+# the volume root; move it one level down, inside the same volume, on first start.
+prepare_world_container() {
+    local dir="${WORLDS_DIR:-/minecraft/worlds}" level staging entry
+    WORLD_ARGS=()
+    [[ -d "${dir}" ]] || return 0
+
+    level="$(sed -n 's/^level-name=//p' server.properties 2>/dev/null | tail -n 1)"
+    level="${level:-world}"
+    staging="${dir}/.mc-dad-world-migration"
+
+    if [[ ! -e "${dir}/${level}" ]] && { [[ -f "${dir}/level.dat" ]] || [[ -d "${staging}" ]]; }; then
+        echo "[entrypoint] Moving the world at the root of ${dir} into ${dir}/${level}..."
+        mkdir -p "${staging}"
+        shopt -s dotglob nullglob
+        for entry in "${dir}"/*; do
+            case "${entry##*/}" in
+                .mc-dad-world-migration | lost+found) continue ;;
+            esac
+            mv -- "${entry}" "${staging}/"
+        done
+        shopt -u dotglob nullglob
+        mv -- "${staging}" "${dir}/${level}"
+    fi
+
+    WORLD_ARGS=(--world-container "${dir}")
+}
+
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
     return 0
 fi
 
 # --- Substitute template variables and configure RCON in server.properties ---
 configure_server_properties
+prepare_world_container
 
 # --- Build JVM flags ---
 JVM_FLAGS=(
@@ -179,7 +210,7 @@ exec 3<>"${FIFO}"
 echo "[entrypoint] Starting Minecraft server with ${MEMORY} RAM (${gc_lower^^} GC)..."
 
 # Keep the FIFO open in the parent without an orphaned tail process.
-java "${JVM_FLAGS[@]}" -jar server.jar nogui < "${FIFO}" 3>&- &
+java "${JVM_FLAGS[@]}" -jar server.jar "${WORLD_ARGS[@]}" nogui < "${FIFO}" 3>&- &
 JAVA_PID=$!
 
 echo "[entrypoint] Minecraft started (PID: ${JAVA_PID})"
