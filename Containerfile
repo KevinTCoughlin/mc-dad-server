@@ -193,6 +193,8 @@ RUN addgroup -g 1000 -S minecraft && \
 
 # Copy server files from builder
 COPY --from=builder --chown=minecraft:minecraft /minecraft /minecraft
+# Mount point for the worlds volume; a new named volume copies this ownership.
+RUN mkdir -p /minecraft/worlds && chown minecraft:minecraft /minecraft/worlds
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 
 # Copy config files into image (avoids rootless podman bind-mount permission issues)

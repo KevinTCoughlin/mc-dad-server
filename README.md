@@ -291,12 +291,15 @@ Two steps are needed when an existing volume moves to this image:
    `podman unshare chown -R 1000:1000 <volume path>` for the worlds, plugins,
    logs and backups volumes. Otherwise Paper fails with
    `AccessDeniedException: ./world/session.lock`.
-2. **World format upgrade.** The first 26.3 boot rewrites a pre-26.3 world and
-   renames the result into place. Because `/minecraft/world` is a mount point,
-   that rename fails with `AtomicMoveNotSupportedException ... Cross-device link`.
-   Run the upgrade once in a container without the world mount: copy the world
-   into it with `podman cp`, start it until `Done`, stop it, then copy
-   `/minecraft/world` back into the emptied volume.
+2. **World location.** The worlds volume is now mounted at `/minecraft/worlds`
+   and passed to Paper as `--world-container`, so the world lives at
+   `worlds/<level-name>` inside the volume. Paper renames the whole world
+   directory during format upgrades; when the volume itself was the world
+   (mounted at `/minecraft/world`) that rename failed with
+   `AtomicMoveNotSupportedException ... Cross-device link`. On the first start
+   with the new mount, the entrypoint moves a world found at the volume root
+   into `worlds/<level-name>`, inside the same volume. Update any compose
+   file or quadlet you maintain yourself to the new mount path.
 
 The image only seeds the plugins volume when it is empty. After an upgrade,
 copy the new jars from `/minecraft/plugins` in the image over the ones in the

@@ -22,3 +22,41 @@ source "${repo_dir}/entrypoint.sh"
 
 grep -Fqx 'rcon.password=abc\\def' "${work_dir}/server.properties"
 grep -Fqx 'motd=Dads \\ Kids' "${work_dir}/server.properties"
+
+# A worlds volume from an image that mounted it at /minecraft/world holds the
+# world at its root. It moves into worlds/<level-name> inside the same volume.
+worlds="${work_dir}/worlds"
+mkdir -p "${worlds}/dimensions/minecraft/overworld" "${worlds}/lost+found"
+echo level > "${worlds}/level.dat"
+echo hidden > "${worlds}/.hidden"
+(
+    cd "${work_dir}"
+    WORLDS_DIR="${worlds}" prepare_world_container
+    [[ "${WORLD_ARGS[*]}" == "--world-container ${worlds}" ]]
+)
+[[ -f "${worlds}/world/level.dat" ]]
+[[ -f "${worlds}/world/.hidden" ]]
+[[ -d "${worlds}/world/dimensions/minecraft/overworld" ]]
+[[ -d "${worlds}/lost+found" ]]
+[[ ! -e "${worlds}/level.dat" ]]
+[[ ! -e "${worlds}/.mc-dad-world-migration" ]]
+
+# Running again leaves an already-moved world alone.
+(cd "${work_dir}" && WORLDS_DIR="${worlds}" prepare_world_container)
+[[ -f "${worlds}/world/level.dat" && ! -e "${worlds}/world/world" ]]
+
+# An interrupted move is finished on the next start.
+rm -rf "${worlds}" && mkdir -p "${worlds}/.mc-dad-world-migration"
+echo level > "${worlds}/.mc-dad-world-migration/level.dat"
+mkdir "${worlds}/region"
+(cd "${work_dir}" && WORLDS_DIR="${worlds}" prepare_world_container)
+[[ -f "${worlds}/world/level.dat" && -d "${worlds}/world/region" ]]
+
+# No worlds mount (an old compose file): no world container argument.
+(
+    cd "${work_dir}"
+    WORLDS_DIR="${work_dir}/missing" prepare_world_container
+    [[ ${#WORLD_ARGS[@]} -eq 0 ]]
+)
+
+echo "entrypoint tests passed"
