@@ -279,6 +279,33 @@ just container-build   # build container image
 just container-up      # start with Podman Compose
 ```
 
+Paper 26 stores all dimensions under the persistent `world` directory. Do not
+mount `world_nether` or `world_the_end` separately. Before updating an older
+deployment, stop the server and back up every world volume
+(`podman volume export`). Do not run `compose down -v`.
+
+Two steps are needed when an existing volume moves to this image:
+
+1. **Ownership.** The image now runs as UID/GID 1000 (earlier images used
+   100:101). Re-own the volumes once, for example
+   `podman unshare chown -R 1000:1000 <volume path>` for the worlds, plugins,
+   logs and backups volumes. Otherwise Paper fails with
+   `AccessDeniedException: ./world/session.lock`.
+2. **World format upgrade.** The first 26.3 boot rewrites a pre-26.3 world and
+   renames the result into place. Because `/minecraft/world` is a mount point,
+   that rename fails with `AtomicMoveNotSupportedException ... Cross-device link`.
+   Run the upgrade once in a container without the world mount: copy the world
+   into it with `podman cp`, start it until `Done`, stop it, then copy
+   `/minecraft/world` back into the emptied volume.
+
+The image only seeds the plugins volume when it is empty. After an upgrade,
+copy the new jars from `/minecraft/plugins` in the image over the ones in the
+volume; configs can stay.
+
+The entrypoint exits if Java fails, and the container health check tests the
+Java listener rather than matching its own process arguments. AppCDS training
+settings are replaced with the configuration template before the image is used.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 
 ## FAQ

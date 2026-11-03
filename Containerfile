@@ -254,10 +254,13 @@ RUN cp -a plugins plugins.pristine && \
     rm -rf world world_nether world_the_end logs cache version_history.json && \
     rm -rf plugins && mv plugins.pristine plugins
 
+# Training settings must not become the runtime defaults.
+COPY --chown=minecraft:minecraft configs/server.properties /minecraft/server.properties
+
 # Java (25565/tcp), Bedrock/Geyser (19132/udp), RCON (25575/tcp)
 EXPOSE 25565/tcp 19132/udp 25575/tcp
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
-    CMD ["bash", "-c", "cat /proc/*/cmdline 2>/dev/null | tr '\\0' '\\n' | grep -q server.jar || exit 1"]
+    CMD ["bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/${PORT:-25565}"]
 
 ENTRYPOINT ["/entrypoint.sh"]

@@ -118,6 +118,7 @@ FIFO=/tmp/mc-input
 JAVA_PID=""
 
 cleanup() {
+    exec 3>&-
     rm -f "${FIFO}"
 }
 trap cleanup EXIT
@@ -171,14 +172,16 @@ graceful_shutdown() {
 trap graceful_shutdown SIGTERM SIGINT
 
 # --- Create FIFO for external command input ---
+rm -f "${FIFO}"
 mkfifo "${FIFO}"
+exec 3<>"${FIFO}"
 
 echo "[entrypoint] Starting Minecraft server with ${MEMORY} RAM (${gc_lower^^} GC)..."
 
-# Pipe FIFO input to Java stdin so external processes can send commands
-tail -f "${FIFO}" | java "${JVM_FLAGS[@]}" -jar server.jar nogui &
+# Keep the FIFO open in the parent without an orphaned tail process.
+java "${JVM_FLAGS[@]}" -jar server.jar nogui < "${FIFO}" 3>&- &
 JAVA_PID=$!
 
 echo "[entrypoint] Minecraft started (PID: ${JAVA_PID})"
 
-wait "${JAVA_PID}" || true
+wait "${JAVA_PID}"
