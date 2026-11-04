@@ -15,6 +15,8 @@ updates:
         patterns: ["golang.org/x/*"]
       go-dependencies:
         patterns: ["*"]
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: github-actions
     directory: /
@@ -25,6 +27,8 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+    cooldown:
+      default-days: 7
 
   # Containerfile builder/runtime base images (pinned by digest).
   - package-ecosystem: docker
@@ -36,6 +40,8 @@ updates:
     groups:
       container-images:
         patterns: ["*"]
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: devcontainers
     directory: /
@@ -43,3 +49,8 @@ updates:
       interval: monthly
     commit-message:
       prefix: chore
+    groups:
+      devcontainers:
+        patterns: ["*"]
+    cooldown:
+      default-days: 7
