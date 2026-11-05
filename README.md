@@ -38,8 +38,8 @@ chmod +x mc-dad-server
 ```
 
 `install` does not start the server; `start` does. The server is ready when
-`./mc-dad-server status` shows it running, or when `screen -r minecraft`
-shows `Done (...)! For help, type "help"`. Connect to `localhost:25565`.
+the console (`screen -r minecraft`, detach with Ctrl+A then D) shows
+`Done (...)! For help, type "help"`. Then connect to `localhost:25565`.
 
 The examples below call `mc-dad-server` without `./`. To do the same, move
 it onto your PATH: `sudo install -m 755 mc-dad-server /usr/local/bin/`.
