@@ -7,7 +7,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/KevinTCoughlin/mc-dad-server)](https://goreportcard.com/report/github.com/KevinTCoughlin/mc-dad-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-**Minecraft server in 60 seconds — for busy dads who just want their kids to play.**
+**Minecraft server in about two minutes — for busy dads who just want their kids to play.**
 
 One binary, zero fuss. Run `mc-dad-server install` for a bare-metal server, or use the included Containerfile for Docker/Podman — with Bedrock cross-play, Parkour courses, and tuned configs out of the box.
 
@@ -21,23 +21,44 @@ The container image is `eclipse-temurin:25-jre-alpine`. There is no Java 21 serv
 
 ## Quick Start
 
+You need `curl` and an account that can use `sudo`. The installer runs
+`sudo` to install Java 25, `jq` and `screen`, the systemd service, firewall
+rules and playit.gg, so it may ask for your password.
+
 ```bash
-# Download the binary for your platform
+# 1. Download the binary for your platform
 curl -fsSL https://github.com/KevinTCoughlin/mc-dad-server/releases/latest/download/mc-dad-server-$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') -o mc-dad-server
 chmod +x mc-dad-server
 
-# Install everything
+# 2. Install Java, Paper, plugins and configs (about 1 minute)
 ./mc-dad-server install
+
+# 3. Start the server (first boot takes 40-60 seconds)
+./mc-dad-server start
 ```
 
-Or via `go install`:
+`install` does not start the server; `start` does. The server is ready when
+the console (`screen -r minecraft`, detach with Ctrl+A then D) shows
+`Done (...)! For help, type "help"`. Then connect to `localhost:25565`.
+
+The examples below call `mc-dad-server` without `./`. To do the same, move
+it onto your PATH: `sudo install -m 755 mc-dad-server /usr/local/bin/`.
+
+![Quick start on a fresh Ubuntu 24.04 machine, recorded in real time](docs/quickstart.gif)
+
+The recording is real time, not sped up: a fresh Ubuntu 24.04 machine with
+no Java, on a fast connection. From the first command to the server
+accepting connections took 118 seconds; an earlier run took 98. Most of it is
+the Java download and Paper's first world generation, so a slower connection
+or machine takes longer.
+
+Or via `go install` (then run steps 2 and 3 without `./`):
 
 ```bash
 go install github.com/KevinTCoughlin/mc-dad-server/cmd/mc-dad-server@latest
 mc-dad-server install
+mc-dad-server start
 ```
-
-That's it. Your server is running.
 
 ## Batteries Included
 
