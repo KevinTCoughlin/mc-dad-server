@@ -30,7 +30,7 @@ func main() {
 
 	ctx := kong.Parse(&app,
 		kong.Name("mc-dad-server"),
-		kong.Description("MC Dad Server — Minecraft server in 60 seconds.\n\nNo Docker. No Kubernetes. No nonsense. Just one command\nand you're hosting Minecraft — with Bedrock cross-play,\nParkour courses, and tuned configs out of the box."),
+		kong.Description("MC Dad Server — Minecraft server in about two minutes.\n\nNo Docker. No Kubernetes. No nonsense. Just one command\nand you're hosting Minecraft — with Bedrock cross-play,\nParkour courses, and tuned configs out of the box."),
 		kong.Vars{"version": fmt.Sprintf("%s (%s)", version, commit)},
 		kong.UsageOnError(),
 		kong.ConfigureHelp(kong.HelpOptions{
