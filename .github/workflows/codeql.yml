@@ -1,12 +1,11 @@
 name: CodeQL
 
+# Maintenance mode: scan weekly (and on demand) rather than on every push and
+# pull request.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   schedule:
     - cron: "21 4 * * 2"
+  workflow_dispatch:
 
 permissions:
   contents: read
