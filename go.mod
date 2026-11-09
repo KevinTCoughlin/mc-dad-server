@@ -2,7 +2,7 @@ module github.com/KevinTCoughlin/mc-dad-server
 
 go 1.26.0
 
-toolchain go1.26.5
+toolchain go1.26.10
 
 require (
 	github.com/alecthomas/kong v1.17.0
