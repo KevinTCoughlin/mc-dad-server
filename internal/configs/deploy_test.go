@@ -218,54 +218,6 @@ func TestDeployComposeZGC(t *testing.T) {
 	}
 }
 
-func TestDeployContainerConfigs(t *testing.T) {
-	d := setupTestFS(t)
-
-	dir := t.TempDir()
-	cfg := config.DefaultConfig()
-	cfg.Dir = dir
-	cfg.Port = 25565
-	cfg.MOTD = "Container Test"
-	cfg.Difficulty = "hard"
-	cfg.GameMode = "creative"
-	cfg.MaxPlayers = 8
-	cfg.Whitelist = false
-	cfg.RCONPassword = "containerpass"
-
-	if err := d.DeployContainerConfigs(cfg, dir); err != nil {
-		t.Fatalf("d.DeployContainerConfigs() error: %v", err)
-	}
-
-	// All five config files should be in a flat directory
-	for _, name := range []string{
-		"server.properties",
-		"bukkit.yml",
-		"spigot.yml",
-		"paper-global.yml",
-		"paper-world-defaults.yml",
-	} {
-		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
-			t.Errorf("missing %s: %v", name, err)
-		}
-	}
-
-	// Verify server.properties substitution
-	data, err := os.ReadFile(filepath.Join(dir, "server.properties"))
-	if err != nil {
-		t.Fatalf("reading server.properties: %v", err)
-	}
-	content := string(data)
-	if strings.Contains(content, "%%MC_PORT%%") {
-		t.Error("server.properties still contains %%MC_PORT%% placeholder")
-	}
-	if !strings.Contains(content, "motd=Container Test") {
-		t.Error("server.properties missing motd substitution")
-	}
-	if !strings.Contains(content, "rcon.password=containerpass") {
-		t.Error("server.properties missing rcon password")
-	}
-}
-
 func TestDeployContainerEnv(t *testing.T) {
 	d := setupTestFS(t)
 
@@ -317,10 +269,10 @@ func TestDeployQuadlet(t *testing.T) {
 	cfg.Memory = "4G"
 	cfg.GCType = "g1gc"
 
-	configDir := "/home/user/.config/mc-dad-server/configs"
+	cfg.MOTD = `Dad's "100%" server`
 	envFile := "/home/user/.config/mc-dad-server/.env"
 
-	if err := d.DeployQuadlet(cfg, configDir, envFile, dir); err != nil {
+	if err := d.DeployQuadlet(cfg, envFile, dir); err != nil {
 		t.Fatalf("d.DeployQuadlet() error: %v", err)
 	}
 
@@ -339,7 +291,9 @@ func TestDeployQuadlet(t *testing.T) {
 		{"memory env", "MEMORY=4G"},
 		{"memory max", "MemoryMax=5G"},
 		{"gc type env", "GC_TYPE=g1gc"},
-		{"config volume", configDir + "/server.properties:/minecraft/server.properties"},
+		{"port env", "Environment=PORT=25565"},
+		{"motd env quoted", `Environment="MOTD=Dad's \"100%%\" server"`},
+		{"difficulty env", `Environment="DIFFICULTY=`},
 		{"env file", "EnvironmentFile=" + envFile},
 		{"unit description", "Minecraft Paper Server"},
 		{"cpu quota comment", "CPUQuota: 200% = 2 CPU cores"},
@@ -348,6 +302,10 @@ func TestDeployQuadlet(t *testing.T) {
 		if !strings.Contains(content, c.want) {
 			t.Errorf("minecraft.container missing %s (%q)", c.desc, c.want)
 		}
+	}
+	// Single-file config binds crash Paper (it rewrites them by atomic rename).
+	if strings.Contains(content, "server.properties:") || strings.Contains(content, "paper-global.yml:") {
+		t.Error("minecraft.container must not bind-mount config files")
 	}
 }
 

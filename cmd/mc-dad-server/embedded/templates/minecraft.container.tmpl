@@ -18,16 +18,21 @@ Volume=minecraft-plugins:/minecraft/plugins:Z
 Volume=minecraft-logs:/minecraft/logs:Z
 Volume=minecraft-backups:/minecraft/backups:Z
 
-Volume={{.ConfigDir}}/server.properties:/minecraft/server.properties:ro,Z
-Volume={{.ConfigDir}}/bukkit.yml:/minecraft/bukkit.yml:ro,Z
-Volume={{.ConfigDir}}/spigot.yml:/minecraft/spigot.yml:ro,Z
-Volume={{.ConfigDir}}/paper-global.yml:/minecraft/config/paper-global.yml:ro,Z
-Volume={{.ConfigDir}}/paper-world-defaults.yml:/minecraft/config/paper-world-defaults.yml:ro,Z
-
 # Load secrets from .env file (RCON_PASSWORD, etc.)
 EnvironmentFile={{.EnvFile}}
 Environment=MEMORY={{.Memory}}
 Environment=GC_TYPE={{.GCType}}
+# Server settings go in as env vars that entrypoint.sh substitutes into the
+# image's server.properties. Config files are deliberately not bind-mounted:
+# Paper rewrites them at startup by atomic rename, which fails on a
+# single-file bind mount ("Resource busy") and crashes the server.
+Environment=PORT={{.Port}}
+Environment=RCON_PORT=25575
+Environment={{sdq (print "DIFFICULTY=" .Difficulty)}}
+Environment={{sdq (print "GAMEMODE=" .GameMode)}}
+Environment=MAX_PLAYERS={{.MaxPlayers}}
+Environment={{sdq (print "MOTD=" .MOTD)}}
+Environment=WHITELIST={{.Whitelist}}
 
 DropCapability=ALL
 NoNewPrivileges=true
