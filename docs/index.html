@@ -41,7 +41,7 @@
         "applicationCategory": "GameApplication",
         "applicationSubCategory": "Game server",
         "operatingSystem": "Linux, macOS, Windows, Raspberry Pi OS",
-        "softwareVersion": "0.3.0",
+        "softwareVersion": "0.4.0",
         "license": "https://opensource.org/licenses/MIT",
         "isAccessibleForFree": true,
         "downloadUrl": "https://github.com/KevinTCoughlin/mc-dad-server/releases/latest",
@@ -726,7 +726,7 @@
         </li>
         <li>
           <strong>No spare machine? Use your Mac</strong>
-          New: on macOS, container mode runs on Apple's <a href="https://github.com/apple/container"><code class="inline">container</code></a> CLI, with launchd starting it on login and restarting it after a crash. From a checkout: <code class="inline">container build -t mc-dad-server:latest .</code>, then <code class="inline">mc-dad-server setup-container</code>. It's on <code class="inline">main</code> now and ships in the next release; see the <a href="https://github.com/KevinTCoughlin/mc-dad-server#macos-apple-container">macOS guide</a>.
+          New: on macOS, container mode runs on Apple's <a href="https://github.com/apple/container"><code class="inline">container</code></a> CLI, with launchd starting it on login and restarting it after a crash. From a checkout: <code class="inline">container build -t mc-dad-server:latest .</code>, then <code class="inline">mc-dad-server setup-container</code>. New in v0.4.0; see the <a href="https://github.com/KevinTCoughlin/mc-dad-server#macos-apple-container">macOS guide</a>.
         </li>
         <li>
           <strong>Add the kids and their friends to the whitelist</strong>
@@ -931,7 +931,7 @@
         </details>
         <details class="faq-item">
           <summary>Can I run this in Docker, Podman or Apple container?</summary>
-          <div class="faq-answer">Yes! Use <code>podman compose up -d</code> or <code>docker compose up -d</code>. The CLI auto-detects container mode, or use <code>--mode container</code>. Includes health checks, graceful shutdown, and Quadlet systemd integration. On a Mac, <code>mc-dad-server setup-container</code> uses Apple's <code>container</code> CLI and a launchd agent instead (new on <code>main</code>, in the next release); <code>--runtime</code> picks the engine when you have more than one.</div>
+          <div class="faq-answer">Yes! Use <code>podman compose up -d</code> or <code>docker compose up -d</code>. The CLI auto-detects container mode, or use <code>--mode container</code>. Includes health checks, graceful shutdown, and Quadlet systemd integration. On a Mac, <code>mc-dad-server setup-container</code> uses Apple's <code>container</code> CLI and a launchd agent instead (new in v0.4.0); <code>--runtime</code> picks the engine when you have more than one.</div>
         </details>
         <details class="faq-item">
           <summary>What if my server crashes?</summary>
