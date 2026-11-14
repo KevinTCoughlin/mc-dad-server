@@ -39,6 +39,9 @@ type Target struct {
 	Dir string
 	// Session is the screen session or container name.
 	Session string
+	// Runtime is the container runtime to use in container mode: "podman",
+	// "docker", "container" (Apple), or "" / "auto" to detect.
+	Runtime string
 }
 
 // Resolved is a manager plus the context needed to report on it.
@@ -64,13 +67,16 @@ func (r Resolved) Close() error {
 	return nil
 }
 
+// RuntimeAuto selects the container runtime automatically.
+const RuntimeAuto = "auto"
+
 // Resolve returns a ServerManager for the target.
 func Resolve(ctx context.Context, t Target, runner platform.CommandRunner) Resolved {
-	mode := ResolveMode(ctx, t, runner)
+	mode, runtime := resolve(ctx, t, runner)
 	if mode == ModeContainer {
 		rconPass := ReadRCONPassword(t.Dir)
 		return Resolved{
-			Manager:             container.NewManager(runner, DetectRuntime(runner), t.Session, DefaultRCONAddr, rconPass),
+			Manager:             container.NewManager(runner, runtime, t.Session, DefaultRCONAddr, rconPass),
 			Mode:                mode,
 			MissingRCONPassword: rconPass == "",
 		}
@@ -84,31 +90,51 @@ func Resolve(ctx context.Context, t Target, runner platform.CommandRunner) Resol
 // ResolveMode determines the server mode from the target's mode setting,
 // auto-detecting when it is unset or "auto".
 func ResolveMode(ctx context.Context, t Target, runner platform.CommandRunner) string {
-	switch t.Mode {
-	case ModeScreen:
-		return ModeScreen
-	case ModeContainer:
-		return ModeContainer
-	default:
-		return detectMode(ctx, t, runner)
+	if t.Mode == ModeScreen || t.Mode == ModeContainer {
+		return t.Mode // explicit mode wins without probing the system
 	}
+	mode, _ := resolve(ctx, t, runner)
+	return mode
 }
 
-// detectMode selects container mode only when a container with the session
-// name is currently running; otherwise it defaults to screen mode.
-func detectMode(ctx context.Context, t Target, runner platform.CommandRunner) string {
-	runtime := DetectRuntime(runner)
-	if runtime != "unknown" {
-		cm := container.NewManager(runner, runtime, t.Session, "", "")
-		if cm.IsRunning(ctx) {
-			return ModeContainer
+// resolve picks the server mode and, for container mode, the runtime.
+//
+// Auto mode selects container mode only when a container with the session
+// name is running under one of the candidate runtimes, and then uses that
+// runtime — so a Mac with both Apple's `container` and Podman installed
+// manages whichever one actually hosts the server. Explicit container mode
+// with no running container falls back to the most preferred runtime.
+func resolve(ctx context.Context, t Target, runner platform.CommandRunner) (mode, runtime string) {
+	if t.Mode == ModeScreen {
+		return ModeScreen, ""
+	}
+	candidates := candidateRuntimes(t, runner)
+	for _, rt := range candidates {
+		if container.NewManager(runner, rt, t.Session, "", "").IsRunning(ctx) {
+			return ModeContainer, rt
 		}
 	}
-	return ModeScreen
+	if t.Mode == ModeContainer {
+		if len(candidates) > 0 {
+			return ModeContainer, candidates[0]
+		}
+		return ModeContainer, platform.RuntimeUnknown
+	}
+	return ModeScreen, ""
 }
 
-// DetectRuntime returns the available container runtime ("podman", "docker",
-// or "unknown"). Podman is preferred when both are installed.
+// candidateRuntimes returns the runtimes to consider: the explicitly
+// requested one, or every installed runtime in preference order.
+func candidateRuntimes(t Target, runner platform.CommandRunner) []string {
+	if t.Runtime != "" && t.Runtime != RuntimeAuto {
+		return []string{t.Runtime}
+	}
+	return platform.AvailableContainerRuntimes(runner)
+}
+
+// DetectRuntime returns the most preferred installed container runtime
+// ("podman", "docker", "container", or "unknown"). See
+// platform.DetectContainerRuntime for the preference order.
 func DetectRuntime(runner platform.CommandRunner) string {
 	return platform.DetectContainerRuntime(runner)
 }

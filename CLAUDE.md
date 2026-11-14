@@ -2,7 +2,7 @@
 
 ## What is this?
 
-MC Dad Server — a single-binary CLI that installs and manages a Minecraft server (Java/Bedrock cross-play via Geyser, PaperMC tuned configs, parkour, chat filter, playit.gg tunnel). Supports bare-metal (GNU screen) and container (Podman/Docker) modes. Targets Linux (primary), macOS, and Windows. Written in Go.
+MC Dad Server — a single-binary CLI that installs and manages a Minecraft server (Java/Bedrock cross-play via Geyser, PaperMC tuned configs, parkour, chat filter, playit.gg tunnel). Supports bare-metal (GNU screen) and container (Podman/Docker, or Apple `container` on macOS) modes. Targets Linux (primary), macOS, and Windows. Written in Go.
 
 ## Build & Test
 
@@ -33,7 +33,7 @@ internal/
     logtail.go              Polls logs/latest.log, sends lines as TUI messages
   config/                   ServerConfig struct, defaults, validation
   configs/                  Deploy embedded config files + start script
-  container/                RCON client (rcon.go) and Podman container manager (container.go)
+  container/                RCON client (rcon.go) and container manager for Podman/Docker/Apple `container` (container.go)
   license/                  LemonSqueezy license client + manager
   management/               ServerManager interface, screen/container backends, backup, process stats, parkour rotation
   nag/                      Shareware nag/grace-period logic
@@ -60,6 +60,7 @@ embedded/bun/               Bun runtime framework (TypeScript) and templates
 - **Embedded assets**: `//go:embed all:embedded` in main.go — configs, templates, blocked-words list. The FS is wrapped in `configs.NewDeployer` / `bun.NewDeployer` and injected via Kong, not stored in package state
 - **Version**: Set via ldflags (`-X main.version=... -X main.commit=...`) by goreleaser
 - **Server modes**: `--mode auto|screen|container` — `ServerManager` interface (`management/manager.go`) with `ScreenManager` and `container.Manager` backends. Auto-detection checks for running container first, falls back to screen.
+- **Container runtimes**: `platform.AvailableContainerRuntimes` lists installed runtimes in preference order (Podman > Docker; on macOS Apple `container` first). `--runtime auto` picks whichever one has the container running. Apple `container` returns JSON from `inspect`/`stats` (no Go templates), has no compose, restart policy or HEALTHCHECK, and creates named volumes empty and root-owned. On macOS, `setup-container` writes a launchd agent and run script (`apple-container*.tmpl`), not a Quadlet unit.
 - **Container**: Eclipse Temurin 25 JRE on Alpine Linux (builder stays on Debian Trixie slim). FIFO-based stdin (`entrypoint.sh`), RCON for remote commands (`container/rcon.go`), graceful 30s shutdown countdown.
 - **Lean image**: Alpine base with minimal additional dependencies (bash for entrypoint compatibility). Setuid/setgid bit removal for security hardening.
 

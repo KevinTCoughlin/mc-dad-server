@@ -272,6 +272,80 @@ func (d *Deployer) DeployQuadlet(cfg *config.ServerConfig, configDir, envFile, d
 	})
 }
 
+// AppleContainerPaths locates the files written for the Apple container
+// runtime on macOS.
+type AppleContainerPaths struct {
+	EnvFile    string // .env passed via --env-file
+	ScriptPath string // run script launched by the launchd agent
+	PlistPath  string // launchd agent plist (~/Library/LaunchAgents/...)
+	LogDir     string // launchd stdout/stderr destination
+}
+
+// AppleContainerImage is the image tag the Apple container run script uses.
+// `container build -t mc-dad-server:latest .` produces it.
+const AppleContainerImage = "mc-dad-server:latest"
+
+// DeployAppleContainer renders the run script and launchd agent that manage
+// the server under Apple's `container` runtime — the macOS counterpart to
+// DeployQuadlet. label is the launchd agent label.
+func (d *Deployer) DeployAppleContainer(cfg *config.ServerConfig, p *AppleContainerPaths, label string) error {
+	for _, dir := range []string{filepath.Dir(p.ScriptPath), filepath.Dir(p.PlistPath), p.LogDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("creating %s: %w", dir, err)
+		}
+	}
+
+	vars := map[string]any{
+		"Label":       label,
+		"Image":       AppleContainerImage,
+		"Port":        cfg.Port,
+		"BedrockPort": config.BedrockPort,
+		"Memory":      cfg.Memory,
+		"MemoryMax":   computeMemoryMax(cfg.Memory),
+		"GCType":      cfg.GCType,
+		"Difficulty":  cfg.Difficulty,
+		"GameMode":    cfg.GameMode,
+		"MaxPlayers":  cfg.MaxPlayers,
+		"MOTD":        cfg.MOTD,
+		"Whitelist":   cfg.Whitelist,
+		"EnvFile":     p.EnvFile,
+		"ScriptPath":  p.ScriptPath,
+		"PlistPath":   p.PlistPath,
+		"LogDir":      p.LogDir,
+	}
+	if err := d.renderTemplate("apple-container-run.sh.tmpl", p.ScriptPath, 0o755, vars); err != nil {
+		return err
+	}
+	return d.renderTemplate("apple-container.plist.tmpl", p.PlistPath, 0o644, vars)
+}
+
+// shellQuote single-quotes s for safe use as one POSIX shell word.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// renderTemplate executes embedded/templates/<name> into dest.
+func (d *Deployer) renderTemplate(name, dest string, perm os.FileMode, vars map[string]any) error {
+	data, err := d.readEmbedded("embedded/templates/" + name)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", name, err)
+	}
+	tmpl, err := template.New(name).Option("missingkey=error").
+		Funcs(template.FuncMap{"sq": shellQuote}).Parse(string(data))
+	if err != nil {
+		return fmt.Errorf("parsing %s: %w", name, err)
+	}
+	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
+	if err != nil {
+		return fmt.Errorf("creating %s: %w", dest, err)
+	}
+	if err := tmpl.Execute(f, vars); err != nil {
+		_ = f.Close()
+		return fmt.Errorf("rendering %s: %w", name, err)
+	}
+	return f.Close()
+}
+
 // computeMemoryMax adds 1G headroom to the configured memory for JVM overhead.
 func computeMemoryMax(memory string) string {
 	memory = strings.TrimSpace(memory)

@@ -251,7 +251,7 @@ func (cmd *VoteMapCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 
 // target builds a serverctl.Target from the global flags.
 func target(g *Globals) serverctl.Target {
-	return serverctl.Target{Mode: g.Mode, Dir: g.Dir, Session: g.Session}
+	return serverctl.Target{Mode: g.Mode, Dir: g.Dir, Session: g.Session, Runtime: g.Runtime}
 }
 
 // globalsToConfig creates a minimal ServerConfig from the global flags.

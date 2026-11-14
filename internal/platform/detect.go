@@ -13,7 +13,7 @@ type Platform struct {
 	PkgMgr           string // apt, dnf, pacman, zypper, brew, unknown
 	InitSystem       string // systemd, launchd, unknown
 	Arch             string // amd64, arm64, armv7
-	ContainerRuntime string // podman, docker, unknown
+	ContainerRuntime string // podman, docker, container (Apple), unknown
 }
 
 // Detect probes the runtime environment and returns platform info.
@@ -47,7 +47,7 @@ func Detect(ctx context.Context, runner CommandRunner) Platform {
 		p.OS = "windows"
 	}
 
-	// Detect container runtime (podman preferred over docker)
+	// Detect container runtime (see DetectContainerRuntime for preference order)
 	p.ContainerRuntime = DetectContainerRuntime(runner)
 
 	return p
@@ -92,14 +92,46 @@ func (p *Platform) IsLinux() bool {
 	return p.OS == "linux" || p.OS == "wsl"
 }
 
-// DetectContainerRuntime detects available container runtime (podman or docker).
-// Prefers podman if both are available.
+// Container runtime names. RuntimeApple is Apple's `container` CLI
+// (github.com/apple/container), which runs each Linux container in its own
+// lightweight VM on macOS.
+const (
+	RuntimePodman  = "podman"
+	RuntimeDocker  = "docker"
+	RuntimeApple   = "container"
+	RuntimeUnknown = "unknown"
+)
+
+// AvailableContainerRuntimes returns the container runtimes installed on this
+// host, most preferred first.
+func AvailableContainerRuntimes(runner CommandRunner) []string {
+	return availableContainerRuntimes(runner, runtime.GOOS)
+}
+
+// availableContainerRuntimes is AvailableContainerRuntimes with the OS
+// injected for tests. On macOS, Apple's `container` is preferred because it
+// needs no separate Linux VM to manage; it is never considered elsewhere,
+// where an unrelated binary named "container" could be on PATH.
+func availableContainerRuntimes(runner CommandRunner, goos string) []string {
+	order := []string{RuntimePodman, RuntimeDocker}
+	if goos == "darwin" {
+		order = []string{RuntimeApple, RuntimePodman, RuntimeDocker}
+	}
+	var found []string
+	for _, rt := range order {
+		if runner.CommandExists(rt) {
+			found = append(found, rt)
+		}
+	}
+	return found
+}
+
+// DetectContainerRuntime returns the most preferred installed container
+// runtime, or RuntimeUnknown. Podman is preferred over Docker; on macOS
+// Apple's `container` is preferred over both.
 func DetectContainerRuntime(runner CommandRunner) string {
-	if runner.CommandExists("podman") {
-		return "podman"
+	if rts := AvailableContainerRuntimes(runner); len(rts) > 0 {
+		return rts[0]
 	}
-	if runner.CommandExists("docker") {
-		return "docker"
-	}
-	return "unknown"
+	return RuntimeUnknown
 }

@@ -14,5 +14,6 @@ func (cmd *ConsoleCmd) Run(globals *Globals, runner platform.CommandRunner) erro
 		Dir:     globals.Dir,
 		Session: globals.Session,
 		Mode:    globals.Mode,
+		Runtime: globals.Runtime,
 	}, runner)
 }

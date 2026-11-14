@@ -98,6 +98,7 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 | Windows (x64/ARM64) | Fully supported |
 | WSL2 (Windows) | Fully supported |
 | Docker / Podman | Fully supported (`--mode container`) |
+| Apple `container` (macOS, Apple silicon) | Fully supported (`--mode container`, launchd-managed) |
 | Raspberry Pi | Works (use `--memory 1G`) |
 
 ## Options
@@ -202,6 +203,34 @@ systemctl --user start minecraft
 ```
 
 See `compose.yml` for volume mounts, port mappings, and security hardening (cap_drop, no-new-privileges, memory limits).
+
+### macOS: Apple `container`
+
+On Apple silicon Macs, [Apple's `container` CLI](https://github.com/apple/container) is a first-class runtime. Each container runs in its own lightweight VM, so you don't need Podman Machine or Docker Desktop. The image builds natively for `linux/arm64`.
+
+```bash
+brew install container && container system start
+
+# Always-on server supervised by launchd (the macOS counterpart to Quadlet)
+container build -t mc-dad-server:latest .
+mc-dad-server setup-container          # writes ~/.config/mc-dad-server/run-container.sh
+                                       # and ~/Library/LaunchAgents/com.mc-dad-server.minecraft-container.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mc-dad-server.minecraft-container.plist
+
+mc-dad-server status                   # auto-detects the running container
+mc-dad-server stop                     # graceful countdown; launchd won't restart a clean stop
+mc-dad-server start                    # restarts it through launchd
+```
+
+The `just container-*` recipes use `container` by default on macOS; set `CONTAINER_ENGINE=podman` (or `docker`) to override. `just container-up` runs the `compose.yml` setup with `container run`, because `container` has no compose.
+
+How the Apple runtime differs:
+
+- **Supervision**: there are no restart policies, so the launchd agent restarts the server after a crash (non-zero exit) but not after `mc-dad-server stop`.
+- **Health**: `HEALTHCHECK` is ignored, so `status` reports running/stopped instead of healthy/unhealthy.
+- **Volumes**: new named volumes start empty and root-owned. The run script seeds each one from the image the first time it's created, which matches Podman and Docker, so bundled plugins are present.
+- **Config**: settings reach the server as env vars (`MOTD`, `DIFFICULTY`, …) rather than bind-mounted config files, because Paper rewrites those files at startup.
+- **Runtime choice**: if Podman is also installed, auto mode manages whichever runtime is running the `minecraft` container. Force one with `--runtime container|podman|docker`.
 
 For release and smoke-test readiness, see the [operational quality checklist](docs/operational-quality.md).
 

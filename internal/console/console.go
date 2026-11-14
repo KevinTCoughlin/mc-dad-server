@@ -19,6 +19,7 @@ type Options struct {
 	Dir     string
 	Session string
 	Mode    string
+	Runtime string
 }
 
 // Styles.

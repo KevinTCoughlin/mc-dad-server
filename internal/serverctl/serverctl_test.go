@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/KevinTCoughlin/mc-dad-server/internal/container"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
 
@@ -115,5 +116,70 @@ func TestReadRCONPasswordMissingFile(t *testing.T) {
 	t.Setenv("RCON_PASSWORD", "")
 	if got := ReadRCONPassword(t.TempDir()); got != "" {
 		t.Fatalf("got %q, want empty", got)
+	}
+}
+
+// appleRunning is `container inspect` output for a running container.
+const appleRunning = `[{"id":"minecraft","status":{"state":"running"}}]`
+
+func runtimeOf(t *testing.T, r Resolved) string {
+	t.Helper()
+	cm, ok := r.Manager.(*container.Manager)
+	if !ok {
+		t.Fatalf("expected *container.Manager, got %T", r.Manager)
+	}
+	return cm.Runtime()
+}
+
+func TestResolvePicksRuntimeHostingTheContainer(t *testing.T) {
+	t.Setenv("RCON_PASSWORD", "x")
+
+	// Apple's container and podman both installed (as on a Mac); the server
+	// runs under podman, so podman must be chosen even though `container`
+	// is preferred on darwin.
+	runner := platform.NewMockRunner()
+	runner.ExistsMap["podman"] = true
+	runner.ExistsMap["container"] = true
+	runner.OutputMap["podman [inspect --format {{.State.Running}} minecraft]"] = []byte("true\n")
+
+	res := Resolve(t.Context(), Target{Mode: ModeAuto, Session: "minecraft", Dir: t.TempDir()}, runner)
+	if res.Mode != ModeContainer {
+		t.Fatalf("mode = %q, want container", res.Mode)
+	}
+	if got := runtimeOf(t, res); got != platform.RuntimePodman {
+		t.Fatalf("runtime = %q, want podman", got)
+	}
+}
+
+func TestResolveExplicitAppleRuntime(t *testing.T) {
+	t.Setenv("RCON_PASSWORD", "x")
+
+	runner := platform.NewMockRunner()
+	runner.ExistsMap["podman"] = true
+	runner.OutputMap["container [inspect minecraft]"] = []byte(appleRunning)
+
+	res := Resolve(t.Context(), Target{Mode: ModeAuto, Session: "minecraft", Dir: t.TempDir(), Runtime: "container"}, runner)
+	if res.Mode != ModeContainer {
+		t.Fatalf("mode = %q, want container", res.Mode)
+	}
+	if got := runtimeOf(t, res); got != platform.RuntimeApple {
+		t.Fatalf("runtime = %q, want container", got)
+	}
+	for _, c := range runner.Commands {
+		if c.Name == "podman" {
+			t.Fatalf("explicit --runtime container must not probe podman, ran %v", runner.Commands)
+		}
+	}
+}
+
+func TestResolveContainerModeFallsBackToPreferredRuntime(t *testing.T) {
+	t.Setenv("RCON_PASSWORD", "x")
+
+	// Container mode requested, nothing running yet: use the first candidate.
+	runner := platform.NewMockRunner()
+	runner.ExistsMap["docker"] = true
+	res := Resolve(t.Context(), Target{Mode: ModeContainer, Session: "minecraft", Dir: t.TempDir()}, runner)
+	if got := runtimeOf(t, res); got != platform.RuntimeDocker {
+		t.Fatalf("runtime = %q, want docker", got)
 	}
 }

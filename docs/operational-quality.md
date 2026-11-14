@@ -42,6 +42,7 @@ Use this checklist before cutting a release or validating a change that affects 
 - Windows.
 - WSL2.
 - Docker or Podman container mode.
+- Apple `container` mode on macOS: `setup-container`, then a launchd bootstrap, then status, stop and start. Kill java and confirm launchd restarts it.
 - Raspberry Pi or another low-memory ARM host when changing memory or JVM flags.
 
 ## Release readiness

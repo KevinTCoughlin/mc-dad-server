@@ -3,6 +3,7 @@ package configs
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -397,5 +398,79 @@ func TestSubstitutePropertiesNeutralizesControlChars(t *testing.T) {
 	}
 	if !strings.Contains(got, "motd=Welcome rcon.password=hacked op-permission-level=4") {
 		t.Fatalf("unexpected motd line in:\n%s", got)
+	}
+}
+
+func TestDeployAppleContainer(t *testing.T) {
+	d := setupTestFS(t)
+
+	dir := t.TempDir()
+	cfg := config.DefaultConfig()
+	cfg.Port = 25565
+	cfg.Memory = "4G"
+	cfg.GCType = "zgc"
+	cfg.MOTD = "Dad's \"best\" $server"
+	cfg.Difficulty = "hard"
+
+	paths := AppleContainerPaths{
+		EnvFile:    "/Users/dad/.config/mc-dad-server/.env",
+		ScriptPath: filepath.Join(dir, "bin", "run-container.sh"),
+		PlistPath:  filepath.Join(dir, "LaunchAgents", "com.example.mc.plist"),
+		LogDir:     filepath.Join(dir, "Logs"),
+	}
+	if err := d.DeployAppleContainer(cfg, &paths, "com.example.mc"); err != nil {
+		t.Fatalf("DeployAppleContainer() error: %v", err)
+	}
+
+	script, err := os.ReadFile(paths.ScriptPath)
+	if err != nil {
+		t.Fatalf("reading run script: %v", err)
+	}
+	if info, _ := os.Stat(paths.ScriptPath); info.Mode().Perm()&0o100 == 0 && runtime.GOOS != "windows" {
+		t.Errorf("run script not executable: %v", info.Mode())
+	}
+	for _, want := range []string{
+		"exec container run --progress none --name \"${NAME}\"",
+		"-p 25565:25565/tcp",
+		"-p 19132:19132/udp",
+		"-p 127.0.0.1:25575:25575/tcp",
+		"-v minecraft-worlds:/minecraft/worlds",
+		"--env-file '" + paths.EnvFile + "'",
+		"-e MEMORY='4G'",
+		"-e GC_TYPE='zgc'",
+		"-e DIFFICULTY='hard'",
+		`-e MOTD='Dad'\''s "best" $server'`,
+		"-e RCON_PORT=25575",
+		"-m 5G",
+		"--cap-drop ALL",
+		`IMAGE="mc-dad-server:latest"`,
+	} {
+		if !strings.Contains(string(script), want) {
+			t.Errorf("run script missing %q", want)
+		}
+	}
+	if strings.Contains(string(script), ":Z") {
+		t.Error("run script must not use SELinux :Z labels (unsupported by Apple container)")
+	}
+	if strings.Contains(string(script), "server.properties:") {
+		t.Error("run script must not bind-mount config files (Paper rewrites them in place)")
+	}
+
+	plist, err := os.ReadFile(paths.PlistPath)
+	if err != nil {
+		t.Fatalf("reading plist: %v", err)
+	}
+	for _, want := range []string{
+		"<string>com.example.mc</string>",
+		"<string>" + paths.ScriptPath + "</string>",
+		"<key>SuccessfulExit</key>",
+		paths.LogDir + "/minecraft-container.log",
+	} {
+		if !strings.Contains(string(plist), want) {
+			t.Errorf("plist missing %q", want)
+		}
+	}
+	if strings.Contains(string(script)+string(plist), "{{") {
+		t.Error("unsubstituted template placeholders")
 	}
 }

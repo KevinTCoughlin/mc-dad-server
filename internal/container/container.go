@@ -2,10 +2,12 @@ package container
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"sync"
 
@@ -16,11 +18,16 @@ import (
 // Verify Manager satisfies management.ServerManager at compile time.
 var _ management.ServerManager = (*Manager)(nil)
 
-// Manager manages a Minecraft server running in a container (Podman or Docker).
-// It implements management.ServerManager and management.HealthChecker.
+// LaunchdLabel is the launchd agent that supervises the server container
+// under Apple's `container` runtime (written by `setup-container` on macOS).
+const LaunchdLabel = "com.mc-dad-server.minecraft-container"
+
+// Manager manages a Minecraft server running in a container (Podman, Docker,
+// or Apple's `container`). It implements management.ServerManager and
+// management.HealthChecker.
 type Manager struct {
 	runner    platform.CommandRunner
-	runtime   string // "podman" or "docker"
+	runtime   string // platform.RuntimePodman, RuntimeDocker, or RuntimeApple
 	container string
 	rconAddr  string
 	rconPass  string
@@ -39,8 +46,38 @@ func NewManager(runner platform.CommandRunner, runtime, container, rconAddr, rco
 	}
 }
 
+// isApple reports whether this manager drives Apple's `container` CLI, whose
+// inspect/stats output is JSON rather than Go-template formatted.
+func (c *Manager) isApple() bool {
+	return c.runtime == platform.RuntimeApple
+}
+
+// appleInspect is the subset of `container inspect` JSON the manager reads.
+type appleInspect struct {
+	Status struct {
+		State string `json:"state"`
+	} `json:"status"`
+}
+
+// appleState returns the container's state ("running", "stopped", ...) as
+// reported by `container inspect`, or "" if it cannot be determined.
+func (c *Manager) appleState(ctx context.Context) string {
+	out, err := c.runner.RunWithOutput(ctx, c.runtime, "inspect", c.container)
+	if err != nil {
+		return ""
+	}
+	var items []appleInspect
+	if err := json.Unmarshal(out, &items); err != nil || len(items) == 0 {
+		return ""
+	}
+	return items[0].Status.State
+}
+
 // IsRunning reports whether the container is running.
 func (c *Manager) IsRunning(ctx context.Context) bool {
+	if c.isApple() {
+		return c.appleState(ctx) == "running"
+	}
 	out, err := c.runner.RunWithOutput(ctx, c.runtime, "inspect", "--format", "{{.State.Running}}", c.container)
 	if err != nil {
 		return false
@@ -107,8 +144,17 @@ func (c *Manager) Close() error {
 	return err
 }
 
-// Launch starts the container via the configured runtime (podman or docker).
+// Launch starts the container via the configured runtime. Under Apple's
+// `container`, the launchd agent written by setup-container owns the
+// container's lifecycle, so Launch asks launchd to start it and only falls
+// back to `container start` when no agent is loaded.
 func (c *Manager) Launch(ctx context.Context) error {
+	if c.isApple() {
+		agent := fmt.Sprintf("gui/%d/%s", os.Getuid(), LaunchdLabel)
+		if err := c.runner.Run(ctx, "launchctl", "kickstart", agent); err == nil {
+			return nil
+		}
+	}
 	return c.runner.Run(ctx, c.runtime, "start", c.container)
 }
 
@@ -118,6 +164,11 @@ func (c *Manager) Stop(ctx context.Context) error {
 	return c.runner.Run(ctx, c.runtime, "stop", "-t", "60", c.container)
 }
 
+// Runtime returns the container runtime this manager drives.
+func (c *Manager) Runtime() string {
+	return c.runtime
+}
+
 // Session returns the container name.
 func (c *Manager) Session() string {
 	return c.container
@@ -125,6 +176,18 @@ func (c *Manager) Session() string {
 
 // Health returns the container health status string (e.g. "healthy", "unhealthy", "starting").
 func (c *Manager) Health(ctx context.Context) string {
+	// Apple's `container` has no HEALTHCHECK support, so report run state.
+	if c.isApple() {
+		switch c.appleState(ctx) {
+		case "":
+			return "unknown"
+		case "running":
+			return "running"
+		default:
+			return "stopped"
+		}
+	}
+
 	// Docker and Podman use different health status paths
 	format := "{{.State.Healthcheck.Status}}" // Podman
 	if c.runtime == "docker" {
@@ -147,6 +210,9 @@ func (c *Manager) Health(ctx context.Context) string {
 
 // Stats returns a formatted string with container resource usage.
 func (c *Manager) Stats(ctx context.Context) (string, error) {
+	if c.isApple() {
+		return c.appleStats(ctx)
+	}
 	out, err := c.runner.RunWithOutput(ctx, c.runtime, "stats", "--no-stream", "--format",
 		"CPU: {{.CPUPerc}}  MEM: {{.MemUsage}}", c.container)
 	if err != nil {
@@ -155,8 +221,45 @@ func (c *Manager) Stats(ctx context.Context) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// appleStats formats `container stats --format json` output to match the
+// "CPU: x%  MEM: used / limit" line podman and docker produce.
+func (c *Manager) appleStats(ctx context.Context) (string, error) {
+	out, err := c.runner.RunWithOutput(ctx, c.runtime, "stats", "--no-stream", "--format", "json", c.container)
+	if err != nil {
+		return "", err
+	}
+	var items []struct {
+		CPUUtilization   float64 `json:"cpuUtilization"`
+		MemoryUsageBytes int64   `json:"memoryUsageBytes"`
+		MemoryLimitBytes int64   `json:"memoryLimitBytes"`
+	}
+	if err := json.Unmarshal(out, &items); err != nil {
+		return "", fmt.Errorf("parsing container stats: %w", err)
+	}
+	if len(items) == 0 {
+		return "", errors.New("container stats: no data")
+	}
+	s := items[0]
+	return fmt.Sprintf("CPU: %.2f%%  MEM: %s / %s", s.CPUUtilization, formatMiB(s.MemoryUsageBytes), formatMiB(s.MemoryLimitBytes)), nil
+}
+
+// formatMiB renders a byte count the way podman's stats do (e.g. "512MiB",
+// "1.5GiB").
+func formatMiB(b int64) string {
+	const mib = 1 << 20
+	if b >= 1<<30 {
+		return fmt.Sprintf("%.2fGiB", float64(b)/(1<<30))
+	}
+	return fmt.Sprintf("%.1fMiB", float64(b)/mib)
+}
+
 // Exists checks if a container with the given name exists (running or stopped).
 func Exists(ctx context.Context, runner platform.CommandRunner, runtime, name string) bool {
+	if runtime == platform.RuntimeApple {
+		// `container inspect` has no --type flag; it exits non-zero when the
+		// container is not found.
+		return runner.Run(ctx, runtime, "inspect", name) == nil
+	}
 	err := runner.Run(ctx, runtime, "inspect", "--type", "container", name)
 	return err == nil
 }
