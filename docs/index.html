@@ -656,7 +656,7 @@
 
   <!-- Holiday promo: hidden automatically after the date in data-until (see script at the end). -->
   <div class="promo-bar" id="promoBar" data-until="2027-01-07">
-    🎄 Kids off school for the holidays? Set up the family server before the break. <a href="#holiday">Holiday checklist →</a>
+    🎄 Kids off school for the holidays? Set up the family server before the break, now on an Apple silicon Mac too. <a href="#holiday">Holiday checklist →</a>
   </div>
 
   <nav>
@@ -723,6 +723,10 @@
         <li>
           <strong>Install it on a spare machine</strong>
           An old laptop, a desktop or a Raspberry Pi works. Run the install command above, then <code class="inline">mc-dad-server start</code>. First boot takes 40 to 60 seconds.
+        </li>
+        <li>
+          <strong>No spare machine? Use your Mac</strong>
+          New: on macOS, container mode runs on Apple's <a href="https://github.com/apple/container"><code class="inline">container</code></a> CLI, with launchd starting it on login and restarting it after a crash. From a checkout: <code class="inline">container build -t mc-dad-server:latest .</code>, then <code class="inline">mc-dad-server setup-container</code>. It's on <code class="inline">main</code> now and ships in the next release; see the <a href="https://github.com/KevinTCoughlin/mc-dad-server#macos-apple-container">macOS guide</a>.
         </li>
         <li>
           <strong>Add the kids and their friends to the whitelist</strong>
@@ -845,6 +849,7 @@
         <li>Windows (x64 / ARM64)</li>
         <li>WSL2 (Windows)</li>
         <li>Docker / Podman</li>
+        <li>Apple <code>container</code> (macOS)</li>
         <li>Raspberry Pi</li>
       </ul>
     </div>
@@ -925,12 +930,12 @@
           <div class="faq-answer">Whitelist is on by default — only players you approve can join. Online mode verifies real Minecraft accounts.</div>
         </details>
         <details class="faq-item">
-          <summary>Can I run this in Docker/Podman?</summary>
-          <div class="faq-answer">Yes! Use <code>podman compose up -d</code> or <code>docker compose up -d</code>. The CLI auto-detects container mode, or use <code>--mode container</code>. Includes health checks, graceful shutdown, and Quadlet systemd integration.</div>
+          <summary>Can I run this in Docker, Podman or Apple container?</summary>
+          <div class="faq-answer">Yes! Use <code>podman compose up -d</code> or <code>docker compose up -d</code>. The CLI auto-detects container mode, or use <code>--mode container</code>. Includes health checks, graceful shutdown, and Quadlet systemd integration. On a Mac, <code>mc-dad-server setup-container</code> uses Apple's <code>container</code> CLI and a launchd agent instead (new on <code>main</code>, in the next release); <code>--runtime</code> picks the engine when you have more than one.</div>
         </details>
         <details class="faq-item">
           <summary>What if my server crashes?</summary>
-          <div class="faq-answer">systemd or launchd restarts it. Backups run daily at 4 AM machine time. In container mode, the restart policy handles it automatically.</div>
+          <div class="faq-answer">systemd or launchd restarts it. Backups run daily at 4 AM machine time. In container mode, Quadlet (Linux) or launchd (macOS, Apple container) restarts it.</div>
         </details>
       </div>
     </div>
