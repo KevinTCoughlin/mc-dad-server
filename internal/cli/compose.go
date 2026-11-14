@@ -72,12 +72,19 @@ func (cmd *GenerateComposeCmd) Run(_ *Globals, runner platform.CommandRunner, ou
 		return fmt.Errorf("generating compose.yml: %w", err)
 	}
 
-	// Detect container runtime
-	runtime := "docker"
-	if runner.CommandExists("podman") {
-		runtime = "podman"
-	} else if runner.CommandExists("docker") {
-		runtime = "docker"
+	runtime := platform.DetectContainerRuntime(runner)
+	if runtime == platform.RuntimeApple {
+		// Apple's `container` has no compose; point at the native path.
+		output.Success("compose.yml written to %s", cmd.Output)
+		output.Info("")
+		output.Info("Apple's container runtime has no compose support.")
+		output.Info("Use 'mc-dad-server setup-container' for a launchd-managed container,")
+		output.Info("or run this file with:  podman compose up -d  /  docker compose up -d")
+		output.Info("")
+		return nil
+	}
+	if runtime == platform.RuntimeUnknown {
+		runtime = platform.RuntimeDocker
 	}
 
 	output.Success("compose.yml written to %s", cmd.Output)

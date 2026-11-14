@@ -3,6 +3,7 @@ package platform
 import (
 	"context"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -135,6 +136,34 @@ func TestDetectContainerRuntime(t *testing.T) {
 			got := DetectContainerRuntime(m)
 			if got != tc.wantRuntime {
 				t.Errorf("DetectContainerRuntime() = %q, want %q", got, tc.wantRuntime)
+			}
+		})
+	}
+}
+
+func TestAvailableContainerRuntimes(t *testing.T) {
+	tests := []struct {
+		name      string
+		goos      string
+		installed []string
+		want      []string
+	}{
+		{"linux ignores container binary", "linux", []string{"container", "podman"}, []string{"podman"}},
+		{"linux podman then docker", "linux", []string{"docker", "podman"}, []string{"podman", "docker"}},
+		{"darwin prefers apple container", "darwin", []string{"container", "podman", "docker"}, []string{"container", "podman", "docker"}},
+		{"darwin apple only", "darwin", []string{"container"}, []string{"container"}},
+		{"darwin podman only", "darwin", []string{"podman"}, []string{"podman"}},
+		{"nothing installed", "darwin", nil, nil},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m := NewMockRunner()
+			for _, c := range tc.installed {
+				m.ExistsMap[c] = true
+			}
+			got := availableContainerRuntimes(m, tc.goos)
+			if strings.Join(got, ",") != strings.Join(tc.want, ",") {
+				t.Errorf("availableContainerRuntimes(%q) = %v, want %v", tc.goos, got, tc.want)
 			}
 		})
 	}

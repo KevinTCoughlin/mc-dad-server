@@ -12,6 +12,7 @@ type Globals struct {
 	Dir     string           `help:"Server directory (default: ~/minecraft-server)" default:""`
 	Session string           `help:"Screen session name" default:"minecraft"`
 	Mode    string           `help:"Server mode (auto|screen|container)" default:"auto" enum:"auto,screen,container"`
+	Runtime string           `help:"Container runtime for container mode (auto|podman|docker|container). 'container' is Apple's container CLI on macOS." default:"auto" enum:"auto,podman,docker,container"`
 	Version kong.VersionFlag `help:"Print version" short:"v" hidden:""`
 }
 
@@ -30,7 +31,7 @@ type CLI struct {
 
 	Install           InstallCmd           `cmd:"" help:"Install and configure a Minecraft server"`
 	GenerateCompose   GenerateComposeCmd   `cmd:"generate-compose" help:"Generate a compose.yml for Docker / Podman Compose"`
-	SetupContainer    SetupContainerCmd    `cmd:"setup-container" help:"Deploy configs and Quadlet unit for container mode"`
+	SetupContainer    SetupContainerCmd    `cmd:"setup-container" help:"Deploy configs and a Quadlet unit (Linux) or launchd agent (macOS, Apple container) for container mode"`
 	Start             StartCmd             `cmd:"" help:"Start the Minecraft server in a screen session"`
 	Stop              StopCmd              `cmd:"" help:"Gracefully stop the Minecraft server"`
 	Status            StatusCmd            `cmd:"" help:"Show server status and resource usage"`

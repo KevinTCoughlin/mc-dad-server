@@ -77,34 +77,100 @@ clean:
     rm -rf {{binary}} dist/ coverage.out
 
 # --- Container recipes ---
+#
+# ENGINE picks the container runtime: Apple's `container` CLI by default on
+# macOS, Podman elsewhere. Override with CONTAINER_ENGINE=podman|docker|container.
+# Apple's `container` has no compose, so on it `container-up` runs the same
+# ports/volumes/limits as compose.yml with `container run`, and
+# `container-deploy` drives the launchd agent written by `setup-container`.
 
-# Build container image (--format docker required for SHELL instruction support)
+ENGINE := env("CONTAINER_ENGINE", if os() == "macos" { "container" } else { "podman" })
+launchd_label := "com.mc-dad-server.minecraft-container"
+
+# Build container image (--format docker required for SHELL instruction support on Podman)
 container-build:
-    podman build --format docker -t {{binary}}:latest .
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{ENGINE}}" in
+      podman) podman build --format docker -t {{binary}}:latest . ;;
+      *)      {{ENGINE}} build -t {{binary}}:latest . ;;
+    esac
 
 # Start containerized server (BUILDAH_FORMAT needed for SHELL instruction in Containerfile)
 container-up:
-    BUILDAH_FORMAT=docker podman compose up --build -d
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{ENGINE}}" != container ]; then
+      BUILDAH_FORMAT=docker {{ENGINE}} compose up --build -d
+      exit
+    fi
+    [ -f .env ] || { echo "error: .env not found (cp .env.example .env and set RCON_PASSWORD)" >&2; exit 1; }
+    container system status >/dev/null 2>&1 || container system start
+    container build -t {{binary}}:latest .
+    # Apple's container creates named volumes empty and root-owned; seed new
+    # ones from the image like Podman/Docker do (plugins, uid 1000 ownership).
+    for v in worlds plugins logs backups; do
+      if ! container volume inspect "minecraft-$v" >/dev/null 2>&1; then
+        container volume create "minecraft-$v" >/dev/null
+        container run --rm --progress none --user 0 --entrypoint /bin/sh -v "minecraft-$v:/seed" {{binary}}:latest \
+          -c "if [ -d /minecraft/$v ]; then cp -a /minecraft/$v/. /seed/; fi; chown 1000:1000 /seed"
+      fi
+    done
+    set -a; . ./.env; set +a
+    cpus="${CPUS:-2}"; cpus="${cpus%%.*}"  # container wants whole CPUs; compose allows 2.0
+    container rm -f minecraft >/dev/null 2>&1 || true
+    container run -d --progress none --name minecraft \
+      -p "${PORT:-25565}:25565/tcp" \
+      -p "${BEDROCK_PORT:-19132}:19132/udp" \
+      -p 127.0.0.1:25575:25575/tcp \
+      -v minecraft-worlds:/minecraft/worlds \
+      -v minecraft-plugins:/minecraft/plugins \
+      -v minecraft-logs:/minecraft/logs \
+      -v minecraft-backups:/minecraft/backups \
+      -e MEMORY="${MEMORY:-2G}" -e GC_TYPE="${GC_TYPE:-g1gc}" -e PORT=25565 -e RCON_PORT=25575 \
+      -e RCON_PASSWORD="${RCON_PASSWORD:?set RCON_PASSWORD in .env}" \
+      --cap-drop ALL \
+      -m "${MEM_LIMIT:-3g}" -c "$cpus" \
+      {{binary}}:latest
 
 # Stop containerized server
 container-down:
-    podman compose down
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{ENGINE}}" = container ]; then
+      container stop -t 60 minecraft 2>/dev/null || true
+      container rm minecraft 2>/dev/null || true
+    else
+      {{ENGINE}} compose down
+    fi
 
 # Follow container logs
 container-logs:
-    podman compose logs -f
+    #!/usr/bin/env bash
+    if [ "{{ENGINE}}" = container ]; then exec container logs -f minecraft; fi
+    exec {{ENGINE}} compose logs -f
 
 # Exec into running container
 container-shell:
-    podman exec -it minecraft bash
+    {{ENGINE}} exec -it minecraft bash
 
 # Send command to running container via stdin FIFO
 container-fifo cmd:
-    @echo "{{cmd}}" | podman exec -i minecraft bash -c 'cat > /tmp/mc-input'
+    @echo "{{cmd}}" | {{ENGINE}} exec -i minecraft bash -c 'cat > /tmp/mc-input'
 
-# Build image, install quadlet, restart service
+# Build image and restart the managed service (Quadlet on Linux, launchd agent with Apple container)
 container-deploy:
-    podman build --format docker -t {{binary}}:latest .
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{ENGINE}}" = container ]; then
+      container build -t {{binary}}:latest .
+      plist="$HOME/Library/LaunchAgents/{{launchd_label}}.plist"
+      [ -f "$plist" ] || { echo "error: $plist not found; run 'mc-dad-server setup-container' first" >&2; exit 1; }
+      launchctl print "gui/$(id -u)/{{launchd_label}}" >/dev/null 2>&1 || launchctl bootstrap "gui/$(id -u)" "$plist"
+      launchctl kickstart -k "gui/$(id -u)/{{launchd_label}}"
+      exit
+    fi
+    just ENGINE={{ENGINE}} container-build
     mkdir -p ~/.config/containers/systemd
     cp quadlet/minecraft.container ~/.config/containers/systemd/
     systemctl --user daemon-reload
@@ -112,4 +178,10 @@ container-deploy:
 
 # Show container service status
 container-status:
+    #!/usr/bin/env bash
+    if [ "{{ENGINE}}" = container ]; then
+      launchctl print "gui/$(id -u)/{{launchd_label}}" 2>/dev/null | grep -E '^\s+(state|last exit code|pid) =' || echo "launchd agent not loaded"
+      container list --all | awk 'NR==1 || $1=="minecraft"'
+      exit
+    fi
     systemctl --user status minecraft

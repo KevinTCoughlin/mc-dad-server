@@ -39,9 +39,9 @@ just vet     # run go vet
 just check   # fmt + vet + lint + test (run before submitting)
 just clean   # remove build artifacts
 
-# Container development
+# Container development (CONTAINER_ENGINE=podman|docker|container; default: container on macOS, podman elsewhere)
 just container-build   # build container image
-just container-up      # start with Podman Compose
+just container-up      # start (compose on Podman/Docker, `container run` on Apple container)
 just container-down    # stop containers
 just container-logs    # follow server logs
 just container-shell   # shell into the container
@@ -55,7 +55,7 @@ internal/
   cli/                 Kong CLI structs and command handlers
   config/              Server configuration and validation
   configs/             Embedded Minecraft config files
-  container/           RCON client and Podman container manager
+  container/           RCON client and container manager (Podman, Docker, Apple container)
   license/             LemonSqueezy license client and manager
   management/          ServerManager interface, backup, screen, process mgmt
   nag/                 Shareware nag/grace-period logic

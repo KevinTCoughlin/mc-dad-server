@@ -146,7 +146,7 @@ func helpText() string {
 
 // target builds a serverctl.Target from the console options.
 func target(o *Options) serverctl.Target {
-	return serverctl.Target{Mode: o.Mode, Dir: o.Dir, Session: o.Session}
+	return serverctl.Target{Mode: o.Mode, Dir: o.Dir, Session: o.Session, Runtime: o.Runtime}
 }
 
 func optsToConfig(o *Options) *config.ServerConfig {
