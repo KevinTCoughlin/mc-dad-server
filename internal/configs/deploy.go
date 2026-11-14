@@ -176,37 +176,6 @@ func (d *Deployer) DeployCompose(cfg *config.ServerConfig, destDir string) error
 	})
 }
 
-// DeployContainerConfigs writes server config files to a container config
-// directory (e.g., ~/.config/mc-dad-server/configs/) for Quadlet volume mounts.
-func (d *Deployer) DeployContainerConfigs(cfg *config.ServerConfig, destDir string) error {
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
-		return fmt.Errorf("creating config dir: %w", err)
-	}
-
-	allConfigs := []string{
-		"server.properties",
-		"bukkit.yml",
-		"spigot.yml",
-		"paper-global.yml",
-		"paper-world-defaults.yml",
-	}
-	for _, name := range allConfigs {
-		data, err := d.readEmbedded("embedded/configs/" + name)
-		if err != nil {
-			return fmt.Errorf("reading embedded %s: %w", name, err)
-		}
-		content := string(data)
-		if name == "server.properties" {
-			content = substituteProperties(content, cfg)
-		}
-		dest := filepath.Join(destDir, name)
-		if err := os.WriteFile(dest, []byte(content), 0o644); err != nil {
-			return fmt.Errorf("writing %s: %w", dest, err)
-		}
-	}
-	return nil
-}
-
 // DeployContainerEnv renders and writes the .env file for Quadlet.
 func (d *Deployer) DeployContainerEnv(cfg *config.ServerConfig, destDir string) error {
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
@@ -239,35 +208,21 @@ func (d *Deployer) DeployContainerEnv(cfg *config.ServerConfig, destDir string) 
 }
 
 // DeployQuadlet renders and writes the Quadlet systemd unit file.
-func (d *Deployer) DeployQuadlet(cfg *config.ServerConfig, configDir, envFile, destDir string) error {
+func (d *Deployer) DeployQuadlet(cfg *config.ServerConfig, envFile, destDir string) error {
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return fmt.Errorf("creating quadlet dir: %w", err)
 	}
-
-	data, err := d.readEmbedded("embedded/templates/minecraft.container.tmpl")
-	if err != nil {
-		return fmt.Errorf("reading quadlet template: %w", err)
-	}
-
-	tmpl, err := template.New("minecraft.container").Parse(string(data))
-	if err != nil {
-		return fmt.Errorf("parsing quadlet template: %w", err)
-	}
-
-	dest := filepath.Join(destDir, "minecraft.container")
-	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
-	if err != nil {
-		return fmt.Errorf("creating minecraft.container: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-
-	return tmpl.Execute(f, map[string]any{
+	return d.renderTemplate("minecraft.container.tmpl", filepath.Join(destDir, "minecraft.container"), 0o644, map[string]any{
 		"Port":        cfg.Port,
 		"BedrockPort": config.BedrockPort,
 		"Memory":      cfg.Memory,
 		"MemoryMax":   computeMemoryMax(cfg.Memory),
 		"GCType":      cfg.GCType,
-		"ConfigDir":   configDir,
+		"Difficulty":  cfg.Difficulty,
+		"GameMode":    cfg.GameMode,
+		"MaxPlayers":  cfg.MaxPlayers,
+		"MOTD":        cfg.MOTD,
+		"Whitelist":   cfg.Whitelist,
 		"EnvFile":     envFile,
 	})
 }
@@ -324,6 +279,13 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
+// systemdQuote double-quotes s as one systemd unit-file value: backslashes
+// and double quotes are escaped, and %% stops specifier expansion.
+func systemdQuote(s string) string {
+	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "%", "%%", "\n", " ")
+	return `"` + r.Replace(s) + `"`
+}
+
 // renderTemplate executes embedded/templates/<name> into dest.
 func (d *Deployer) renderTemplate(name, dest string, perm os.FileMode, vars map[string]any) error {
 	data, err := d.readEmbedded("embedded/templates/" + name)
@@ -331,7 +293,7 @@ func (d *Deployer) renderTemplate(name, dest string, perm os.FileMode, vars map[
 		return fmt.Errorf("reading %s: %w", name, err)
 	}
 	tmpl, err := template.New(name).Option("missingkey=error").
-		Funcs(template.FuncMap{"sq": shellQuote}).Parse(string(data))
+		Funcs(template.FuncMap{"sq": shellQuote, "sdq": systemdQuote}).Parse(string(data))
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", name, err)
 	}

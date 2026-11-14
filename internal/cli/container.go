@@ -63,19 +63,11 @@ func (cmd *SetupContainerCmd) Run(globals *Globals, runner platform.CommandRunne
 	}
 
 	baseDir := filepath.Join(home, ".config", "mc-dad-server")
-	configDir := filepath.Join(baseDir, "configs")
 	quadletDir := filepath.Join(home, ".config", "containers", "systemd")
 	envFile := filepath.Join(baseDir, ".env")
 
 	// Generate RCON password
 	cfg.RCONPassword = generateRCONPassword()
-
-	// Deploy server configs
-	output.Step("Deploying server configs")
-	if err := deployer.DeployContainerConfigs(cfg, configDir); err != nil {
-		return fmt.Errorf("deploying container configs: %w", err)
-	}
-	output.Success("Configs written to %s", configDir)
 
 	// Deploy .env file
 	output.Step("Creating .env file")
@@ -94,7 +86,7 @@ func (cmd *SetupContainerCmd) Run(globals *Globals, runner platform.CommandRunne
 
 	// Deploy Quadlet unit
 	output.Step("Installing Quadlet unit")
-	if err := deployer.DeployQuadlet(cfg, configDir, envFile, quadletDir); err != nil {
+	if err := deployer.DeployQuadlet(cfg, envFile, quadletDir); err != nil {
 		return fmt.Errorf("deploying quadlet unit: %w", err)
 	}
 	output.Success("Quadlet unit written to %s", filepath.Join(quadletDir, "minecraft.container"))
