@@ -42,6 +42,9 @@ StopTimeout=60
 [Service]
 Restart=on-failure
 RestartSec=30
+# entrypoint.sh exits 143 after a graceful SIGTERM shutdown; count that as a
+# clean stop so `systemctl --user stop` does not leave the unit "failed".
+SuccessExitStatus=143
 # Safety limits — MemoryMax adds 1 GiB headroom above MEMORY for JVM overhead
 # (metaspace, native allocations, etc.). Adjust if you see unexpected OOM kills.
 MemoryMax={{.MemoryMax}}

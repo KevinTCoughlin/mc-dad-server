@@ -295,6 +295,7 @@ func TestDeployQuadlet(t *testing.T) {
 		{"motd env quoted", `Environment="MOTD=Dad's \"100%%\" server"`},
 		{"difficulty env", `Environment="DIFFICULTY=`},
 		{"env file", "EnvironmentFile=" + envFile},
+		{"sigterm exit is success", "SuccessExitStatus=143"},
 		{"unit description", "Minecraft Paper Server"},
 		{"cpu quota comment", "CPUQuota: 200% = 2 CPU cores"},
 	}
