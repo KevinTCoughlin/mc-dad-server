@@ -228,7 +228,7 @@ func TestPaperDownloadURL_LatestCapsAtSupportedRelease(t *testing.T) {
 		})
 	})
 	mux.HandleFunc("/v3/projects/paper/versions/26.3/builds/latest", func(w http.ResponseWriter, _ *http.Request) {
-		writePaperBuild(w, 236, "https://fill-data.papermc.io/v1/objects/paper263/paper-26.3-236.jar")
+		writePaperBuild(w, MinPaperBuild, fmt.Sprintf("https://fill-data.papermc.io/v1/objects/paper263/paper-26.3-%d.jar", MinPaperBuild))
 	})
 
 	srv := httptest.NewServer(mux)
@@ -238,7 +238,7 @@ func TestPaperDownloadURL_LatestCapsAtSupportedRelease(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	expected := "https://fill-data.papermc.io/v1/objects/paper263/paper-26.3-236.jar"
+	expected := fmt.Sprintf("https://fill-data.papermc.io/v1/objects/paper263/paper-26.3-%d.jar", MinPaperBuild)
 	if art.URL != expected {
 		t.Fatalf("got %q, want %q", art.URL, expected)
 	}
@@ -283,7 +283,7 @@ func TestPaperDownloadURL_RejectsBuildBeforeFixes(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected build 232 to be refused")
 	}
-	if !strings.Contains(err.Error(), "need build 233") {
+	if !strings.Contains(err.Error(), fmt.Sprintf("need build %d", MinPaperBuild)) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -293,7 +293,7 @@ func TestPaperDownloadURL_AcceptsMinimumFixedBuild(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v3/projects/paper/versions/26.3/builds/latest", func(w http.ResponseWriter, _ *http.Request) {
-		writePaperBuild(w, MinPaperBuild, "https://fill-data.papermc.io/v1/objects/min/paper-26.3-233.jar")
+		writePaperBuild(w, MinPaperBuild, fmt.Sprintf("https://fill-data.papermc.io/v1/objects/min/paper-26.3-%d.jar", MinPaperBuild))
 	})
 
 	srv := httptest.NewServer(mux)
@@ -303,7 +303,7 @@ func TestPaperDownloadURL_AcceptsMinimumFixedBuild(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	expected := "https://fill-data.papermc.io/v1/objects/min/paper-26.3-233.jar"
+	expected := fmt.Sprintf("https://fill-data.papermc.io/v1/objects/min/paper-26.3-%d.jar", MinPaperBuild)
 	if rel.Artifact.URL != expected {
 		t.Fatalf("got %q, want %q", rel.Artifact.URL, expected)
 	}
@@ -383,7 +383,7 @@ func TestContainerPinsMatchSupportedPaper(t *testing.T) {
 		"ARG MC_VERSION=" + SupportedPaperVersion,
 		fmt.Sprintf("ARG PAPER_MIN_BUILD=%d", MinPaperBuild),
 		"ARG GEYSER_VERSION=2.12.1",
-		"ARG GEYSER_BUILD=1280",
+		"ARG GEYSER_BUILD=1307",
 		"ARG MULTIVERSE_VERSION=5.8.2",
 		"ARG WORLDEDIT_VERSION=7.4.6",
 		"FROM eclipse-temurin:25-jre-alpine@",

@@ -77,7 +77,7 @@ Plus battle-tested PaperMC configs (bukkit.yml, spigot.yml, paper-global.yml) tu
 ## What It Does
 
 - Installs Adoptium Temurin Java 25+ (required by Paper 26.3)
-- Downloads Paper 26.3, build 233 or newer (optimized, fast, plugin-ready)
+- Downloads Paper 26.3, build 258 or newer (optimized, fast, plugin-ready)
 - Deploys tuned server configs from a battle-tested PaperMC server
 - Downloads and installs plugins (Geyser, Parkour, WorldEdit, Multiverse, ChatSentry)
 - Sets up start script with GC selection (G1GC or ZGC)
@@ -162,7 +162,7 @@ mc-dad-server backup
 
 ## Container Deployment
 
-Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Eclipse Temurin 25 JRE on Alpine Linux and includes Geyser 2.12.1, Floodgate 2.2.5, Parkour 7.2.8, Multiverse-Core 5.8.2, and WorldEdit 7.4.6. Container builds pin those plugin releases and Paper 26.3 (build 233 or newer). `MC_VERSION=latest` does not follow a newer Paper line. Override `MC_VERSION` at build time only after checking [plugin compatibility](docs/paper-compatibility.md).
+Run the server in Docker or Podman instead of a bare-metal screen session. The Containerfile uses Eclipse Temurin 25 JRE on Alpine Linux (`25-jre-alpine`, Java 25.0.5.1+2) and includes Geyser 2.12.1 build 1307, Floodgate 2.2.5, Parkour 7.2.8, Multiverse-Core 5.8.2, and WorldEdit 7.4.6. Container builds pin those plugin releases and Paper 26.3 (build 258 or newer). `MC_VERSION=latest` does not follow a newer Paper line. Override `MC_VERSION` at build time only after checking [plugin compatibility](docs/paper-compatibility.md).
 
 ```bash
 # Build and start with Podman Compose

@@ -26,10 +26,11 @@ var stablePaperVersionPattern = regexp.MustCompile(`^\d+(\.\d+){1,2}$`)
 const SupportedPaperVersion = "26.3"
 
 // MinPaperBuild is the oldest Paper 26.3 build a new install will accept.
-// Fill v3 build 228 calls EntityDamageByBlockEvent for fire damage, build 229
-// stops a cancelled PotionSplashEvent from extinguishing fire, and build 233
-// samples the full respawn-radius square. Newer 26.3 builds stay on this line.
-const MinPaperBuild = 233
+// It is the current stable 26.3 build, so installs cannot regress below it.
+// Build 228 calls EntityDamageByBlockEvent for fire damage, build 229 stops a
+// cancelled PotionSplashEvent from extinguishing fire, and build 233 samples
+// the full respawn-radius square. Those fixes are included in this floor.
+const MinPaperBuild = 258
 
 type paperVersionsResponse struct {
 	Versions []struct {
