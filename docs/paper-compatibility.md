@@ -39,7 +39,7 @@ No listener was added or edited. Forking Parkour to reimplement behavior it alre
 
 ## Bundled plugins
 
-Container image pins, and what each one is. The CLI still resolves Geyser, Floodgate, Parkour, Multiverse-Core, and WorldEdit from each project's latest release. Those latest releases matched the pins below on 1 November 2026. When Geyser's latest build starts emulating Java 26.4, pin the CLI resolver too; a 26.4 Geyser client will not join a 26.3 server without ViaVersion, and ViaVersion is not installed.
+Container image pins, and what each one is. The CLI still resolves Geyser, Floodgate, Parkour, Multiverse-Core, and WorldEdit from each project's latest release. Those latest releases matched the pins below on 22 November 2026. When Geyser's latest build starts emulating Java 26.4, pin the CLI resolver too; a 26.4 Geyser client will not join a 26.3 server without ViaVersion, and ViaVersion is not installed.
 
 | Plugin | Container pin | Role | 26.3 | 26.4 |
 |--------|---------------|------|------|------|
