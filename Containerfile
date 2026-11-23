@@ -29,7 +29,10 @@ WORKDIR /minecraft
 
 # Plugin pins also invalidate the download layer when upstream releases change.
 ARG GEYSER_VERSION=2.12.1
-ARG GEYSER_BUILD=1280
+# Build 1307, channel default. Spigot SHA-256 verified against
+# https://download.geysermc.org/v2/projects/geyser/versions/2.12.1/builds/1307
+# on 23 November 2026: 4f30ee0f199f27b7d0e5295c6043081c71c31145628d50a40634c547ab7ccbb9
+ARG GEYSER_BUILD=1307
 ARG FLOODGATE_VERSION=2.2.5
 ARG FLOODGATE_BUILD=141
 ARG PARKOUR_RELEASE_TAG=Parkour-7.2.8-RELEASE.136
@@ -96,11 +99,12 @@ RUN validate_sha256() { \
     echo "All plugins downloaded and verified"
 
 # ARG placed here so MC_VERSION changes only bust the Paper download layer.
-# PAPER_MIN_BUILD is the first 26.3 build that contains the fire, splash, and
-# respawn fixes (builds 228, 229, and 233). Keep this in sync with
-# server.MinPaperBuild.
+# PAPER_MIN_BUILD is the current stable Paper 26.3 build. Images refuse
+# anything older so they cannot regress. Builds 228, 229, and 233 (fire
+# damage, cancelled splash potions, and the full respawn square) are included.
+# Keep this in sync with server.MinPaperBuild.
 ARG MC_VERSION
-ARG PAPER_MIN_BUILD=233
+ARG PAPER_MIN_BUILD=258
 
 # Download Paper server JAR via PaperMC Fill v3 API with SHA-256 verification.
 # "latest" means the newest stable release at or below 26.3. Numeric 26.4 ids,
@@ -178,7 +182,7 @@ RUN echo "eula=true" > eula.txt
 # Stage 2: Runtime — Eclipse Temurin 25 JRE on Alpine Linux.
 # Paper 26.3 requires Java 25. Do not switch this base to Java 21.
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS runtime
+FROM eclipse-temurin:25-jre-alpine@sha256:69c2a26e9894016e274c880fa542956d005b3755f84db765145185e87405bd89 AS runtime
 
 # Install bash (required by entrypoint.sh for arrays and parameter expansion)
 # hadolint ignore=DL3018

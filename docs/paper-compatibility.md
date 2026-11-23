@@ -1,12 +1,12 @@
 # Paper compatibility
 
-New installs use Paper **26.3** on **Java 25** (Eclipse Temurin), and they refuse a 26.3 build older than **233**. `latest` means the newest stable Paper release that is not newer than 26.3. Snapshots, previews, release candidates, and Minecraft 26.4 are refused by the CLI and by the Containerfile. This project does not migrate to 26.4.
+New installs use Paper **26.3** on **Java 25** (Eclipse Temurin), and they refuse a 26.3 build older than **258**. `latest` means the newest stable Paper release that is not newer than 26.3. Snapshots, previews, release candidates, and Minecraft 26.4 are refused by the CLI and by the Containerfile. This project does not migrate to 26.4.
 
 The installer reads `java --version`. Java missing or older than 25 produces a message that names Temurin 25, links to the Adoptium 25 builds, and points Java 21 / Minecraft 1.21 users at the previous release, [v0.2.0](https://github.com/KevinTCoughlin/mc-dad-server/releases/tag/v0.2.0). That release installs Temurin 21. The server image is `eclipse-temurin:25-jre-alpine`. There is no Java 21 image.
 
 There is no Gradle, Maven, or Kotlin source in this repo, so there is no build file whose toolchain can be set. The devcontainer Java feature installs Temurin 25 (`jdkDistro: tem`) for any plugin work. CI installs Temurin 25 and runs `go test -race ./...` with `REQUIRE_JAVA25=1`, which checks the real `java --version`.
 
-Checked against the PaperMC Fill v3 builds API (`https://fill.papermc.io/v3/projects/paper/versions/26.3/builds`). On 1 November 2026 the newest 26.3 build was 236. On 2 November 2026 `builds/latest` resolved to `paper-26.3-237.jar`. Both are above the floor of 233, so both include the three fixes below. The installer keeps taking the newest build on the 26.3 line.
+Checked against the PaperMC Fill v3 builds API (`https://fill.papermc.io/v3/projects/paper/versions/26.3/builds`). On 23 November 2026 `builds/latest` resolved to stable build **258** (`paper-26.3-258.jar`). That build is the install floor, so new images and installs cannot regress below it. It includes the three fixes below. The installer keeps taking the newest build on the 26.3 line.
 
 | Build | Commit | What Paper changed |
 |-------|--------|--------------------|
@@ -43,7 +43,7 @@ Container image pins, and what each one is. The CLI still resolves Geyser, Flood
 
 | Plugin | Container pin | Role | 26.3 | 26.4 |
 |--------|---------------|------|------|------|
-| Geyser-Spigot | 2.12.1 build 1280 | Bedrock-to-Java proxy. This is the component that speaks Minecraft Java login encryption and compression. | GeyserMC documents Java 26.3. 2.11.3 fails to enable on Paper 26.3 (`CraftItemStack` reflection). | Do not move the server until a Geyser build documents snapshot 5's acknowledgement packets (`login_finished` / `login_acknowledged` and `apply_options` / `options_applied`). |
+| Geyser-Spigot | 2.12.1 build 1307 | Bedrock-to-Java proxy. This is the component that speaks Minecraft Java login encryption and compression. Spigot SHA-256 `4f30ee0f199f27b7d0e5295c6043081c71c31145628d50a40634c547ab7ccbb9`, verified from the Geyser 2.12.1 builds API on 23 November 2026. | GeyserMC documents Java 26.3. 2.11.3 fails to enable on Paper 26.3 (`CraftItemStack` reflection). | Do not move the server until a Geyser build documents snapshot 5's acknowledgement packets (`login_finished` / `login_acknowledged` and `apply_options` / `options_applied`). |
 | Floodgate | 2.2.5 build 141 | Auth companion for Geyser. Not a Java packet rewriter. | Same pin is the current Floodgate release and is the one Geyser 26.3 setups use. | Update it in the same change as Geyser. |
 | WorldEdit | 7.4.6 | Bukkit/Paper world editor. Not a proxy. | 7.4.6 supports Paper 1.21.4–26.3. 7.4.5 stops at 26.2 and fails plugin startup on 26.3. | 7.4.6 does not claim 26.4. |
 | Multiverse-Core | 5.8.2 | World management. Not a packet library. | 5.8.2 declares Paper through 26.3. 5.8.1 stops at 26.2. | No 26.4 release. |
@@ -60,7 +60,7 @@ Automated tests cover version selection, the build floor, and the container pins
 
 ### Paper 26.3
 
-1. Install with the default version and confirm the server log is Paper 26.3 build 233 or newer.
+1. Install with the default version and confirm the server log is Paper 26.3 build 258 or newer.
 2. Confirm `--mc-version latest` still resolves to 26.3, and that `--mc-version 26.4` and `--mc-version 26.4-snapshot-5` fail before a JAR is written.
 3. Join with a Java 26.3 client, disconnect, and join again. Chat and movement work.
 4. On a parkour course, with `DisablePlayerDamage: true`, stand in fire. Damage is cancelled once. A course death, if the course is set to die in fire, is recorded once.
