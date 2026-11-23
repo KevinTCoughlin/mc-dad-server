@@ -311,9 +311,9 @@ No port forwarding. No exposing your home IP. Easy.
 
 ## Building from Source
 
-**Quickest path:** Open in [GitHub Codespaces](https://github.com/codespaces) — the dev container includes Go 1.26, Eclipse Temurin 25, Kotlin, and all dev tools pre-configured. The repo requires Go 1.26 (`go1.26.5`).
+**Quickest path:** Open in [GitHub Codespaces](https://github.com/codespaces) — the dev container includes Go 1.26, Eclipse Temurin 25, Kotlin, and all dev tools pre-configured. The repo requires Go 1.26+.
 
-**Local prerequisites:** Go `1.26.5+`, [just](https://github.com/casey/just#installation), and optionally Eclipse Temurin 25 and Kotlin for plugin work. This repo has no Gradle or Maven module; the devcontainer Java feature is Temurin 25, which is the toolchain any plugin code would compile with. Run `just tools` to install the Go dev tools (golangci-lint, gofumpt, goreleaser).
+**Local prerequisites:** Go `1.26+`, [just](https://github.com/casey/just#installation), and optionally Eclipse Temurin 25 and Kotlin for plugin work. This repo has no Gradle or Maven module; the devcontainer Java feature is Temurin 25, which is the toolchain any plugin code would compile with. Run `just tools` to install the Go dev tools (golangci-lint, gofumpt, goreleaser).
 
 ```bash
 git clone https://github.com/KevinTCoughlin/mc-dad-server.git
