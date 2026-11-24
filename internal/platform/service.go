@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -116,7 +117,9 @@ func (m *systemdManager) Install(cfg *config.ServerConfig) error {
 // quoted so systemd does not split them.
 func systemdUnit(account string, cfg *config.ServerConfig) string {
 	dir := systemdQuotePath(cfg.Dir)
-	script := systemdQuotePath(filepath.Join(cfg.Dir, "start.sh"))
+	// The unit runs on Linux, so the script path stays slash-separated even
+	// when the tests execute on Windows.
+	script := systemdQuotePath(path.Join(cfg.Dir, "start.sh"))
 	return fmt.Sprintf(`[Unit]
 Description=Minecraft Server (MC Dad Server)
 After=network.target

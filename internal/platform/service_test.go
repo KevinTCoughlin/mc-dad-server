@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -48,6 +49,9 @@ func TestSystemdUnitQuotesSpaces(t *testing.T) {
 }
 
 func TestEnsureServicePathTraversable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not enforce Unix directory modes; the systemd unit is Linux-only")
+	}
 	root := t.TempDir()
 	chmodAncestorsTraversable(t, root)
 	if err := os.Chmod(root, 0o755); err != nil {
