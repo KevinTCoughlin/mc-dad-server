@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/verify"
 )
@@ -132,6 +133,9 @@ func installPlugin(ctx context.Context, r resolver, pluginsDir string, output *u
 // treats any existing file as a completed download, so a bad one would
 // otherwise be permanently mistaken for a good plugin.
 func downloadVerified(ctx context.Context, src source, dest string) error {
+	ctx, cancel := platform.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, src.url, http.NoBody)
 	if err != nil {
 		return err
@@ -183,6 +187,9 @@ func getJSON(ctx context.Context, url string, v any) error {
 
 // get fetches url and returns the response body.
 func get(ctx context.Context, url string) ([]byte, error) {
+	ctx, cancel := platform.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err

@@ -23,7 +23,8 @@ import (
 type InstallCmd struct {
 	Edition    string `help:"Server edition" default:"java" enum:"java,bedrock"`
 	Port       int    `help:"Server port" default:"25565"`
-	Memory     string `help:"RAM allocation (e.g., 2G, 4G)" default:"2G"`
+	Memory     string `help:"JVM heap (for example 4G or 2048M). 'auto' sizes it from system RAM, leaving OS headroom." default:"auto"`
+	AcceptEULA bool   `help:"Accept the Minecraft EULA (https://aka.ms/MinecraftEULA). Use --no-accept-eula to refuse." default:"true" negatable:"" name:"accept-eula"`
 	Type       string `help:"Server type" default:"paper" enum:"paper,fabric,vanilla" name:"type"`
 	MOTD       string `help:"Message of the day" default:"Dads Minecraft Server" name:"motd"`
 	Players    int    `help:"Max players" default:"20" name:"players"`
@@ -64,6 +65,7 @@ func (cmd *InstallCmd) toConfig(globals *Globals) *config.ServerConfig {
 // Run installs and configures a Minecraft server.
 func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, output *ui.UI, deployer *configs.Deployer, bunDeployer *bunpkg.Deployer) error {
 	ctx := context.Background()
+	cmd.applyMemory(output)
 	cfg := cmd.toConfig(globals)
 
 	if err := cfg.Validate(); err != nil {
@@ -83,16 +85,17 @@ func (cmd *InstallCmd) Run(globals *Globals, runner platform.CommandRunner, outp
 		return err
 	}
 
+	if err := os.MkdirAll(cfg.Dir, 0o755); err != nil {
+		return fmt.Errorf("creating server directory %s: %w", cfg.Dir, err)
+	}
+	if err := preflightInstall(ctx, runner, output, cfg, cmd.AcceptEULA); err != nil {
+		return err
+	}
+
 	// Download server
 	if err := downloadServer(ctx, cfg, runner, output); err != nil {
 		return err
 	}
-
-	// Accept EULA
-	if err := server.AcceptEULA(cfg.Dir); err != nil {
-		return fmt.Errorf("accepting EULA: %w", err)
-	}
-	output.Success("EULA accepted")
 
 	// Generate RCON password and deploy configs
 	cfg.RCONPassword = generateRCONPassword()
@@ -197,6 +200,62 @@ func printBanner() {
 	fmt.Println("  ║   Minecraft for Busy Dads, Made Easy  ║")
 	fmt.Println("  ╚═══════════════════════════════════════╝")
 	fmt.Println()
+}
+
+func (cmd *InstallCmd) applyMemory(output *ui.UI) {
+	if !config.IsAutoMemory(cmd.Memory) {
+		return
+	}
+	total, err := platform.TotalRAM()
+	if err != nil {
+		cmd.Memory = config.FallbackHeap
+		output.Warn("Could not detect system RAM (%v). Using %s. Pass --memory to choose a heap.", err, config.FallbackHeap)
+		return
+	}
+	heap, tight, err := config.HeapFromRAM(total)
+	if err != nil {
+		cmd.Memory = config.FallbackHeap
+		output.Warn("Could not size the JVM heap from %s of RAM (%v). Using %s. Pass --memory to choose a heap.", platform.FormatBytes(total), err, config.FallbackHeap)
+		return
+	}
+	cmd.Memory = heap
+	output.Info("JVM heap set to %s from %s of RAM, leaving headroom for the OS. Override with --memory.", heap, platform.FormatBytes(total))
+	if tight {
+		output.Warn("This machine has under 2 GiB of RAM. The heap is at the minimum Paper 26.3 can reasonably use, and the OS will be tight.")
+	}
+}
+
+func preflightInstall(ctx context.Context, runner platform.CommandRunner, output *ui.UI, cfg *config.ServerConfig, acceptEULA bool) error {
+	output.Step("Preflight")
+
+	var problems []string
+	if cfg.Edition == "java" {
+		ver, err := platform.CheckJava(ctx, runner)
+		if err != nil {
+			problems = append(problems, err.Error())
+		} else {
+			output.Success("Java %d is installed (Paper 26.3 requires Java %d+)", ver, platform.MinJavaVersion)
+		}
+	}
+	if err := platform.CheckPortAvailable(ctx, cfg.Port); err != nil {
+		problems = append(problems, err.Error())
+	} else {
+		output.Success("TCP port %d is free", cfg.Port)
+	}
+	if err := platform.CheckDiskSpace(cfg.Dir, platform.MinInstallDisk); err != nil {
+		problems = append(problems, err.Error())
+	} else {
+		output.Success("At least %s free in %s", platform.FormatBytes(platform.MinInstallDisk), cfg.Dir)
+	}
+	if err := server.EnsureEULA(cfg.Dir, acceptEULA); err != nil {
+		problems = append(problems, err.Error())
+	} else {
+		output.Success("Minecraft EULA accepted (%s)", server.EULAURL)
+	}
+	if len(problems) == 0 {
+		return nil
+	}
+	return fmt.Errorf("preflight checks failed:\n- %s", strings.Join(problems, "\n- "))
 }
 
 func installDependencies(ctx context.Context, plat *platform.Platform, cfg *config.ServerConfig, runner platform.CommandRunner, output *ui.UI) error {

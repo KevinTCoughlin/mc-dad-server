@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
 
 const (
@@ -34,6 +36,9 @@ func NewClient() *Client {
 
 // Validate validates a license key with optional instance ID.
 func (c *Client) Validate(ctx context.Context, licenseKey, instanceID string) (*ValidationResponse, error) {
+	ctx, cancel := platform.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+
 	data := url.Values{}
 	data.Set("license_key", licenseKey)
 	if instanceID != "" {
@@ -73,6 +78,9 @@ func (c *Client) Validate(ctx context.Context, licenseKey, instanceID string) (*
 
 // Activate activates a license key for a specific instance.
 func (c *Client) Activate(ctx context.Context, licenseKey, instanceName string) (*ActivationResponse, error) {
+	ctx, cancel := platform.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+
 	data := url.Values{}
 	data.Set("license_key", licenseKey)
 	data.Set("instance_name", instanceName)
@@ -110,6 +118,9 @@ func (c *Client) Activate(ctx context.Context, licenseKey, instanceName string) 
 
 // Deactivate deactivates a license key for a specific instance.
 func (c *Client) Deactivate(ctx context.Context, licenseKey, instanceID string) (*DeactivationResponse, error) {
+	ctx, cancel := platform.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+
 	data := url.Values{}
 	data.Set("license_key", licenseKey)
 	data.Set("instance_id", instanceID)

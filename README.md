@@ -121,11 +121,12 @@ mc-dad-server install \
 | `--type` | `paper` | `paper`, `fabric`, or `vanilla` |
 | `--dir` | `~/minecraft-server` | Install location |
 | `--port` | `25565` | Server port |
-| `--memory` | `2G` | RAM allocation |
+| `--memory` | `auto` | JVM heap. `auto` sizes it from system RAM (25% headroom, clamped to 512M–12G). Override with `4G` or `2048M`. |
 | `--difficulty` | `normal` | `peaceful`, `easy`, `normal`, `hard` |
 | `--gamemode` | `survival` | `survival`, `creative`, `adventure` |
 | `--players` | `20` | Max player count |
-| `--gc` | `g1gc` | `g1gc` (Aikar's flags) or `zgc` (low latency) |
+| `--gc` | `g1gc` | `g1gc` (G1 tuned for Java 25) or `zgc` (low latency) |
+| `--accept-eula` | `true` | Accept the [Minecraft EULA](https://aka.ms/MinecraftEULA). `--no-accept-eula` refuses unless `eula.txt` already says `eula=true`. |
 | `--motd` | `Dads Minecraft Server` | Message of the day |
 | `--playit` | `true` | Set up playit.gg tunnel (`--no-playit` to skip) |
 | `--chat-filter` | `true` | Install chat filter plugin (`--no-chat-filter` to skip) |
@@ -364,10 +365,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 ## FAQ
 
 **Q: How much RAM do I need?**
-2GB is fine for 2-5 players. 4GB for 5-10. 8GB if the kids go crazy with mods.
+2GB is fine for 2-5 players. 4GB for 5-10. 8GB if the kids go crazy with mods. `install` with `--memory auto` (the default) picks a heap from the machine's RAM and leaves room for the OS. Pass `--memory 4G` to override.
 
 **Q: G1GC or ZGC?**
-G1GC (default) is battle-tested with Aikar's flags. ZGC is newer and lower latency on this Java 25 runtime when the machine has 8GB or more. Try `--gc zgc` if you want to experiment.
+G1GC (default) uses Aikar's flags, which Java 25 still accepts, plus `-XX:+ExitOnOutOfMemoryError`. ZGC is lower latency on this Java 25 runtime when the machine has 8GB or more. Try `--gc zgc` if you want to experiment.
 
 **Q: Can my kids on iPad/Switch join?**
 Yes! Geyser + Floodgate is installed by default. Bedrock players connect on port 19132. No Java account needed.

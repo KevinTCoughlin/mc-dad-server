@@ -111,15 +111,18 @@ fi
 
 gc_lower="${GC_TYPE,,}"
 if [[ "${gc_lower}" == "zgc" ]]; then
+    # Generational ZGC is the only ZGC mode on Java 25. The ZGenerational
+    # flag was removed in JDK 24 and must not be passed.
     JVM_FLAGS+=(
         -XX:+UseZGC
-        -XX:+ZGenerational
         -XX:+AlwaysPreTouch
         -XX:+DisableExplicitGC
         -XX:+PerfDisableSharedMem
+        -XX:+ExitOnOutOfMemoryError
     )
 else
-    # G1GC — Aikar's flags (https://mcflags.emc.gs)
+    # G1 tuned for Java 25 — Aikar's flags (https://mcflags.emc.gs), which
+    # JDK 25 still accepts, plus ExitOnOutOfMemoryError.
     JVM_FLAGS+=(
         -XX:+UseG1GC
         -XX:+ParallelRefProcEnabled
@@ -139,6 +142,7 @@ else
         -XX:SurvivorRatio=32
         -XX:+PerfDisableSharedMem
         -XX:MaxTenuringThreshold=1
+        -XX:+ExitOnOutOfMemoryError
         -Dusing.aikars.flags=https://mcflags.emc.gs
         -Daikars.new.flags=true
     )

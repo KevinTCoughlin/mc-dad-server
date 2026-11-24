@@ -10,8 +10,8 @@ import (
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
-// minJavaVersion is the runtime Paper 26.3 requires.
-const minJavaVersion = 25
+// MinJavaVersion is the runtime Paper 26.3 requires.
+const MinJavaVersion = 25
 
 // temurin25URL is the manual install page named in the installer message.
 const temurin25URL = "https://adoptium.net/temurin/releases/?version=25"
@@ -29,7 +29,7 @@ func paperJavaRequirement(found int, foundOK bool) string {
 	}
 	return fmt.Sprintf(
 		"Paper 26.3 requires Java %d (Eclipse Temurin). %s The installer will install Temurin %d from %s. To stay on Java 21 and Minecraft 1.21, use the previous release v0.2.0: %s",
-		minJavaVersion, have, minJavaVersion, temurin25URL, previousJavaReleaseURL,
+		MinJavaVersion, have, MinJavaVersion, temurin25URL, previousJavaReleaseURL,
 	)
 }
 
@@ -40,8 +40,8 @@ func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, outp
 	found, foundOK := 0, false
 	if runner.CommandExists("java") {
 		ver, err := javaVersion(ctx, runner)
-		if err == nil && ver >= minJavaVersion {
-			output.Success("Java %d already installed (Paper 26.3 requires Eclipse Temurin %d+)", ver, minJavaVersion)
+		if err == nil && ver >= MinJavaVersion {
+			output.Success("Java %d already installed (Paper 26.3 requires Eclipse Temurin %d+)", ver, MinJavaVersion)
 			return nil
 		}
 		if err == nil {
@@ -52,7 +52,7 @@ func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, outp
 		output.Warn("%s", paperJavaRequirement(0, false))
 	}
 
-	output.Info("Installing Adoptium Temurin JDK %d...", minJavaVersion)
+	output.Info("Installing Adoptium Temurin JDK %d...", MinJavaVersion)
 	var err error
 	switch plat.PkgMgr {
 	case "apt":
@@ -73,12 +73,12 @@ func InstallJava(ctx context.Context, runner CommandRunner, plat *Platform, outp
 	// Verify the JDK that is now first on PATH. A leftover Java 21 install
 	// must not be treated as success.
 	ver, verErr := javaVersion(ctx, runner)
-	if verErr != nil || ver < minJavaVersion {
+	if verErr != nil || ver < MinJavaVersion {
 		got := "an unreadable java version"
 		if verErr == nil {
 			got = fmt.Sprintf("Java %d", ver)
 		}
-		return fmt.Errorf("java installation verification failed: Paper 26.3 requires Java %d (Eclipse Temurin) but found %s. Install Temurin %d from %s, or stay on Java 21 and Minecraft 1.21 with v0.2.0: %s", minJavaVersion, got, minJavaVersion, temurin25URL, previousJavaReleaseURL)
+		return fmt.Errorf("java installation verification failed: Paper 26.3 requires Java %d (Eclipse Temurin) but found %s. Install Temurin %d from %s, or stay on Java 21 and Minecraft 1.21 with v0.2.0: %s", MinJavaVersion, got, MinJavaVersion, temurin25URL, previousJavaReleaseURL)
 	}
 	output.Success("Java %d installed successfully", ver)
 	return nil

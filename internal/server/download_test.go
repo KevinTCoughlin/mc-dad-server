@@ -190,6 +190,37 @@ func TestPaperDownloadURL_NoStableVersions(t *testing.T) {
 	}
 }
 
+func TestPaperDownloadURL_MissingSHA256(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v3/projects/paper/versions/1.21.4/builds/latest", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": 12,
+			"downloads": map[string]any{
+				"server:default": map[string]any{
+					"name": "paper.jar",
+					"url":  "https://example.invalid/paper.jar",
+					"checksums": map[string]any{
+						"sha256": "",
+					},
+				},
+			},
+		})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	_, err := paperArtifact(context.Background(), "1.21.4", srv.URL+"/v3")
+	if err == nil {
+		t.Fatal("expected error for missing SHA-256")
+	}
+	if !strings.Contains(err.Error(), "SHA-256") {
+		t.Fatalf("error = %v, want a SHA-256 refusal", err)
+	}
+}
+
 func TestPaperDownloadURL_NoDownload(t *testing.T) {
 	t.Parallel()
 

@@ -36,6 +36,7 @@ just test    # run tests with race detector
 just lint    # run golangci-lint
 just fmt     # format code with gofumpt
 just vet     # run go vet
+just vuln    # run govulncheck (needs network)
 just check   # fmt + vet + lint + test (run before submitting)
 just clean   # remove build artifacts
 
@@ -84,7 +85,7 @@ quadlet/               Systemd Quadlet unit for rootless Podman
 3. Run `just check` to verify formatting, linting, and tests pass.
 4. Open a pull request against `main`.
 
-CI runs checks (lint + tidy + vet), tests (Ubuntu on every PR; macOS/Windows on push to main), build verification (goreleaser snapshot), hadolint (Containerfile), and shellcheck (entrypoint.sh) automatically.
+CI runs checks (lint, including staticcheck, plus tidy, vet, and govulncheck), tests (Ubuntu on every PR; macOS/Windows on push to main), build verification (goreleaser snapshot), hadolint (Containerfile), and shellcheck (entrypoint.sh) automatically. CodeQL and OpenSSF Scorecard run on their own workflows.
 
 ## Style Guide
 

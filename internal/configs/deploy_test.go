@@ -94,6 +94,15 @@ func TestDeploy(t *testing.T) {
 	if !strings.Contains(content, "rcon.password=testpass123") {
 		t.Error("server.properties missing rcon password")
 	}
+	if runtime.GOOS != "windows" {
+		info, statErr := os.Stat(filepath.Join(dir, "server.properties"))
+		if statErr != nil {
+			t.Fatalf("stat server.properties: %v", statErr)
+		}
+		if info.Mode().Perm() != 0o640 {
+			t.Errorf("server.properties mode = %o, want 640 (RCON password is not world-readable)", info.Mode().Perm())
+		}
+	}
 
 	// Check paper configs in config/ subdir
 	for _, name := range []string{"paper-global.yml", "paper-world-defaults.yml"} {
@@ -137,6 +146,21 @@ func TestDeployStartScript(t *testing.T) {
 
 	if !strings.Contains(content, "4G") {
 		t.Error("start.sh missing memory setting")
+	}
+	if !strings.Contains(content, "-XX:+ExitOnOutOfMemoryError") {
+		t.Error("start.sh missing ExitOnOutOfMemoryError")
+	}
+	if strings.Contains(content, "-XX:+ZGenerational") {
+		t.Error("start.sh still passes removed ZGenerational")
+	}
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(filepath.Join(dir, "start.sh"))
+		if err != nil {
+			t.Fatalf("stat start.sh: %v", err)
+		}
+		if info.Mode().Perm() != 0o750 {
+			t.Errorf("start.sh mode = %o, want 750", info.Mode().Perm())
+		}
 	}
 }
 
