@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/management"
+	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
 
@@ -113,6 +114,8 @@ func downloadAndExtractMap(ctx context.Context, m MapEntry, serverDir string, sc
 
 	// Download
 	output.Info("  Downloading from %s...", m.URL)
+	ctx, cancel := platform.WithTimeout(ctx, 15*time.Minute)
+	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, m.URL, http.NoBody)
 	if err != nil {
 		return err

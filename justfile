@@ -25,6 +25,11 @@ fmt:
 vet:
     go vet ./...
 
+# Scan the module for known vulnerabilities
+vuln:
+    go install golang.org/x/vuln/cmd/govulncheck@v1.10.0
+    govulncheck ./...
+
 # Run all checks (fmt + vet + lint + test)
 check: fmt vet lint test
 

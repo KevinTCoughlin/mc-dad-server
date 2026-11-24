@@ -6,6 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User={{.User}}
+Group={{.Group}}
 WorkingDirectory={{.Dir}}
 ExecStart=/usr/bin/bash {{.Dir}}/start.sh
 ExecStop=/usr/bin/bash -c "screen -S {{.SessionName}} -p 0 -X stuff 'stop\r'"
@@ -15,7 +16,7 @@ StandardInput=null
 StandardOutput=journal
 StandardError=journal
 
-# Security hardening
+# Hardened dedicated service account. The installer creates {{.User}}.
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict

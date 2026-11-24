@@ -261,8 +261,8 @@ func TestSystemJavaMeetsPaperRequirement(t *testing.T) {
 		}
 		t.Skipf("java --version: %v", err)
 	}
-	if require && ver < minJavaVersion {
-		t.Fatalf("Paper 26.3 requires Java %d (Eclipse Temurin); java --version reports %d", minJavaVersion, ver)
+	if require && ver < MinJavaVersion {
+		t.Fatalf("Paper 26.3 requires Java %d (Eclipse Temurin); java --version reports %d", MinJavaVersion, ver)
 	}
 	if ver < 1 {
 		t.Fatalf("java version = %d", ver)

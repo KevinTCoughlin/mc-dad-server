@@ -9,6 +9,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
 
 // defaultPaperAPIBase is the base URL for the PaperMC Fill v3 downloads API.
@@ -112,6 +115,9 @@ func resolvePaperRelease(ctx context.Context, version, apiBase string) (PaperRel
 	dl, ok := build.Downloads["server:default"]
 	if !ok || dl.URL == "" {
 		return PaperRelease{}, fmt.Errorf("no download found for Paper %s latest build", version)
+	}
+	if dl.Checksums.SHA256 == "" {
+		return PaperRelease{}, fmt.Errorf("the PaperMC API published no SHA-256 checksum for Paper %s build %d; refusing to download an unverified server JAR", version, build.ID)
 	}
 
 	return PaperRelease{
@@ -252,14 +258,23 @@ func isStablePaperVersion(version string) bool {
 	return stablePaperVersionPattern.MatchString(version)
 }
 
+// paperAPITimeout bounds PaperMC API calls. The download of the JAR itself
+// uses the longer client in download.go.
+const paperAPITimeout = 30 * time.Second
+
+var paperAPIClient = &http.Client{Timeout: paperAPITimeout}
+
 func httpGet(ctx context.Context, url string) ([]byte, error) {
+	ctx, cancel := platform.WithTimeout(ctx, paperAPITimeout)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", paperUserAgent)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := paperAPIClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

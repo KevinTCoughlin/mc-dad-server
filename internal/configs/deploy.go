@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"unicode"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
+	"github.com/KevinTCoughlin/mc-dad-server/internal/platform"
 )
 
 // Deployer writes the embedded config files, templates, and unit files to
@@ -47,7 +49,7 @@ func (d *Deployer) Deploy(cfg *config.ServerConfig) error {
 			content = substituteProperties(content, cfg)
 		}
 
-		if err := os.WriteFile(dest, []byte(content), 0o644); err != nil {
+		if err := platform.WriteAtomic(dest, []byte(content), configFileMode(name)); err != nil {
 			return fmt.Errorf("writing %s: %w", dest, err)
 		}
 	}
@@ -65,7 +67,7 @@ func (d *Deployer) Deploy(cfg *config.ServerConfig) error {
 			return fmt.Errorf("reading embedded %s: %w", name, err)
 		}
 		dest := filepath.Join(configDir, name)
-		if err := os.WriteFile(dest, data, 0o644); err != nil {
+		if err := platform.WriteAtomic(dest, data, 0o644); err != nil {
 			return fmt.Errorf("writing %s: %w", dest, err)
 		}
 	}
@@ -81,12 +83,21 @@ func (d *Deployer) Deploy(cfg *config.ServerConfig) error {
 			return fmt.Errorf("reading embedded parkour config: %w", err)
 		}
 		dest := filepath.Join(parkourDir, "config.yml")
-		if err := os.WriteFile(dest, data, 0o644); err != nil {
+		if err := platform.WriteAtomic(dest, data, 0o644); err != nil {
 			return fmt.Errorf("writing %s: %w", dest, err)
 		}
 	}
 
 	return nil
+}
+
+// configFileMode keeps server.properties, which holds the RCON password,
+// unreadable by users outside the owner and group. Other configs are not secrets.
+func configFileMode(name string) os.FileMode {
+	if name == "server.properties" {
+		return 0o640
+	}
+	return 0o644
 }
 
 func substituteProperties(content string, cfg *config.ServerConfig) string {
@@ -122,7 +133,7 @@ func (d *Deployer) DeployBlockedWords(serverDir string) error {
 	if err != nil {
 		return fmt.Errorf("reading embedded blocked-words.txt: %w", err)
 	}
-	return os.WriteFile(filepath.Join(serverDir, "blocked-words.txt"), data, 0o644)
+	return platform.WriteAtomic(filepath.Join(serverDir, "blocked-words.txt"), data, 0o644)
 }
 
 // DeployChatSentryConfig writes the ChatSentry config to the plugins directory.
@@ -136,7 +147,7 @@ func (d *Deployer) DeployChatSentryConfig(serverDir string) error {
 	if err != nil {
 		return fmt.Errorf("reading embedded chatsentry config: %w", err)
 	}
-	return os.WriteFile(filepath.Join(sentryDir, "config.yml"), data, 0o644)
+	return platform.WriteAtomic(filepath.Join(sentryDir, "config.yml"), data, 0o644)
 }
 
 // DeployCompose renders and writes a compose.yml file for Docker / Podman Compose.
@@ -154,13 +165,7 @@ func (d *Deployer) DeployCompose(cfg *config.ServerConfig, destDir string) error
 	serverType := strings.ToUpper(cfg.ServerType)
 
 	dest := filepath.Join(destDir, "compose.yml")
-	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
-	if err != nil {
-		return fmt.Errorf("creating compose.yml: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-
-	return tmpl.Execute(f, map[string]any{
+	return executeAtomic(tmpl, dest, 0o644, map[string]any{
 		"Port":          cfg.Port,
 		"BedrockPort":   config.BedrockPort,
 		"ServerType":    serverType,
@@ -193,13 +198,7 @@ func (d *Deployer) DeployContainerEnv(cfg *config.ServerConfig, destDir string) 
 	}
 
 	dest := filepath.Join(destDir, ".env")
-	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
-		return fmt.Errorf("creating .env: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-
-	return tmpl.Execute(f, map[string]any{
+	return executeAtomic(tmpl, dest, 0o600, map[string]any{
 		"RCONPassword": cfg.RCONPassword,
 		"Port":         cfg.Port,
 		"BedrockPort":  config.BedrockPort,
@@ -297,15 +296,18 @@ func (d *Deployer) renderTemplate(name, dest string, perm os.FileMode, vars map[
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", name, err)
 	}
-	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
-	if err != nil {
-		return fmt.Errorf("creating %s: %w", dest, err)
+	if err := executeAtomic(tmpl, dest, perm, vars); err != nil {
+		return fmt.Errorf("writing %s: %w", name, err)
 	}
-	if err := tmpl.Execute(f, vars); err != nil {
-		_ = f.Close()
-		return fmt.Errorf("rendering %s: %w", name, err)
+	return nil
+}
+
+func executeAtomic(tmpl *template.Template, dest string, perm os.FileMode, vars any) error {
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, vars); err != nil {
+		return fmt.Errorf("rendering %s: %w", dest, err)
 	}
-	return f.Close()
+	return platform.WriteAtomic(dest, buf.Bytes(), perm)
 }
 
 // computeMemoryMax adds 1G headroom to the configured memory for JVM overhead.
@@ -335,24 +337,7 @@ func computeMemoryMax(memory string) string {
 
 // DeployStartScript renders and writes the start.sh script.
 func (d *Deployer) DeployStartScript(cfg *config.ServerConfig) error {
-	data, err := d.readEmbedded("embedded/templates/start.sh.tmpl")
-	if err != nil {
-		return fmt.Errorf("reading start.sh template: %w", err)
-	}
-
-	tmpl, err := template.New("start.sh").Parse(string(data))
-	if err != nil {
-		return fmt.Errorf("parsing start.sh template: %w", err)
-	}
-
-	dest := filepath.Join(cfg.Dir, "start.sh")
-	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
-	if err != nil {
-		return fmt.Errorf("creating start.sh: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-
-	return tmpl.Execute(f, map[string]any{
+	return d.renderTemplate("start.sh.tmpl", filepath.Join(cfg.Dir, "start.sh"), 0o750, map[string]any{
 		"Memory":    cfg.Memory,
 		"GCType":    cfg.GCType,
 		"EnableBun": cfg.EnableBun,

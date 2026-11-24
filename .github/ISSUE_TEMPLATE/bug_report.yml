@@ -1,0 +1,48 @@
+name: Bug report
+description: Something failed while installing, starting, or running a server
+title: ""
+labels: []
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the command you ran.
+      placeholder: |
+        mc-dad-server install --memory 4G
+        mc-dad-server start
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `mc-dad-server --version`, or the git commit.
+      placeholder: v0.3.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - WSL2
+        - Container
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Paste the error text. Redact RCON passwords and license keys.
+      render: text

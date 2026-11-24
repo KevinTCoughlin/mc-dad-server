@@ -7,10 +7,14 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/KevinTCoughlin/mc-dad-server/internal/config"
 	"github.com/KevinTCoughlin/mc-dad-server/internal/ui"
 )
+
+// serviceUser is the dedicated account the systemd unit runs as.
+const serviceUser = "minecraft"
 
 // ServiceManager handles platform-specific service installation and management.
 type ServiceManager interface {
@@ -49,37 +53,21 @@ func (m *systemdManager) Install(cfg *config.ServerConfig) error {
 	output := ui.Default()
 	output.Step("Setting Up Systemd Service")
 
+	if err := ensureServicePathTraversable(cfg.Dir); err != nil {
+		return err
+	}
+
 	u, err := user.Current()
 	if err != nil {
 		return fmt.Errorf("getting current user: %w", err)
 	}
 
-	unit := fmt.Sprintf(`[Unit]
-Description=Minecraft Server (MC Dad Server)
-After=network.target
-Wants=network-online.target
+	ctx := context.Background()
+	if err := ensureServiceUser(ctx, m.runner); err != nil {
+		return err
+	}
 
-[Service]
-Type=simple
-User=%s
-WorkingDirectory=%s
-ExecStart=/usr/bin/bash %s/start.sh
-ExecStop=/usr/bin/bash -c "screen -S %s -p 0 -X stuff 'stop\r'"
-Restart=on-failure
-RestartSec=30
-StandardInput=null
-StandardOutput=journal
-StandardError=journal
-
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ReadWritePaths=%s
-
-[Install]
-WantedBy=multi-user.target
-`, u.Username, cfg.Dir, cfg.Dir, cfg.SessionName, cfg.Dir)
-
+	unit := systemdUnit(serviceUser, cfg)
 	unitPath := "/etc/systemd/system/minecraft.service"
 	// Staged in a private temp file rather than a predictable /tmp path: the
 	// file is handed to `sudo cp`, so a pre-planted symlink at a guessable
@@ -90,18 +78,110 @@ WantedBy=multi-user.target
 	}
 	defer func() { _ = os.Remove(tmpFile) }()
 
-	ctx := context.Background()
 	if err := m.runner.RunSudo(ctx, "cp", tmpFile, unitPath); err != nil {
 		return fmt.Errorf("installing service file: %w", err)
+	}
+	if err := m.runner.RunSudo(ctx, "chown", "-R", serviceUser+":"+serviceUser, cfg.Dir); err != nil {
+		return fmt.Errorf("giving %s ownership of %s: %w", serviceUser, cfg.Dir, err)
+	}
+	// Group-writable so the operator, once in the minecraft group, can still
+	// edit configs. Other users get nothing, including the RCON password.
+	if err := m.runner.RunSudo(ctx, "chmod", "-R", "u+rwX,g+rwX,o-rwx", cfg.Dir); err != nil {
+		return fmt.Errorf("setting permissions on %s: %w", cfg.Dir, err)
+	}
+	if err := m.runner.RunSudo(ctx, "find", cfg.Dir, "-type", "d", "-exec", "chmod", "2770", "{}", "+"); err != nil {
+		return fmt.Errorf("setting directory permissions on %s: %w", cfg.Dir, err)
+	}
+	addedToGroup := false
+	if u.Username != serviceUser {
+		if err := m.runner.RunSudo(ctx, "usermod", "-aG", serviceUser, u.Username); err != nil {
+			return fmt.Errorf("adding %s to the %s group: %w. The service user was created, but this account cannot edit server files until it is in that group", u.Username, serviceUser, err)
+		}
+		addedToGroup = true
 	}
 
 	if err := m.runner.RunSudo(ctx, "systemctl", "daemon-reload"); err != nil {
 		return fmt.Errorf("daemon-reload: %w", err)
 	}
 
-	output.Success("Systemd service installed")
+	output.Success("Systemd service installed for user %s", serviceUser)
 	output.Info("Control with: sudo systemctl start|stop|restart|status minecraft")
+	if addedToGroup {
+		output.Info("%s was added to the %s group. Log in again before editing server files from this account.", u.Username, serviceUser)
+	}
 	return nil
+}
+
+// systemdUnit renders the hardened unit. dir may contain spaces; paths are
+// quoted so systemd does not split them.
+func systemdUnit(account string, cfg *config.ServerConfig) string {
+	dir := systemdQuotePath(cfg.Dir)
+	script := systemdQuotePath(filepath.Join(cfg.Dir, "start.sh"))
+	return fmt.Sprintf(`[Unit]
+Description=Minecraft Server (MC Dad Server)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%s
+Group=%s
+WorkingDirectory=%s
+ExecStart=/usr/bin/bash %s
+ExecStop=/usr/bin/bash -c "screen -S %s -p 0 -X stuff 'stop\r'"
+Restart=on-failure
+RestartSec=30
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+
+# Hardened dedicated service account. ReadWritePaths is the only tree the
+# process may modify; ProtectSystem=strict makes the rest read-only.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=%s
+
+[Install]
+WantedBy=multi-user.target
+`, account, account, dir, script, cfg.SessionName, dir)
+}
+
+func systemdQuotePath(s string) string {
+	s = strings.NewReplacer(`\`, `\\`, `"`, `\"`, "%", "%%", "\n", " ").Replace(s)
+	return `"` + s + `"`
+}
+
+func ensureServiceUser(ctx context.Context, runner CommandRunner) error {
+	if _, err := runner.RunWithOutput(ctx, "id", serviceUser); err == nil {
+		return nil
+	}
+	if err := runner.RunSudo(ctx, "useradd", "--system", "--user-group", "--no-create-home", "--shell", "/usr/sbin/nologin", serviceUser); err != nil {
+		return fmt.Errorf("creating dedicated system user %s: %w. Install it manually with: sudo useradd --system --user-group --no-create-home --shell /usr/sbin/nologin %s", serviceUser, err, serviceUser)
+	}
+	return nil
+}
+
+// ensureServicePathTraversable rejects a server directory the dedicated user
+// cannot reach. Parents are not chowned: a mode of 0750 on a home directory
+// would hide the server from the minecraft user, and chmod on that home
+// directory would change more than the server.
+func ensureServicePathTraversable(dir string) error {
+	path := filepath.Clean(dir)
+	for {
+		parent := filepath.Dir(path)
+		if parent == path {
+			return nil
+		}
+		info, err := os.Stat(parent)
+		if err != nil {
+			return fmt.Errorf("checking whether user %s can reach %s: %w", serviceUser, parent, err)
+		}
+		if info.Mode().Perm()&0o001 == 0 {
+			return fmt.Errorf("the systemd service runs as user %s and cannot enter %s (mode %o). Install with --dir /var/lib/minecraft, or grant other-execute on each parent directory", serviceUser, parent, info.Mode().Perm())
+		}
+		path = parent
+	}
 }
 
 func (m *systemdManager) Enable() error {

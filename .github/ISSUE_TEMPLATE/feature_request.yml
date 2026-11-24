@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest an improvement to the installer or the server it sets up
+title: ""
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard or missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should the tool do instead?
+    validations:
+      required: true

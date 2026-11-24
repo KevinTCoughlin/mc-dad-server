@@ -131,6 +131,9 @@ func backupExistingJAR(path string, output *ui.UI) (func(), error) {
 }
 
 func downloadFile(ctx context.Context, url, dest string) error {
+	ctx, cancel := platform.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+
 	var lastErr error
 	for attempt := 1; attempt <= downloadAttempts; attempt++ {
 		err := downloadFileOnce(ctx, url, dest)
