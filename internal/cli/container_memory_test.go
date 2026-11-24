@@ -116,8 +116,7 @@ func TestResolveContainerMemoryFrom(t *testing.T) {
 }
 
 func TestSetupContainerWritesAutoMemory(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := setTestHome(t)
 
 	plan := expectedContainerPlan(t)
 	cmd := SetupContainerCmd{
@@ -159,8 +158,7 @@ func TestSetupContainerWritesAutoMemory(t *testing.T) {
 }
 
 func TestSetupContainerExplicitMemory(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := setTestHome(t)
 
 	cmd := SetupContainerCmd{
 		Port:       25565,
@@ -220,6 +218,16 @@ func TestGenerateComposeAutoMemory(t *testing.T) {
 	} else if !strings.Contains(text, `MEMORY: "`+plan.Heap+`"`) || !strings.Contains(text, `mem_limit: "`+plan.Limit+`"`) {
 		t.Fatalf("compose missing fallback heap %s limit %s:\n%s", plan.Heap, plan.Limit, text)
 	}
+}
+
+// setTestHome points UserHomeDir at a temp directory. Unix uses HOME;
+// Windows uses USERPROFILE.
+func setTestHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	return home
 }
 
 func expectedContainerPlan(t *testing.T) config.ContainerPlan {
