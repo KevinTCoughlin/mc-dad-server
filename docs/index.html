@@ -41,7 +41,7 @@
         "applicationCategory": "GameApplication",
         "applicationSubCategory": "Game server",
         "operatingSystem": "Linux, macOS, Windows, Raspberry Pi OS",
-        "softwareVersion": "0.4.0",
+        "softwareVersion": "0.5.0",
         "license": "https://opensource.org/licenses/MIT",
         "isAccessibleForFree": true,
         "downloadUrl": "https://github.com/KevinTCoughlin/mc-dad-server/releases/latest",
@@ -869,7 +869,7 @@
             <tr><td><code>--edition</code></td><td>java</td><td>java or bedrock</td></tr>
             <tr><td><code>--type</code></td><td>paper</td><td>paper, fabric, or vanilla</td></tr>
             <tr><td><code>--dir</code></td><td>~/minecraft-server</td><td>Install location</td></tr>
-            <tr><td><code>--memory</code></td><td>2G</td><td>RAM allocation</td></tr>
+            <tr><td><code>--memory</code></td><td>auto</td><td>Heap for install, or the container memory limit for setup-container and generate-compose. auto sizes it from system RAM. Inside a container the JVM heap is 75% of that limit. Override with 4G or 2048M.</td></tr>
             <tr><td><code>--port</code></td><td>25565</td><td>Server port</td></tr>
             <tr><td><code>--difficulty</code></td><td>normal</td><td>peaceful, easy, normal, hard</td></tr>
             <tr><td><code>--gamemode</code></td><td>survival</td><td>survival, creative, adventure</td></tr>

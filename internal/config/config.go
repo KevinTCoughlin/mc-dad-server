@@ -33,6 +33,14 @@ type ServerConfig struct {
 	VoteDuration int    `json:"vote_duration"`
 	VoteChoices  int    `json:"vote_choices"`
 
+	// ContainerLimit is the cgroup memory limit written by setup-container
+	// and generate-compose. Empty means the limit is Memory plus 1 GiB.
+	ContainerLimit string `json:"-"`
+	// HeapPercent, when set, sizes the JVM with InitialRAMPercentage and
+	// MaxRAMPercentage instead of a fixed -Xmx. The percentage is of
+	// ContainerLimit. Memory stays a sized value so Validate still accepts it.
+	HeapPercent int `json:"-"`
+
 	// Generated at runtime
 	RCONPassword string `json:"-"`
 }

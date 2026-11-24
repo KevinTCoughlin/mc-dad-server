@@ -200,6 +200,7 @@ func TestDeployCompose(t *testing.T) {
 		{"bedrock UDP port", "19132:19132/udp"},
 		{"server type uppercase", `TYPE: "PAPER"`},
 		{"memory", `MEMORY: "4G"`},
+		{"memory limit", `mem_limit: "5G"`},
 		{"MOTD", `MOTD: "My Test Server"`},
 		{"max players", `MAX_PLAYERS: "15"`},
 		{"difficulty", `DIFFICULTY: "hard"`},
@@ -330,6 +331,59 @@ func TestDeployQuadlet(t *testing.T) {
 	// Single-file config binds crash Paper (it rewrites them by atomic rename).
 	if strings.Contains(content, "server.properties:") || strings.Contains(content, "paper-global.yml:") {
 		t.Error("minecraft.container must not bind-mount config files")
+	}
+}
+
+func TestDeployContainerMemoryPercentage(t *testing.T) {
+	d := setupTestFS(t)
+	dir := t.TempDir()
+	cfg := config.DefaultConfig()
+	cfg.Dir = dir
+	cfg.Memory = "6G"
+	cfg.ContainerLimit = "6G"
+	cfg.HeapPercent = 75
+	cfg.GCType = "g1gc"
+
+	if err := d.DeployCompose(cfg, dir); err != nil {
+		t.Fatal(err)
+	}
+	compose, err := os.ReadFile(filepath.Join(dir, "compose.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(compose), `MEMORY: "75%"`) || !strings.Contains(string(compose), `mem_limit: "6G"`) {
+		t.Fatalf("compose.yml = %s", compose)
+	}
+	if strings.Contains(string(compose), `MEMORY: "6G"`) {
+		t.Fatalf("compose.yml used the limit as a fixed heap: %s", compose)
+	}
+
+	if err := d.DeployQuadlet(cfg, "/tmp/mc.env", dir); err != nil {
+		t.Fatal(err)
+	}
+	unit, err := os.ReadFile(filepath.Join(dir, "minecraft.container"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(unit), "MEMORY=75%%") || !strings.Contains(string(unit), "MemoryMax=6G") {
+		t.Fatalf("quadlet = %s", unit)
+	}
+
+	paths := AppleContainerPaths{
+		EnvFile:    "/tmp/mc.env",
+		ScriptPath: filepath.Join(dir, "run.sh"),
+		PlistPath:  filepath.Join(dir, "agent.plist"),
+		LogDir:     filepath.Join(dir, "logs"),
+	}
+	if err := d.DeployAppleContainer(cfg, &paths, "com.example.mc"); err != nil {
+		t.Fatal(err)
+	}
+	script, err := os.ReadFile(paths.ScriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(script), "-e MEMORY='75%'") || !strings.Contains(string(script), "-m 6G") {
+		t.Fatalf("run script = %s", script)
 	}
 }
 
