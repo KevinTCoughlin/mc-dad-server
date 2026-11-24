@@ -20,7 +20,7 @@ Volume=minecraft-backups:/minecraft/backups:Z
 
 # Load secrets from .env file (RCON_PASSWORD, etc.)
 EnvironmentFile={{.EnvFile}}
-Environment=MEMORY={{.Memory}}
+Environment={{sdq (print "MEMORY=" .Memory)}}
 Environment=GC_TYPE={{.GCType}}
 # Server settings go in as env vars that entrypoint.sh substitutes into the
 # image's server.properties. Config files are deliberately not bind-mounted:
@@ -42,9 +42,11 @@ StopTimeout=60
 [Service]
 Restart=on-failure
 RestartSec=30
-# Safety limits — MemoryMax adds 1 GiB headroom above MEMORY for JVM overhead
-# (metaspace, native allocations, etc.). Adjust if you see unexpected OOM kills.
-MemoryMax={{.MemoryMax}}
+# MemoryMax is the container memory limit. A fixed MEMORY heap (4G) gets
+# 1 GiB of headroom for metaspace and native allocations. MEMORY=75% sizes
+# the JVM heap to that share of MemoryMax, which is how itzg/minecraft-server
+# applies MaxRAMPercentage.
+MemoryMax={{.MemoryLimit}}
 # CPUQuota: 200% = 2 CPU cores; conservative default for small servers.
 # Increase on hosts with more cores or higher player counts.
 CPUQuota=200%

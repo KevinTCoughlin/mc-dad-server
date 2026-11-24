@@ -10,6 +10,7 @@ package verify
 import (
 	"crypto/sha1" //nolint:gosec // SHA-1 is the only digest Mojang publishes.
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"hash"
@@ -21,11 +22,15 @@ import (
 // Expected is the integrity metadata published for a file. A zero value
 // carries nothing to check.
 type Expected struct {
+	// SHA512 is published by Fabric's Maven repository beside the installer jar.
+	SHA512 string
+
 	// SHA256 is published by PaperMC Fill v3, the GeyserMC builds API, and
-	// Hangar.
+	// Hangar. Fabric's Maven repository publishes it too, behind SHA-512.
 	SHA256 string
 
 	// SHA1 is the only digest Mojang publishes for vanilla server JARs.
+	// Fabric's Maven repository also publishes it, behind SHA-512 and SHA-256.
 	SHA1 string
 
 	// Size is the file size in bytes. Zero means unknown. It is a weak check
@@ -36,12 +41,14 @@ type Expected struct {
 
 // Empty reports whether there is nothing to verify against.
 func (e Expected) Empty() bool {
-	return e.SHA256 == "" && e.SHA1 == "" && e.Size == 0
+	return e.SHA512 == "" && e.SHA256 == "" && e.SHA1 == "" && e.Size == 0
 }
 
 // Describe returns a short human-readable summary of what will be checked.
 func (e Expected) Describe() string {
 	switch {
+	case e.SHA512 != "":
+		return "sha512"
 	case e.SHA256 != "":
 		return "sha256"
 	case e.SHA1 != "":
@@ -76,6 +83,8 @@ func File(path string, e Expected) error {
 		alg      string
 	)
 	switch {
+	case e.SHA512 != "":
+		h, expected, alg = sha512.New(), e.SHA512, "sha512"
 	case e.SHA256 != "":
 		h, expected, alg = sha256.New(), e.SHA256, "sha256"
 	case e.SHA1 != "":

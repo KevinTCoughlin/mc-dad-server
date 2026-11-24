@@ -53,6 +53,6 @@ exec container run --progress none --name "${NAME}" \
   -e MOTD={{sq .MOTD}} \
   -e WHITELIST={{.Whitelist}} \
   --cap-drop ALL \
-  -m {{.MemoryMax}} \
+  -m {{.MemoryLimit}} \
   -c 2 \
   "${IMAGE}"

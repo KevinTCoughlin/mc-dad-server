@@ -44,6 +44,7 @@ Use this checklist before cutting a release or validating a change that affects 
 - Docker or Podman container mode.
 - Apple `container` mode on macOS: `setup-container`, then a launchd bootstrap, then status, stop and start. Kill java and confirm launchd restarts it.
 - Raspberry Pi or another low-memory ARM host when changing memory or JVM flags.
+- On a machine with a known amount of RAM, `setup-container` and `generate-compose` with `--memory auto` set the container limit from that RAM, and `java` inside the container shows `MaxRAMPercentage=75` with a max heap near 75% of the limit. Repeat under 2 GiB, where the limit floors at 512M and 75% of that is below the bare-metal heap floor. `--memory 4G` still sets `-Xmx4G` and a 5G container limit.
 
 ## Release readiness
 

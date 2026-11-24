@@ -163,6 +163,7 @@ func (d *Deployer) DeployCompose(cfg *config.ServerConfig, destDir string) error
 	}
 
 	serverType := strings.ToUpper(cfg.ServerType)
+	jvmMemory, memoryLimit := containerMemory(cfg)
 
 	dest := filepath.Join(destDir, "compose.yml")
 	return executeAtomic(tmpl, dest, 0o644, map[string]any{
@@ -171,7 +172,8 @@ func (d *Deployer) DeployCompose(cfg *config.ServerConfig, destDir string) error
 		"ServerType":    serverType,
 		"Version":       cfg.Version,
 		"PaperBuild":    cfg.PaperBuild,
-		"Memory":        cfg.Memory,
+		"Memory":        jvmMemory,
+		"MemoryLimit":   memoryLimit,
 		"MOTD":          cfg.MOTD,
 		"MaxPlayers":    cfg.MaxPlayers,
 		"Difficulty":    cfg.Difficulty,
@@ -211,11 +213,12 @@ func (d *Deployer) DeployQuadlet(cfg *config.ServerConfig, envFile, destDir stri
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return fmt.Errorf("creating quadlet dir: %w", err)
 	}
+	jvmMemory, memoryLimit := containerMemory(cfg)
 	return d.renderTemplate("minecraft.container.tmpl", filepath.Join(destDir, "minecraft.container"), 0o644, map[string]any{
 		"Port":        cfg.Port,
 		"BedrockPort": config.BedrockPort,
-		"Memory":      cfg.Memory,
-		"MemoryMax":   computeMemoryMax(cfg.Memory),
+		"Memory":      jvmMemory,
+		"MemoryLimit": memoryLimit,
 		"GCType":      cfg.GCType,
 		"Difficulty":  cfg.Difficulty,
 		"GameMode":    cfg.GameMode,
@@ -249,13 +252,14 @@ func (d *Deployer) DeployAppleContainer(cfg *config.ServerConfig, p *AppleContai
 		}
 	}
 
+	jvmMemory, memoryLimit := containerMemory(cfg)
 	vars := map[string]any{
 		"Label":       label,
 		"Image":       AppleContainerImage,
 		"Port":        cfg.Port,
 		"BedrockPort": config.BedrockPort,
-		"Memory":      cfg.Memory,
-		"MemoryMax":   computeMemoryMax(cfg.Memory),
+		"Memory":      jvmMemory,
+		"MemoryLimit": memoryLimit,
 		"GCType":      cfg.GCType,
 		"Difficulty":  cfg.Difficulty,
 		"GameMode":    cfg.GameMode,
@@ -310,29 +314,22 @@ func executeAtomic(tmpl *template.Template, dest string, perm os.FileMode, vars 
 	return platform.WriteAtomic(dest, buf.Bytes(), perm)
 }
 
+// containerMemory returns the MEMORY value written into the container
+// (a fixed heap, or a percentage of the limit) and the container limit.
+func containerMemory(cfg *config.ServerConfig) (jvmMemory, limit string) {
+	limit = cfg.ContainerLimit
+	if limit == "" {
+		limit = computeMemoryMax(cfg.Memory)
+	}
+	if cfg.HeapPercent > 0 {
+		return fmt.Sprintf("%d%%", cfg.HeapPercent), limit
+	}
+	return cfg.Memory, limit
+}
+
 // computeMemoryMax adds 1G headroom to the configured memory for JVM overhead.
 func computeMemoryMax(memory string) string {
-	memory = strings.TrimSpace(memory)
-	if memory == "" {
-		return "3G"
-	}
-
-	suffix := memory[len(memory)-1:]
-	numStr := memory[:len(memory)-1]
-
-	var value int
-	if _, err := fmt.Sscanf(numStr, "%d", &value); err != nil || value <= 0 {
-		return "3G"
-	}
-
-	switch strings.ToUpper(suffix) {
-	case "G":
-		return fmt.Sprintf("%dG", value+1)
-	case "M":
-		return fmt.Sprintf("%dM", value+1024)
-	default:
-		return "3G"
-	}
+	return config.MemoryLimitForHeap(memory)
 }
 
 // DeployStartScript renders and writes the start.sh script.

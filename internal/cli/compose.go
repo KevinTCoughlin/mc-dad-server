@@ -15,7 +15,7 @@ import (
 // GenerateComposeCmd generates a compose.yml for Docker / Podman Compose.
 type GenerateComposeCmd struct {
 	Port       int    `help:"Server port" default:"25565"`
-	Memory     string `help:"RAM allocation (e.g., 2G, 4G)" default:"2G"`
+	Memory     string `help:"Container memory. 'auto' sizes the limit from host RAM and sets the JVM heap to 75% of that limit. An explicit size (4G, 2048M) is a fixed heap, with a container limit 1 GiB higher." default:"auto"`
 	Type       string `help:"Server type" default:"paper" enum:"paper,fabric,vanilla" name:"type"`
 	MOTD       string `help:"Message of the day" default:"Dads Minecraft Server" name:"motd"`
 	Players    int    `help:"Max players" default:"20" name:"players"`
@@ -51,7 +51,12 @@ func (cmd *GenerateComposeCmd) toConfig() *config.ServerConfig {
 // Run generates a compose.yml file.
 func (cmd *GenerateComposeCmd) Run(_ *Globals, runner platform.CommandRunner, output *ui.UI, deployer *configs.Deployer) error {
 	ctx := context.Background()
+	plan, err := resolveContainerMemory(cmd.Memory, output)
+	if err != nil {
+		return err
+	}
 	cfg := cmd.toConfig()
+	applyContainerPlan(cfg, plan)
 	if err := cfg.Validate(); err != nil {
 		return err
 	}

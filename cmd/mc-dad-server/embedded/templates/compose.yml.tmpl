@@ -20,6 +20,7 @@ services:
       USE_AIKAR_FLAGS: "{{.UseAikarFlags}}"
     volumes:
       - minecraft_data:/data
+    mem_limit: "{{.MemoryLimit}}"
     restart: unless-stopped
 
 volumes:

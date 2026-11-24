@@ -59,4 +59,20 @@ mkdir "${worlds}/region"
     [[ ${#WORLD_ARGS[@]} -eq 0 ]]
 )
 
+# A fixed heap stays -Xms/-Xmx. A percentage tracks the container limit.
+(
+    MEMORY=4G
+    build_jvm_flags
+    [[ "${JVM_FLAGS[0]}" == "-Xms4G" && "${JVM_FLAGS[1]}" == "-Xmx4G" ]]
+    [[ "${MEMORY_DESC}" == "4G RAM" ]]
+)
+(
+    MEMORY=75%
+    build_jvm_flags
+    [[ "${JVM_FLAGS[0]}" == "-XX:InitialRAMPercentage=75" ]]
+    [[ "${JVM_FLAGS[1]}" == "-XX:MaxRAMPercentage=75" ]]
+    [[ " ${JVM_FLAGS[*]} " != *" -Xmx"* && " ${JVM_FLAGS[*]} " != *" -Xms"* ]]
+    [[ "${MEMORY_DESC}" == "75% of the container memory limit" ]]
+)
+
 echo "entrypoint tests passed"

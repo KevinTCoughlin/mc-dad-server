@@ -89,6 +89,28 @@ prepare_world_container() {
     WORLD_ARGS=(--world-container "${dir}")
 }
 
+# build_jvm_flags turns MEMORY into JVM heap flags.
+# A size such as 4G is a fixed -Xms/-Xmx. A percentage such as 75% is
+# InitialRAMPercentage and MaxRAMPercentage, which track the container
+# memory limit. itzg/minecraft-server accepts the same percentage form.
+build_jvm_flags() {
+    local memory="${MEMORY:-2G}"
+    if [[ "${memory}" =~ ^([0-9]+([.][0-9]+)?)%$ ]]; then
+        local pct="${BASH_REMATCH[1]}"
+        JVM_FLAGS=(
+            -XX:InitialRAMPercentage="${pct}"
+            -XX:MaxRAMPercentage="${pct}"
+        )
+        MEMORY_DESC="${pct}% of the container memory limit"
+        return 0
+    fi
+    JVM_FLAGS=(
+        -Xms"${memory}"
+        -Xmx"${memory}"
+    )
+    MEMORY_DESC="${memory} RAM"
+}
+
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
     return 0
 fi
@@ -98,10 +120,7 @@ configure_server_properties
 prepare_world_container
 
 # --- Build JVM flags ---
-JVM_FLAGS=(
-    -Xms"${MEMORY}"
-    -Xmx"${MEMORY}"
-)
+build_jvm_flags
 
 # Use AppCDS archive if available (baked during container build)
 if [[ -f app-cds.jsa ]]; then
@@ -211,7 +230,7 @@ rm -f "${FIFO}"
 mkfifo "${FIFO}"
 exec 3<>"${FIFO}"
 
-echo "[entrypoint] Starting Minecraft server with ${MEMORY} RAM (${gc_lower^^} GC)..."
+echo "[entrypoint] Starting Minecraft server with ${MEMORY_DESC} (${gc_lower^^} GC)..."
 
 # Keep the FIFO open in the parent without an orphaned tail process.
 java "${JVM_FLAGS[@]}" -jar server.jar "${WORLD_ARGS[@]}" nogui < "${FIFO}" 3>&- &

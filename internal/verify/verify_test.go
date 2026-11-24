@@ -1,6 +1,8 @@
 package verify
 
 import (
+	"crypto/sha512"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,6 +33,7 @@ func TestFile(t *testing.T) {
 		exp     Expected
 		wantErr string
 	}{
+		{name: "sha512 match", exp: Expected{SHA512: helloSHA512()}},
 		{name: "sha256 match", exp: Expected{SHA256: helloSHA256}},
 		{name: "sha256 uppercase", exp: Expected{SHA256: strings.ToUpper(helloSHA256)}},
 		{name: "sha1 match", exp: Expected{SHA1: helloSHA1}},
@@ -51,6 +54,11 @@ func TestFile(t *testing.T) {
 			name:    "size mismatch",
 			exp:     Expected{Size: 999},
 			wantErr: "size mismatch",
+		},
+		{
+			name:    "sha512 preferred over sha256",
+			exp:     Expected{SHA512: strings.Repeat("ab", 64), SHA256: helloSHA256},
+			wantErr: "sha512 checksum mismatch",
 		},
 		{
 			name:    "sha256 preferred over sha1",
@@ -108,15 +116,16 @@ func TestExpectedEmptyAndDescribe(t *testing.T) {
 	if !(Expected{}).Empty() {
 		t.Fatal("zero Expected should be empty")
 	}
-	for _, e := range []Expected{{SHA256: "x"}, {SHA1: "x"}, {Size: 1}} {
+	for _, e := range []Expected{{SHA512: "x"}, {SHA256: "x"}, {SHA1: "x"}, {Size: 1}} {
 		if e.Empty() {
 			t.Fatalf("%+v should not be empty", e)
 		}
 	}
 
 	tests := map[string]Expected{
-		"sha256":  {SHA256: "x", SHA1: "y", Size: 1},
-		"sha1":    {SHA1: "y", Size: 1},
+		"sha512":  {SHA512: "x", SHA256: "y", SHA1: "z", Size: 1},
+		"sha256":  {SHA256: "y", SHA1: "z", Size: 1},
+		"sha1":    {SHA1: "z", Size: 1},
 		"size":    {Size: 1},
 		"nothing": {},
 	}
@@ -125,4 +134,9 @@ func TestExpectedEmptyAndDescribe(t *testing.T) {
 			t.Fatalf("Describe() = %q, want %q", got, want)
 		}
 	}
+}
+
+func helloSHA512() string {
+	sum := sha512.Sum512([]byte("hello\n"))
+	return hex.EncodeToString(sum[:])
 }

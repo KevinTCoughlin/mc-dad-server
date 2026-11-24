@@ -121,7 +121,7 @@ mc-dad-server install \
 | `--type` | `paper` | `paper`, `fabric`, or `vanilla` |
 | `--dir` | `~/minecraft-server` | Install location |
 | `--port` | `25565` | Server port |
-| `--memory` | `auto` | JVM heap. `auto` sizes it from system RAM (25% headroom, clamped to 512M–12G). Override with `4G` or `2048M`. |
+| `--memory` | `auto` | JVM heap for `install`. `auto` sizes it from system RAM (25% headroom, clamped to 512M–12G). `setup-container` and `generate-compose` use the same default for the container memory limit, and the JVM heap inside the container is 75% of that limit. Override with `4G` or `2048M`. |
 | `--difficulty` | `normal` | `peaceful`, `easy`, `normal`, `hard` |
 | `--gamemode` | `survival` | `survival`, `creative`, `adventure` |
 | `--players` | `20` | Max player count |
@@ -185,7 +185,7 @@ podman logs -f minecraft          # follow server logs
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MEMORY` | `2G` | JVM heap size |
+| `MEMORY` | `2G` | JVM heap. A size such as `4G` is a fixed `-Xmx`. A percentage such as `75%` is `-XX:MaxRAMPercentage`, tracking the container memory limit. `setup-container` writes `75%` when `--memory` is `auto`. |
 | `GC_TYPE` | `g1gc` | `g1gc` (Aikar's flags) or `zgc` |
 | `PORT` | `25565` | Minecraft server port |
 | `RCON_PORT` | `25575` | RCON port (localhost only) |
@@ -203,7 +203,7 @@ systemctl --user daemon-reload
 systemctl --user start minecraft
 ```
 
-See `compose.yml` for volume mounts, port mappings, and security hardening (cap_drop, no-new-privileges, memory limits).
+See `compose.yml` for volume mounts, port mappings, and security hardening (cap_drop, no-new-privileges, memory limits). `mc-dad-server setup-container` and `mc-dad-server generate-compose` default `--memory` to `auto`: the container limit is sized from host RAM with the same headroom and clamps as `install`, and `MEMORY` is `75%` so the JVM heap tracks that limit. `--memory 4G` keeps a fixed heap and sets the container limit to `5G`. The checked-in `compose.yml` still defaults to a `2G` heap and a `3g` limit.
 
 ### macOS: Apple `container`
 
@@ -365,7 +365,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 ## FAQ
 
 **Q: How much RAM do I need?**
-2GB is fine for 2-5 players. 4GB for 5-10. 8GB if the kids go crazy with mods. `install` with `--memory auto` (the default) picks a heap from the machine's RAM and leaves room for the OS. Pass `--memory 4G` to override.
+2GB is fine for 2-5 players. 4GB for 5-10. 8GB if the kids go crazy with mods. `install`, `setup-container`, and `generate-compose` default `--memory` to `auto`, which sizes the heap (or, in a container, the memory limit) from the machine's RAM and leaves room for the OS. Inside a container the JVM heap is 75% of that limit. Pass `--memory 4G` to override.
 
 **Q: G1GC or ZGC?**
 G1GC (default) uses Aikar's flags, which Java 25 still accepts, plus `-XX:+ExitOnOutOfMemoryError`. ZGC is lower latency on this Java 25 runtime when the machine has 8GB or more. Try `--gc zgc` if you want to experiment.
@@ -380,7 +380,7 @@ Yes! Use playit.gg (included) or forward port 25565 on your router. For Bedrock 
 It's Minecraft but faster. Same game, better performance, supports plugins.
 
 **Q: Can I add mods?**
-Use `--type fabric` for mods (plugins won't install). Paper supports plugins (different ecosystem).
+Use `--type fabric` for mods (plugins won't install). Paper supports plugins (different ecosystem). The Fabric installer jar is checked against the strongest checksum Maven publishes beside it (SHA-512, then SHA-256, then SHA-1). The meta API does not include a hash. If none of those sidecar files is published, the installer warns and continues.
 
 **Q: Is this safe?**
 Whitelist is on by default — only players you approve can join. Online mode verifies real Minecraft accounts.
