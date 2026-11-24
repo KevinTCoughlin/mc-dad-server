@@ -170,10 +170,10 @@ func ensureServiceUser(ctx context.Context, runner CommandRunner) error {
 // would hide the server from the minecraft user, and chmod on that home
 // directory would change more than the server.
 func ensureServicePathTraversable(dir string) error {
-	path := filepath.Clean(dir)
+	current := filepath.Clean(dir)
 	for {
-		parent := filepath.Dir(path)
-		if parent == path {
+		parent := filepath.Dir(current)
+		if parent == current {
 			return nil
 		}
 		info, err := os.Stat(parent)
@@ -183,7 +183,7 @@ func ensureServicePathTraversable(dir string) error {
 		if info.Mode().Perm()&0o001 == 0 {
 			return fmt.Errorf("the systemd service runs as user %s and cannot enter %s (mode %o). Install with --dir /var/lib/minecraft, or grant other-execute on each parent directory", serviceUser, parent, info.Mode().Perm())
 		}
-		path = parent
+		current = parent
 	}
 }
 
