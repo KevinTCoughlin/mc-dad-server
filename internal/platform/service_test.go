@@ -79,6 +79,11 @@ func TestEnsureServicePathTraversable(t *testing.T) {
 	if err := os.Mkdir(open, 0o755); err != nil {
 		t.Fatalf("mkdir open: %v", err)
 	}
+	// Mkdir's mode is cut down by the umask: under 0077 this directory would
+	// be 0700 and the check would be right to refuse it.
+	if err := os.Chmod(open, 0o755); err != nil {
+		t.Fatalf("chmod open: %v", err)
+	}
 	if err := ensureServicePathTraversable(filepath.Join(open, "server")); err != nil {
 		t.Fatalf("traversable path rejected: %v", err)
 	}
