@@ -30,12 +30,14 @@ env:
 
 permissions:
   contents: read
-  packages: write
-  security-events: write
 
 jobs:
   build-and-scan:
     name: Build, Scan & Push
+    permissions:
+      contents: read
+      packages: write # push the image to GHCR
+      security-events: write # upload the Trivy SARIF report
     runs-on: ubuntu-latest
 
     steps:
